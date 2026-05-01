@@ -1,0 +1,103 @@
+# Intelligent Project Management SaaS
+
+> Plataforma SaaS multi-tenant de gestión de proyectos con asistencia de IA, construida como un sistema distribuido orientado a eventos sobre microservicios Java.
+
+![CI](https://github.com/ErickJ10X/intelligent-project-management-saas/actions/workflows/ci-services.yml/badge.svg)
+
+---
+
+## Stack tecnológico
+
+| Capa | Tecnología |
+|------|-----------|
+| Lenguaje | Java 21 LTS |
+| Framework | Spring Boot 3.5 + Spring Cloud 2025.0 |
+| API Gateway | Spring Cloud Gateway |
+| Service Discovery | Eureka |
+| Config centralizado | Spring Cloud Config |
+| Mensajería | Apache Kafka (KRaft) |
+| Base de datos | PostgreSQL 16 (database-per-service) |
+| Cache | Redis 7.4 |
+| Seguridad | Keycloak 26 (OAuth2/OIDC) |
+| IA | Spring AI 1.0 (provider-agnostic) |
+| Frontend | Angular 19 |
+| Observabilidad | Prometheus + Grafana + Loki + Tempo |
+| CI/CD | GitHub Actions |
+
+---
+
+## Cómo levantar el entorno local
+
+### Prerequisitos
+
+- Docker Engine 24+ o Docker Desktop 4+
+- Java 21 JDK (recomendado via [SDKMAN](https://sdkman.io/))
+- Maven 3.9+
+
+### Pasos
+
+```bash
+# 1. Clonar el repositorio
+git clone https://github.com/ErickJ10X/intelligent-project-management-saas
+cd intelligent-project-management-saas
+
+# 2. Copiar variables de entorno
+cp .env.example .env
+# Editar .env si querés cambiar passwords (opcional en local)
+
+# 3. Levantar infraestructura
+docker-compose up -d
+
+# 4. Crear los topics de Kafka (primera vez)
+./infra/kafka/topics-init.sh
+
+# 5. Verificar que todo está OK
+docker-compose ps
+# Todos los servicios deben estar "healthy"
+```
+
+### URLs locales
+
+| Servicio | URL | Credenciales |
+|----------|-----|-------------|
+| Keycloak | http://localhost:8180 | admin / admin |
+| Eureka Dashboard | http://localhost:8761 | — |
+| API Gateway | http://localhost:8080 | — |
+| PostgreSQL | localhost:5432 | epm_admin / changeme |
+| Kafka | localhost:9092 | — |
+| Redis | localhost:6379 | — |
+
+---
+
+## Fases del proyecto
+
+| Fase | Descripción | Estado |
+|------|-------------|--------|
+| **0** | Fundaciones — repo, infra local, plantilla hexagonal | 🚧 En progreso |
+| **1** | Núcleo de plataforma — Eureka, Config, Gateway | ⏳ Pendiente |
+| **2** | Identidad y usuarios — auth-service, user-service | ⏳ Pendiente |
+| **3** | Dominio de proyectos — project-service | ⏳ Pendiente |
+| **4** | Dominio de tareas — task-service | ⏳ Pendiente |
+| **5** | IA provider-agnostic — ai-service | ⏳ Pendiente |
+| **6** | Notificaciones — notification-service | ⏳ Pendiente |
+| **7** | Resiliencia y observabilidad | ⏳ Pendiente |
+| **8** | Testing serio | ⏳ Pendiente |
+| **9** | Containerización y CI/CD | ⏳ Pendiente |
+| **10** | Kubernetes (opcional) | ⏳ Pendiente |
+| **11** | Pulido y presentación | ⏳ Pendiente |
+
+---
+
+## Arquitectura
+
+Ver [`arquitectura.md`](./arquitectura.md) para el documento maestro de arquitectura.
+
+Ver [`db.md`](./db.md) para el diseño de bases de datos.
+
+Ver [`docs/adr/`](./docs/adr/) para las Architecture Decision Records.
+
+---
+
+## Convenciones
+
+Ver [`docs/conventions.md`](./docs/conventions.md).

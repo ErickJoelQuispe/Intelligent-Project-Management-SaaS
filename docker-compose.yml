@@ -1,0 +1,110 @@
+services:
+
+  # ─────────────────────────────────────────────────────────────────
+  # PostgreSQL 16 — un cluster, seis bases de datos (una por servicio)
+  # El script init-databases.sh las crea la primera vez que el volumen
+  # es nuevo. Si el volumen ya existe, el script NO vuelve a correr.
+  # Para resetear: docker-compose down -v
+  # ─────────────────────────────────────────────────────────────────
+  postgres:
+    image: postgres:16-alpine
+    container_name: epm-postgres
+    environment:
+      POSTGRES_USER: epm_admin
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-changeme}
+      POSTGRES_DB: postgres
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./infra/postgres/init-databases.sh:/docker-entrypoint-initdb.d/init-databases.sh
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U epm_admin -d postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    restart: unless-stopped
+
+  # ─────────────────────────────────────────────────────────────────
+  # Apache Kafka 3.8 en modo KRaft (sin Zookeeper)
+  # CLUSTER_ID debe ser un UUID base64 de 22 chars. Generalo con:
+  #   docker run --rm confluentinc/cp-kafka:7.7.1 kafka-storage random-uuid
+  # y guardalo en tu .env como KAFKA_CLUSTER_ID=<valor>
+  # ─────────────────────────────────────────────────────────────────
+  kafka:
+    image: confluentinc/cp-kafka:7.7.1
+    container_name: epm-kafka
+    environment:
+      KAFKA_NODE_ID: 1
+      KAFKA_PROCESS_ROLES: broker,controller
+      KAFKA_LISTENERS: PLAINTEXT://0.0.0.0:9092,CONTROLLER://0.0.0.0:9093
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://localhost:9092
+      KAFKA_CONTROLLER_QUORUM_VOTERS: 1@kafka:9093
+      KAFKA_CONTROLLER_LISTENER_NAMES: CONTROLLER
+      KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
+      KAFKA_LOG_DIRS: /var/lib/kafka/data
+      CLUSTER_ID: ${KAFKA_CLUSTER_ID:-MkU3OEVBNTcwNTJENDM2Qk}
+    ports:
+      - "9092:9092"
+    volumes:
+      - kafka_data:/var/lib/kafka/data
+    healthcheck:
+      test: ["CMD", "kafka-broker-api-versions", "--bootstrap-server", "localhost:9092"]
+      interval: 15s
+      timeout: 10s
+      retries: 5
+      start_period: 20s
+    restart: unless-stopped
+
+  # ─────────────────────────────────────────────────────────────────
+  # Keycloak 26 — Identity Provider
+  # Modo dev: usa H2 embebido (no necesita Postgres propio).
+  # El realm epm se importa automáticamente desde infra/keycloak/.
+  # Solo importa si el archivo existe; si no, arranca sin realm.
+  # ─────────────────────────────────────────────────────────────────
+  keycloak:
+    image: quay.io/keycloak/keycloak:26.1.4
+    container_name: epm-keycloak
+    command: start-dev --import-realm
+    environment:
+      KEYCLOAK_ADMIN: admin
+      KEYCLOAK_ADMIN_PASSWORD: ${KEYCLOAK_ADMIN_PASSWORD:-admin}
+      KC_DB: dev-mem
+      KC_HTTP_PORT: 8080
+      KC_HEALTH_ENABLED: "true"
+    ports:
+      - "8180:8080"
+    volumes:
+      - ./infra/keycloak:/opt/keycloak/data/import
+    healthcheck:
+      test: ["CMD-SHELL", "exec 3<>/dev/tcp/localhost/9000 && echo -e 'GET /health/ready HTTP/1.0\\r\\nHost: localhost\\r\\n\\r\\n' >&3 && grep -q '\"status\": \"UP\"' <&3"]
+      interval: 15s
+      timeout: 10s
+      retries: 8
+      start_period: 30s
+    restart: unless-stopped
+
+  # ─────────────────────────────────────────────────────────────────
+  # Redis 7.4 — cache de respuestas IA, rate limiting
+  # No persiste en disco (no hay volumen): si cae, se reconstruye solo.
+  # ─────────────────────────────────────────────────────────────────
+  redis:
+    image: redis:7.4-alpine
+    container_name: epm-redis
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 5s
+    restart: unless-stopped
+
+volumes:
+  postgres_data:
+  kafka_data:

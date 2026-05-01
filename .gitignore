@@ -1,0 +1,57 @@
+# ─── Java / Maven ───────────────────────────────────────────────
+target/
+*.class
+*.jar
+*.war
+*.ear
+*.nar
+hs_err_pid*
+replay_pid*
+
+# ─── Environment ────────────────────────────────────────────────
+.env
+*.env.local
+
+# ─── IDE — IntelliJ IDEA ────────────────────────────────────────
+.idea/
+*.iws
+*.iml
+*.ipr
+out/
+
+# ─── IDE — VS Code ──────────────────────────────────────────────
+.vscode/
+*.code-workspace
+
+# ─── IDE — Eclipse ──────────────────────────────────────────────
+.classpath
+.project
+.settings/
+bin/
+
+# ─── OS ─────────────────────────────────────────────────────────
+.DS_Store
+Thumbs.db
+
+# ─── Node / Frontend ────────────────────────────────────────────
+node_modules/
+dist/
+.angular/
+.next/
+
+# ─── Docker ─────────────────────────────────────────────────────
+docker-compose.override.yml
+
+# ─── Logs ───────────────────────────────────────────────────────
+*.log
+logs/
+
+# ─── Spotless cache ─────────────────────────────────────────────
+.spotless/
+
+# ─── OpenCode / AI tooling ───────────────────────────────────────
+context.yaml
+.opencode/
+
+# ─── Documentos de trabajo (no son parte del repo público) ───────
+fase-0-fundaciones.md
