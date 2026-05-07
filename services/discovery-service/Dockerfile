@@ -2,17 +2,22 @@
 FROM eclipse-temurin:21-jdk-alpine AS build
 WORKDIR /app
 
-# Copiamos el wrapper y el pom raíz primero para aprovechar la cache de Docker.
-# Si solo cambia código fuente (no dependencias), esta capa no se reconstruye.
 COPY mvnw ./
 COPY .mvn/ .mvn/
 COPY pom.xml ./
-COPY services/discovery-service/pom.xml services/discovery-service/
 
-# Descargamos dependencias del módulo en una capa separada
+# El parent POM declara todos los módulos — Maven necesita encontrar
+# el pom.xml de cada uno para resolver el reactor, aunque no los compile.
+COPY build-tools/ build-tools/
+COPY services/service-template/pom.xml services/service-template/
+COPY services/discovery-service/pom.xml services/discovery-service/
+COPY services/config-service/pom.xml services/config-service/
+COPY services/api-gateway/pom.xml services/api-gateway/
+
+# Descarga dependencias solo del módulo a compilar
 RUN ./mvnw dependency:go-offline -pl services/discovery-service -q
 
-# Copiamos el código fuente y compilamos
+# Copia el código fuente y compila
 COPY services/discovery-service/src services/discovery-service/src
 RUN ./mvnw package -pl services/discovery-service -DskipTests -q
 
@@ -20,7 +25,6 @@ RUN ./mvnw package -pl services/discovery-service -DskipTests -q
 FROM eclipse-temurin:21-jre-alpine
 WORKDIR /app
 
-# Usuario no-root por seguridad
 RUN addgroup -S epm && adduser -S epm -G epm
 USER epm
 

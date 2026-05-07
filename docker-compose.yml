@@ -139,6 +139,7 @@ services:
       - "8888:8888"
     environment:
       CONFIG_REPO_PATH: /config-repo
+      EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: "http://epm-discovery:8761/eureka/"
     volumes:
       - ./config-repo:/config-repo:ro
     depends_on:
@@ -164,6 +165,10 @@ services:
     container_name: epm-gateway
     ports:
       - "8080:8080"
+    environment:
+      SPRING_CONFIG_IMPORT: "optional:configserver:http://epm-config:8888"
+      SPRING_SECURITY_OAUTH2_RESOURCESERVER_JWT_JWKS_URI: "http://epm-keycloak:8080/realms/epm/protocol/openid-connect/certs"
+      EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: "http://epm-discovery:8761/eureka/"
     depends_on:
       discovery-service:
         condition: service_healthy

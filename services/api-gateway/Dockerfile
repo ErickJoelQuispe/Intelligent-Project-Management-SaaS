@@ -5,6 +5,11 @@ WORKDIR /app
 COPY mvnw ./
 COPY .mvn/ .mvn/
 COPY pom.xml ./
+
+COPY build-tools/ build-tools/
+COPY services/service-template/pom.xml services/service-template/
+COPY services/discovery-service/pom.xml services/discovery-service/
+COPY services/config-service/pom.xml services/config-service/
 COPY services/api-gateway/pom.xml services/api-gateway/
 
 RUN ./mvnw dependency:go-offline -pl services/api-gateway -q
