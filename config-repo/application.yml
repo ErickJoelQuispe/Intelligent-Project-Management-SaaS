@@ -1,0 +1,39 @@
+# =============================================================================
+# Configuración compartida por TODOS los microservicios.
+# Cada servicio puede sobreescribir cualquier valor en su propio archivo
+# (ej: config-repo/auth-service.yml sobreescribe lo de acá para auth-service).
+# =============================================================================
+
+spring:
+  datasource:
+    username: epm_admin
+    password: changeme
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    show-sql: false
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.PostgreSQLDialect
+  flyway:
+    enabled: true
+
+eureka:
+  client:
+    service-url:
+      defaultZone: http://localhost:8761/eureka/
+  instance:
+    prefer-ip-address: true
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics
+  endpoint:
+    health:
+      show-details: always
+
+logging:
+  level:
+    com.epm: DEBUG

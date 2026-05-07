@@ -1,0 +1,36 @@
+spring:
+  application:
+    name: config-service
+  profiles:
+    active: native
+  cloud:
+    config:
+      server:
+        native:
+          # En desarrollo leemos configuración desde el filesystem local.
+          # ${user.dir} es el directorio desde donde se lanza el proceso.
+          # Siempre lanzar Maven desde la raíz del proyecto.
+          # En producción este backend cambia a Git sin tocar el código.
+          # CONFIG_REPO_PATH puede sobreescribirse via variable de entorno o argumento.
+          # Default: busca config-repo/ relativo al directorio de trabajo.
+          # Siempre lanzar el JAR desde la raíz del proyecto.
+          search-locations: file:${CONFIG_REPO_PATH:${user.dir}/config-repo}
+
+server:
+  port: 8888
+
+eureka:
+  client:
+    service-url:
+      defaultZone: http://localhost:8761/eureka/
+  instance:
+    prefer-ip-address: true
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,refresh
+  endpoint:
+    health:
+      show-details: always

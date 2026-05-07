@@ -39,6 +39,9 @@
 
     <modules>
         <module>services/service-template</module>
+        <module>services/discovery-service</module>
+        <module>services/config-service</module>
+        <module>services/api-gateway</module>
     </modules>
 
     <build>

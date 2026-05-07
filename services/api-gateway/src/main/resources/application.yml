@@ -1,0 +1,61 @@
+spring:
+  application:
+    name: api-gateway
+  config:
+    import: "optional:configserver:http://localhost:8888"
+  cloud:
+    gateway:
+      # Habilita routing automático desde Eureka.
+      # Un request a /auth-service/** se enruta automáticamente
+      # al servicio registrado como AUTH-SERVICE en Eureka.
+      discovery:
+        locator:
+          enabled: true
+          lower-case-service-id: true
+      # CORS centralizado para el frontend Angular
+      globalcors:
+        cors-configurations:
+          '[/**]':
+            allowed-origins:
+              - "http://localhost:4200"
+            allowed-methods:
+              - GET
+              - POST
+              - PUT
+              - PATCH
+              - DELETE
+              - OPTIONS
+            allowed-headers: "*"
+            allow-credentials: true
+            max-age: 3600
+  # Keycloak JWKS endpoint — el Gateway descarga las claves públicas
+  # para verificar JWTs localmente sin llamar a Keycloak en cada request.
+  security:
+    oauth2:
+      resourceserver:
+        jwt:
+          jwks-uri: http://localhost:8180/realms/epm/protocol/openid-connect/certs
+
+server:
+  port: 8080
+
+eureka:
+  client:
+    service-url:
+      defaultZone: http://localhost:8761/eureka/
+  instance:
+    prefer-ip-address: true
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics,gateway
+  endpoint:
+    health:
+      show-details: always
+
+logging:
+  level:
+    com.epm: DEBUG
+    org.springframework.cloud.gateway: DEBUG

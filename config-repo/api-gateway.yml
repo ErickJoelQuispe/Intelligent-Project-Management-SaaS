@@ -1,0 +1,16 @@
+# Configuración específica del api-gateway.
+# Este servicio no necesita datasource ni Flyway — sin DB propia.
+spring:
+  datasource:
+    url: ""
+  jpa:
+    hibernate:
+      ddl-auto: none
+  flyway:
+    enabled: false
+
+  security:
+    oauth2:
+      resourceserver:
+        jwt:
+          jwks-uri: http://localhost:8180/realms/epm/protocol/openid-connect/certs

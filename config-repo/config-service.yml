@@ -1,0 +1,10 @@
+# Configuración específica del config-service.
+# Este servicio no necesita datasource ni Flyway — sin DB propia.
+spring:
+  datasource:
+    url: ""
+  jpa:
+    hibernate:
+      ddl-auto: none
+  flyway:
+    enabled: false
