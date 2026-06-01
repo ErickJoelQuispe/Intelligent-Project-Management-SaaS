@@ -39,7 +39,7 @@ services:
       KAFKA_NODE_ID: 1
       KAFKA_PROCESS_ROLES: broker,controller
       KAFKA_LISTENERS: PLAINTEXT://0.0.0.0:9092,CONTROLLER://0.0.0.0:9093
-      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://localhost:9092
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://epm-kafka:9092
       KAFKA_CONTROLLER_QUORUM_VOTERS: 1@kafka:9093
       KAFKA_CONTROLLER_LISTENER_NAMES: CONTROLLER
       KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
@@ -178,6 +178,78 @@ services:
         condition: service_healthy
     healthcheck:
       test: ["CMD-SHELL", "wget -qO- http://localhost:8080/actuator/health || exit 1"]
+      interval: 15s
+      timeout: 10s
+      retries: 5
+      start_period: 60s
+    restart: unless-stopped
+
+  # ─────────────────────────────────────────────────────────────────
+  # auth-service — handles account registration and logout
+  # Requires: discovery-service, config-service, keycloak, postgres
+  # ─────────────────────────────────────────────────────────────────
+  auth-service:
+    build:
+      context: .
+      dockerfile: services/auth-service/Dockerfile
+    container_name: epm-auth
+    ports:
+      - "8081:8081"
+    environment:
+      SPRING_CONFIG_IMPORT: "optional:configserver:http://epm-config:8888"
+      SPRING_SECURITY_OAUTH2_RESOURCESERVER_JWT_JWKS_URI: "http://epm-keycloak:8080/realms/epm/protocol/openid-connect/certs"
+      EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: "http://epm-discovery:8761/eureka/"
+      EUREKA_CLIENT_ENABLED: "true"
+      SPRING_KAFKA_BOOTSTRAP_SERVERS: "epm-kafka:9092"
+      KEYCLOAK_CLIENT_SECRET: "${KEYCLOAK_CLIENT_SECRET}"
+      KEYCLOAK_SERVER_URL: "http://epm-keycloak:8080"
+    depends_on:
+      discovery-service:
+        condition: service_healthy
+      config-service:
+        condition: service_healthy
+      keycloak:
+        condition: service_healthy
+      postgres:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:8081/actuator/health || exit 1"]
+      interval: 15s
+      timeout: 10s
+      retries: 5
+      start_period: 60s
+    restart: unless-stopped
+
+  # ─────────────────────────────────────────────────────────────────
+  # user-service — handles user profiles and team management
+  # Requires: discovery-service, config-service, keycloak, postgres, kafka
+  # ─────────────────────────────────────────────────────────────────
+  user-service:
+    build:
+      context: .
+      dockerfile: services/user-service/Dockerfile
+    container_name: epm-user
+    ports:
+      - "8082:8082"
+    environment:
+      SPRING_CONFIG_IMPORT: "optional:configserver:http://epm-config:8888"
+      SPRING_SECURITY_OAUTH2_RESOURCESERVER_JWT_JWKS_URI: "http://epm-keycloak:8080/realms/epm/protocol/openid-connect/certs"
+      EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: "http://epm-discovery:8761/eureka/"
+      EUREKA_CLIENT_ENABLED: "true"
+      SPRING_KAFKA_BOOTSTRAP_SERVERS: "epm-kafka:9092"
+    depends_on:
+      discovery-service:
+        condition: service_healthy
+      config-service:
+        condition: service_healthy
+      keycloak:
+        condition: service_healthy
+      postgres:
+        condition: service_healthy
+      kafka:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:8082/actuator/health || exit 1"]
       interval: 15s
       timeout: 10s
       retries: 5

@@ -62,10 +62,35 @@ docker-compose ps
 |----------|-----|-------------|
 | Keycloak | http://localhost:8180 | admin / admin |
 | Eureka Dashboard | http://localhost:8761 | — |
+| Config Server | http://localhost:8888 | — |
 | API Gateway | http://localhost:8080 | — |
+| Auth Service | http://localhost:8081 | — |
+| User Service | http://localhost:8082 | — |
 | PostgreSQL | localhost:5432 | epm_admin / changeme |
 | Kafka | localhost:9092 | — |
 | Redis | localhost:6379 | — |
+
+### Bases de datos de test
+
+Los tests de persistencia requieren bases de datos de test en la instancia PostgreSQL en ejecución.
+Crearlas la primera vez (solo una vez por volumen):
+
+```bash
+docker exec epm-postgres psql -U epm_admin -d postgres -c "CREATE DATABASE auth_test;"
+docker exec epm-postgres psql -U epm_admin -d postgres -c "CREATE DATABASE user_test;"
+```
+
+### Keycloak Client Secret
+
+Antes de levantar auth-service, obtener el client secret desde Keycloak Admin UI:
+
+> **Keycloak Admin** → realm `epm` → Clients → `epm-backend` → Credentials → Client Secret
+
+Luego agregar al `.env`:
+
+```env
+KEYCLOAK_CLIENT_SECRET=<valor-copiado>
+```
 
 ---
 
@@ -73,9 +98,9 @@ docker-compose ps
 
 | Fase | Descripción | Estado |
 |------|-------------|--------|
-| **0** | Fundaciones — repo, infra local, plantilla hexagonal | 🚧 En progreso |
-| **1** | Núcleo de plataforma — Eureka, Config, Gateway | ⏳ Pendiente |
-| **2** | Identidad y usuarios — auth-service, user-service | ⏳ Pendiente |
+| **0** | Fundaciones — repo, infra local, plantilla hexagonal | ✅ Completo |
+| **1** | Núcleo de plataforma — Eureka, Config, Gateway | ✅ Completo |
+| **2** | Identidad y usuarios — auth-service, user-service | ✅ Completo |
 | **3** | Dominio de proyectos — project-service | ⏳ Pendiente |
 | **4** | Dominio de tareas — task-service | ⏳ Pendiente |
 | **5** | IA provider-agnostic — ai-service | ⏳ Pendiente |

@@ -1245,18 +1245,18 @@
           "id": "0b08323a-da40-4880-aaf6-c7e0052808e1",
           "name": "tenant_id",
           "protocol": "openid-connect",
-          "protocolMapper": "oidc-hardcoded-claim-mapper",
+          "protocolMapper": "oidc-usermodel-attribute-mapper",
           "consentRequired": false,
           "config": {
             "introspection.token.claim": "true",
-            "claim.value": "00000000-0000-0000-0000-000000000001",
             "userinfo.token.claim": "true",
             "id.token.claim": "true",
             "lightweight.claim": "false",
             "access.token.claim": "true",
             "claim.name": "tenant_id",
             "jsonType.label": "String",
-            "access.tokenResponse.claim": "false"
+            "access.tokenResponse.claim": "false",
+            "user.attribute": "tenant_id"
           }
         }
       ]

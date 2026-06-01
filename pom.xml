@@ -34,6 +34,11 @@
                 <type>pom</type>
                 <scope>import</scope>
             </dependency>
+            <dependency>
+                <groupId>com.github.f4b6a3</groupId>
+                <artifactId>uuid-creator</artifactId>
+                <version>6.0.0</version>
+            </dependency>
         </dependencies>
     </dependencyManagement>
 
@@ -42,6 +47,8 @@
         <module>services/discovery-service</module>
         <module>services/config-service</module>
         <module>services/api-gateway</module>
+        <module>services/auth-service</module>
+        <module>services/user-service</module>
     </modules>
 
     <build>

@@ -11,6 +11,8 @@ COPY services/service-template/pom.xml services/service-template/
 COPY services/discovery-service/pom.xml services/discovery-service/
 COPY services/config-service/pom.xml services/config-service/
 COPY services/api-gateway/pom.xml services/api-gateway/
+COPY services/auth-service/pom.xml services/auth-service/
+COPY services/user-service/pom.xml services/user-service/
 
 RUN ./mvnw dependency:go-offline -pl services/config-service -q
 

@@ -9,8 +9,29 @@ spring:
   flyway:
     enabled: false
 
-  security:
-    oauth2:
-      resourceserver:
-        jwt:
-          jwks-uri: http://localhost:8180/realms/epm/protocol/openid-connect/certs
+  # jwks-uri se configura via variable de entorno SPRING_SECURITY_OAUTH2_RESOURCESERVER_JWT_JWKS_URI
+  # En Docker: http://epm-keycloak:8080/realms/epm/protocol/openid-connect/certs
+  # En local:  http://localhost:8180/realms/epm/protocol/openid-connect/certs
+
+  cloud:
+    gateway:
+      server:
+        webflux:
+          routes:
+            - id: auth-register-public
+              uri: lb://auth-service
+              predicates:
+                - Path=/api/v1/auth/register
+                - Method=POST
+            - id: auth-service
+              uri: lb://auth-service
+              predicates:
+                - Path=/api/v1/auth/**
+            - id: user-service
+              uri: lb://user-service
+              predicates:
+                - Path=/api/v1/users/**
+            - id: teams-service
+              uri: lb://user-service
+              predicates:
+                - Path=/api/v1/teams/**

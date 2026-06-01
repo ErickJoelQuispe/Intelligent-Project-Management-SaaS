@@ -1,0 +1,44 @@
+# auth-service specific configuration
+spring:
+  datasource:
+    url: jdbc:postgresql://epm-postgres:5432/auth_db
+  kafka:
+    bootstrap-servers: epm-kafka:9092
+    producer:
+      key-serializer: org.apache.kafka.common.serialization.StringSerializer
+      value-serializer: org.apache.kafka.common.serialization.StringSerializer
+  security:
+    oauth2:
+      resourceserver:
+        jwt:
+          jwks-uri: http://epm-keycloak:8080/realms/epm/protocol/openid-connect/certs
+  flyway:
+    enabled: true
+
+keycloak:
+  server-url: http://epm-keycloak:8080
+  realm: epm
+  client-id: epm-backend
+  client-secret: ${KEYCLOAK_CLIENT_SECRET}
+
+server:
+  port: 8081
+
+resilience4j:
+  circuitbreaker:
+    instances:
+      keycloak:
+        sliding-window-type: COUNT_BASED
+        sliding-window-size: 10
+        failure-rate-threshold: 50
+        wait-duration-in-open-state: 30s
+        permitted-number-of-calls-in-half-open-state: 3
+  retry:
+    instances:
+      keycloak:
+        max-attempts: 3
+        wait-duration: 500ms
+  timelimiter:
+    instances:
+      keycloak:
+        timeout-duration: 3s

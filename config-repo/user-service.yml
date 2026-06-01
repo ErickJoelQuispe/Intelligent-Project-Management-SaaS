@@ -1,0 +1,24 @@
+# user-service specific configuration
+spring:
+  datasource:
+    url: jdbc:postgresql://epm-postgres:5432/user_db
+  kafka:
+    bootstrap-servers: epm-kafka:9092
+    producer:
+      key-serializer: org.apache.kafka.common.serialization.StringSerializer
+      value-serializer: org.apache.kafka.common.serialization.StringSerializer
+    consumer:
+      group-id: user-service
+      auto-offset-reset: earliest
+      key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      value-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+  security:
+    oauth2:
+      resourceserver:
+        jwt:
+          jwks-uri: http://epm-keycloak:8080/realms/epm/protocol/openid-connect/certs
+  flyway:
+    enabled: true
+
+server:
+  port: 8082
