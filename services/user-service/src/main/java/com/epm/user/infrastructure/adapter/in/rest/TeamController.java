@@ -5,6 +5,7 @@ import java.util.UUID;
 
 import com.epm.user.domain.port.in.AddTeamMemberUseCase;
 import com.epm.user.domain.port.in.CreateTeamUseCase;
+import com.epm.user.domain.port.in.DeleteTeamUseCase;
 import com.epm.user.domain.port.in.GetTeamUseCase;
 import com.epm.user.domain.port.in.ListTeamsUseCase;
 import com.epm.user.domain.port.in.RemoveTeamMemberUseCase;
@@ -36,6 +37,7 @@ public class TeamController {
     private final GetTeamUseCase getTeamUseCase;
     private final AddTeamMemberUseCase addTeamMemberUseCase;
     private final RemoveTeamMemberUseCase removeTeamMemberUseCase;
+    private final DeleteTeamUseCase deleteTeamUseCase;
     private final JwtClaimsExtractor jwtClaimsExtractor;
 
     public TeamController(CreateTeamUseCase createTeamUseCase,
@@ -43,12 +45,14 @@ public class TeamController {
             GetTeamUseCase getTeamUseCase,
             AddTeamMemberUseCase addTeamMemberUseCase,
             RemoveTeamMemberUseCase removeTeamMemberUseCase,
+            DeleteTeamUseCase deleteTeamUseCase,
             JwtClaimsExtractor jwtClaimsExtractor) {
         this.createTeamUseCase = createTeamUseCase;
         this.listTeamsUseCase = listTeamsUseCase;
         this.getTeamUseCase = getTeamUseCase;
         this.addTeamMemberUseCase = addTeamMemberUseCase;
         this.removeTeamMemberUseCase = removeTeamMemberUseCase;
+        this.deleteTeamUseCase = deleteTeamUseCase;
         this.jwtClaimsExtractor = jwtClaimsExtractor;
     }
 
@@ -108,6 +112,17 @@ public class TeamController {
         UUID callerId = jwtClaimsExtractor.getUserId(jwt);
         UUID tenantId = jwtClaimsExtractor.getTenantId(jwt);
         removeTeamMemberUseCase.removeMember(teamId, callerId, userId, tenantId);
+    }
+
+    /** DELETE /api/v1/teams/{teamId} → 204 */
+    @DeleteMapping("/{teamId}")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    public void deleteTeam(
+            @AuthenticationPrincipal Jwt jwt,
+            @PathVariable UUID teamId) {
+        UUID callerId = jwtClaimsExtractor.getUserId(jwt);
+        UUID tenantId = jwtClaimsExtractor.getTenantId(jwt);
+        deleteTeamUseCase.deleteTeam(teamId, callerId, tenantId);
     }
 
     // ── Helpers ──────────────────────────────────────────────────────────────

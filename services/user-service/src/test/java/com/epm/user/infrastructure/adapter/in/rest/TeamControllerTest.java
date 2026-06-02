@@ -17,9 +17,11 @@ import java.util.UUID;
 import com.epm.user.domain.exception.DuplicateMemberException;
 import com.epm.user.domain.exception.LastOwnerException;
 import com.epm.user.domain.exception.TeamNotFoundException;
+import com.epm.user.domain.exception.UnauthorizedException;
 import com.epm.user.domain.model.TeamRole;
 import com.epm.user.domain.port.in.AddTeamMemberUseCase;
 import com.epm.user.domain.port.in.CreateTeamUseCase;
+import com.epm.user.domain.port.in.DeleteTeamUseCase;
 import com.epm.user.domain.port.in.GetTeamUseCase;
 import com.epm.user.domain.port.in.ListTeamsUseCase;
 import com.epm.user.domain.port.in.RemoveTeamMemberUseCase;
@@ -67,6 +69,9 @@ class TeamControllerTest {
 
     @MockitoBean
     private RemoveTeamMemberUseCase removeTeamMemberUseCase;
+
+    @MockitoBean
+    private DeleteTeamUseCase deleteTeamUseCase;
 
     @MockitoBean
     private JwtDecoder jwtDecoder;
@@ -218,5 +223,48 @@ class TeamControllerTest {
                                 .subject(ownerId.toString())
                                 .claim("tenant_id", tenantId.toString()))))
                 .andExpect(status().isConflict());
+    }
+
+    // ── DELETE /teams/{id} → 204 ──────────────────────────────────────────────
+
+    @Test
+    void deleteTeamReturns204() throws Exception {
+        UUID teamId = UUID.randomUUID();
+
+        mockMvc.perform(delete("/api/v1/teams/{teamId}", teamId)
+                        .with(jwt().jwt(j -> j
+                                .subject(ownerId.toString())
+                                .claim("tenant_id", tenantId.toString()))))
+                .andExpect(status().isNoContent());
+    }
+
+    // ── DELETE /teams/{id} not found → 404 ───────────────────────────────────
+
+    @Test
+    void deleteTeamNotFoundReturns404() throws Exception {
+        UUID teamId = UUID.randomUUID();
+        doThrow(new TeamNotFoundException(teamId))
+                .when(deleteTeamUseCase).deleteTeam(any(), any(), any());
+
+        mockMvc.perform(delete("/api/v1/teams/{teamId}", teamId)
+                        .with(jwt().jwt(j -> j
+                                .subject(ownerId.toString())
+                                .claim("tenant_id", tenantId.toString()))))
+                .andExpect(status().isNotFound());
+    }
+
+    // ── DELETE /teams/{id} non-owner → 403 ───────────────────────────────────
+
+    @Test
+    void deleteTeamForbiddenReturns403() throws Exception {
+        UUID teamId = UUID.randomUUID();
+        doThrow(new UnauthorizedException("Only team owners can delete a team"))
+                .when(deleteTeamUseCase).deleteTeam(any(), any(), any());
+
+        mockMvc.perform(delete("/api/v1/teams/{teamId}", teamId)
+                        .with(jwt().jwt(j -> j
+                                .subject(ownerId.toString())
+                                .claim("tenant_id", tenantId.toString()))))
+                .andExpect(status().isForbidden());
     }
 }

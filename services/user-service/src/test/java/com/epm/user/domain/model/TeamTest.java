@@ -7,6 +7,7 @@ import java.util.List;
 import java.util.UUID;
 
 import com.epm.user.domain.event.TeamCreated;
+import com.epm.user.domain.event.TeamDeleted;
 import com.epm.user.domain.event.TeamMemberLeft;
 import com.epm.user.domain.exception.DuplicateMemberException;
 import com.epm.user.domain.exception.LastOwnerException;
@@ -106,5 +107,34 @@ class TeamTest {
         List<Object> events = team.pullDomainEvents();
         assertThat(events).hasSize(1);
         assertThat(events.get(0)).isInstanceOf(TeamMemberLeft.class);
+    }
+
+    @Test
+    void delete_publishes_TeamDeleted_event() {
+        UUID ownerId = UUID.randomUUID();
+        UUID tenantId = UUID.randomUUID();
+        Team team = Team.create(tenantId, ownerId, "Alpha Team", null);
+        team.pullDomainEvents(); // clear creation events
+
+        team.delete();
+
+        List<Object> events = team.pullDomainEvents();
+        assertThat(events).hasSize(1);
+        assertThat(events.get(0)).isInstanceOf(TeamDeleted.class);
+        TeamDeleted deleted = (TeamDeleted) events.get(0);
+        assertThat(deleted.teamId()).isEqualTo(team.getId());
+        assertThat(deleted.tenantId()).isEqualTo(tenantId);
+        assertThat(deleted.eventId()).isNotNull();
+        assertThat(deleted.occurredAt()).isNotNull();
+    }
+
+    @Test
+    void delete_sets_deletedAt() {
+        UUID ownerId = UUID.randomUUID();
+        Team team = Team.create(UUID.randomUUID(), ownerId, "Alpha Team", null);
+
+        assertThat(team.getDeletedAt()).isNull();
+        team.delete();
+        assertThat(team.getDeletedAt()).isNotNull();
     }
 }
