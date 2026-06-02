@@ -30,9 +30,12 @@ public class SecurityConfig {
     SecurityWebFilterChain springSecurityFilterChain(ServerHttpSecurity http) {
         http
             .csrf(ServerHttpSecurity.CsrfSpec::disable)
+            .cors(cors -> {})
             .authorizeExchange(exchanges -> exchanges
                 // Actuator and health endpoints are public
                 .pathMatchers("/actuator/**").permitAll()
+                // CORS preflight requests must pass through without auth
+                .pathMatchers(HttpMethod.OPTIONS, "/**").permitAll()
                 // Account registration is public — no JWT required
                 .pathMatchers(HttpMethod.POST, "/api/v1/auth/register").permitAll()
                 // Everything else requires a valid JWT
