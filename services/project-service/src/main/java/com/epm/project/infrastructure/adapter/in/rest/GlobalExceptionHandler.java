@@ -78,6 +78,8 @@ public class GlobalExceptionHandler {
     /** 500 Internal Server Error — unexpected exception. */
     @ExceptionHandler(Exception.class)
     public ProblemDetail handleGeneric(Exception ex) {
+        org.slf4j.LoggerFactory.getLogger(GlobalExceptionHandler.class)
+                .error("Unhandled exception: {}", ex.getMessage(), ex);
         ProblemDetail problem = ProblemDetail.forStatus(HttpStatus.INTERNAL_SERVER_ERROR);
         problem.setType(URI.create("https://api.epm.com/errors/internal-error"));
         problem.setTitle("Internal Server Error");
