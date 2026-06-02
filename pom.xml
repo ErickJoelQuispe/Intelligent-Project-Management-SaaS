@@ -49,6 +49,7 @@
         <module>services/api-gateway</module>
         <module>services/auth-service</module>
         <module>services/user-service</module>
+        <module>services/project-service</module>
     </modules>
 
     <build>
