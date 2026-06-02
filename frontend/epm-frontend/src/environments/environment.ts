@@ -4,7 +4,7 @@ export const environment = {
   keycloak: {
     issuer: 'http://localhost:8180/realms/epm',
     clientId: 'epm-frontend',
-    redirectUri: window.location.origin + '/',
+    get redirectUri() { return window.location.origin + '/'; },
     scope: 'openid profile email',
   },
 };
