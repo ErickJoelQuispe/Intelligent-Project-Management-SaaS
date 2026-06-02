@@ -35,9 +35,22 @@ public class TraceIdFilter implements GlobalFilter, Ordered {
             .header(TRACE_ID_HEADER, finalTraceId)
             .build();
 
-        return chain.filter(exchange.mutate().request(mutatedRequest).build())
-            .then(Mono.fromRunnable(() ->
-                exchange.getResponse().getHeaders().add(TRACE_ID_HEADER, finalTraceId)));
+        ServerWebExchange mutatedExchange = exchange.mutate()
+            .request(mutatedRequest)
+            .response(new org.springframework.http.server.reactive.ServerHttpResponseDecorator(
+                    exchange.getResponse()) {
+                @Override
+                public org.springframework.http.HttpHeaders getHeaders() {
+                    org.springframework.http.HttpHeaders headers = super.getHeaders();
+                    if (!headers.containsKey(TRACE_ID_HEADER)) {
+                        headers.add(TRACE_ID_HEADER, finalTraceId);
+                    }
+                    return headers;
+                }
+            })
+            .build();
+
+        return chain.filter(mutatedExchange);
     }
 
     @Override
