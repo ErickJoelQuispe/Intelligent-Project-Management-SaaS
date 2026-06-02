@@ -4,8 +4,6 @@ server:
 spring:
   datasource:
     url: jdbc:postgresql://epm-postgres:5432/project_db
-    username: epm_admin
-    password: epm_password
     driver-class-name: org.postgresql.Driver
   jpa:
     hibernate:
