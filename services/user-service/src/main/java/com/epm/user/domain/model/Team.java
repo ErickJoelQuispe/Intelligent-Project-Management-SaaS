@@ -7,6 +7,7 @@ import java.util.List;
 import java.util.UUID;
 
 import com.epm.user.domain.event.TeamCreated;
+import com.epm.user.domain.event.TeamDeleted;
 import com.epm.user.domain.event.TeamMemberJoined;
 import com.epm.user.domain.event.TeamMemberLeft;
 import com.epm.user.domain.exception.DuplicateMemberException;
@@ -127,6 +128,19 @@ public class Team {
         this.updatedAt = Instant.now();
         domainEvents.add(new TeamMemberLeft(
                 UuidCreator.getTimeOrderedEpoch(), id, tenantId, userId, Instant.now()));
+    }
+
+    /**
+     * Marks this team as deleted and emits a {@link TeamDeleted} domain event.
+     *
+     * <p>Sets {@code deletedAt} and {@code updatedAt} to the current instant.
+     */
+    public void delete() {
+        Instant now = Instant.now();
+        this.deletedAt = now;
+        this.updatedAt = now;
+        domainEvents.add(new TeamDeleted(
+                UuidCreator.getTimeOrderedEpoch(), id, tenantId, now));
     }
 
     /**
