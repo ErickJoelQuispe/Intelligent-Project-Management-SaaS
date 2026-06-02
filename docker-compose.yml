@@ -256,6 +256,41 @@ services:
       start_period: 60s
     restart: unless-stopped
 
+  # ─────────────────────────────────────────────────────────────────
+  # project-service — handles project management
+  # Requires: discovery-service, config-service, keycloak, postgres, kafka
+  # ─────────────────────────────────────────────────────────────────
+  project-service:
+    build:
+      context: .
+      dockerfile: services/project-service/Dockerfile
+    container_name: epm-project-service
+    ports:
+      - "8083:8083"
+    environment:
+      SPRING_PROFILES_ACTIVE: docker
+      SPRING_CONFIG_IMPORT: "optional:configserver:http://epm-config:8888"
+      SPRING_SECURITY_OAUTH2_RESOURCESERVER_JWT_JWKS_URI: "http://epm-keycloak:8080/realms/epm/protocol/openid-connect/certs"
+      EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: "http://epm-discovery:8761/eureka/"
+      EUREKA_CLIENT_ENABLED: "true"
+      SPRING_KAFKA_BOOTSTRAP_SERVERS: "epm-kafka:9092"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      kafka:
+        condition: service_healthy
+      discovery-service:
+        condition: service_healthy
+      config-service:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:8083/actuator/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 60s
+    restart: unless-stopped
+
 volumes:
   postgres_data:
   kafka_data:

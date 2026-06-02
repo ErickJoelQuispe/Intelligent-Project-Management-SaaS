@@ -13,6 +13,7 @@ COPY services/config-service/pom.xml services/config-service/
 COPY services/api-gateway/pom.xml services/api-gateway/
 COPY services/auth-service/pom.xml services/auth-service/
 COPY services/user-service/pom.xml services/user-service/
+COPY services/project-service/pom.xml services/project-service/
 
 RUN ./mvnw dependency:go-offline -pl services/user-service -q
 
