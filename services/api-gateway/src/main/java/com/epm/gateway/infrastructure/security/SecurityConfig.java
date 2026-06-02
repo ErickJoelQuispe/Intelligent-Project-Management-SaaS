@@ -30,7 +30,6 @@ public class SecurityConfig {
     SecurityWebFilterChain springSecurityFilterChain(ServerHttpSecurity http) {
         http
             .csrf(ServerHttpSecurity.CsrfSpec::disable)
-            .cors(cors -> {})
             .authorizeExchange(exchanges -> exchanges
                 // Actuator and health endpoints are public
                 .pathMatchers("/actuator/**").permitAll()
