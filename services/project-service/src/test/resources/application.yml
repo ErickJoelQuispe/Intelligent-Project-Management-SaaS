@@ -2,7 +2,7 @@ spring:
   datasource:
     url: jdbc:postgresql://localhost:5432/project_test
     username: epm_admin
-    password: epm_password
+    password: changeme
   jpa:
     hibernate:
       ddl-auto: validate
