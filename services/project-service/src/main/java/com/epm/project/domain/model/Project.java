@@ -164,6 +164,19 @@ public class Project {
     }
 
     /**
+     * Marks a team assignment as orphaned (team was deleted in user-service).
+     *
+     * @param teamId the team that was deleted
+     */
+    public void removeTeam(UUID teamId) {
+        teams.stream()
+                .filter(t -> t.getTeamId().equals(teamId) && t.isActive())
+                .findFirst()
+                .ifPresent(ProjectTeam::markOrphaned);
+        this.updatedAt = Instant.now();
+    }
+
+    /**
      * Adds a member to the project.
      *
      * @param profileId the profile to add
