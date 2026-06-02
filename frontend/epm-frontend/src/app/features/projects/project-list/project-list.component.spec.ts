@@ -1,0 +1,94 @@
+import { TestBed } from '@angular/core/testing';
+import { ComponentFixture } from '@angular/core/testing';
+import { provideRouter } from '@angular/router';
+import { provideAnimations } from '@angular/platform-browser/animations';
+import { of } from 'rxjs';
+import { ProjectListComponent } from './project-list.component';
+import { ProjectService } from '../project.service';
+import { Project, ProjectStatus, ProjectVisibility } from '../../../core/models/project.model';
+
+const mockProjects: Project[] = [
+  {
+    id: '1',
+    name: 'Alpha',
+    description: 'First project',
+    status: ProjectStatus.ACTIVE,
+    visibility: ProjectVisibility.PRIVATE,
+    ownerProfileId: 'owner-1',
+    tenantId: 'tenant-1',
+    createdAt: '2026-01-01T00:00:00Z',
+    updatedAt: '2026-01-01T00:00:00Z',
+  },
+  {
+    id: '2',
+    name: 'Beta',
+    status: ProjectStatus.ARCHIVED,
+    visibility: ProjectVisibility.TEAM,
+    ownerProfileId: 'owner-1',
+    tenantId: 'tenant-1',
+    createdAt: '2026-02-01T00:00:00Z',
+    updatedAt: '2026-02-01T00:00:00Z',
+  },
+  {
+    id: '3',
+    name: 'Gamma',
+    status: ProjectStatus.COMPLETED,
+    visibility: ProjectVisibility.PUBLIC,
+    ownerProfileId: 'owner-2',
+    tenantId: 'tenant-1',
+    createdAt: '2026-03-01T00:00:00Z',
+    updatedAt: '2026-03-01T00:00:00Z',
+  },
+];
+
+describe('ProjectListComponent', () => {
+  let component: ProjectListComponent;
+  let fixture: ComponentFixture<ProjectListComponent>;
+  let projectServiceMock: { list: ReturnType<typeof vi.fn> };
+
+  beforeEach(async () => {
+    projectServiceMock = {
+      list: vi.fn().mockReturnValue(of([])),
+    };
+
+    await TestBed.configureTestingModule({
+      imports: [ProjectListComponent],
+      providers: [
+        { provide: ProjectService, useValue: projectServiceMock },
+        provideRouter([]),
+        provideAnimations(),
+      ],
+    }).compileComponents();
+
+    fixture = TestBed.createComponent(ProjectListComponent);
+    component = fixture.componentInstance;
+  });
+
+  it('should create', () => {
+    expect(component).toBeTruthy();
+  });
+
+  it('should render 3-row table with mock data', async () => {
+    projectServiceMock.list.mockReturnValue(of(mockProjects));
+    fixture.detectChanges();
+    await fixture.whenStable();
+    fixture.detectChanges();
+
+    const rows = fixture.nativeElement.querySelectorAll('mat-row');
+    expect(rows.length).toBe(3);
+
+    const cells = fixture.nativeElement.querySelectorAll('mat-cell');
+    expect(cells[0].textContent).toContain('Alpha');
+  });
+
+  it('should show empty state when project list is empty', async () => {
+    projectServiceMock.list.mockReturnValue(of([]));
+    fixture.detectChanges();
+    await fixture.whenStable();
+    fixture.detectChanges();
+
+    const emptyState = fixture.nativeElement.querySelector('[data-testid="empty-state"]');
+    expect(emptyState).toBeTruthy();
+    expect(emptyState.textContent).toContain('No projects yet. Create your first one.');
+  });
+});

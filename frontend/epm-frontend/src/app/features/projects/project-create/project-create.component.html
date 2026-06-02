@@ -1,0 +1,66 @@
+<div class="project-create-container">
+  <h1>Create Project</h1>
+
+  <form [formGroup]="form" (ngSubmit)="onSubmit()" class="project-form">
+    <mat-form-field appearance="outline">
+      <mat-label>Project Name</mat-label>
+      <input
+        matInput
+        formControlName="name"
+        placeholder="Enter project name"
+        maxlength="100"
+        data-testid="name-input"
+      />
+      @if (form.controls.name.hasError('required') && form.controls.name.touched) {
+        <mat-error>Project name is required.</mat-error>
+      }
+      @if (form.controls.name.hasError('maxlength')) {
+        <mat-error>Project name cannot exceed 100 characters.</mat-error>
+      }
+    </mat-form-field>
+
+    <mat-form-field appearance="outline">
+      <mat-label>Description</mat-label>
+      <textarea
+        matInput
+        formControlName="description"
+        placeholder="Describe your project (optional)"
+        rows="4"
+        data-testid="description-input"
+      ></textarea>
+    </mat-form-field>
+
+    <mat-form-field appearance="outline">
+      <mat-label>Visibility</mat-label>
+      <mat-select formControlName="visibility" data-testid="visibility-select">
+        @for (option of visibilityOptions; track option.value) {
+          <mat-option [value]="option.value">{{ option.label }}</mat-option>
+        }
+      </mat-select>
+    </mat-form-field>
+
+    <div class="form-actions">
+      <button
+        mat-button
+        type="button"
+        (click)="onCancel()"
+        data-testid="cancel-button"
+      >
+        Cancel
+      </button>
+      <button
+        mat-raised-button
+        color="primary"
+        type="submit"
+        [disabled]="submitting"
+        data-testid="submit-button"
+      >
+        @if (submitting) {
+          <mat-spinner diameter="20"></mat-spinner>
+        } @else {
+          Create Project
+        }
+      </button>
+    </div>
+  </form>
+</div>
