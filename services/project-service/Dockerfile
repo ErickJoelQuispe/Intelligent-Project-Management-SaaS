@@ -15,10 +15,10 @@ COPY services/auth-service/pom.xml services/auth-service/
 COPY services/user-service/pom.xml services/user-service/
 COPY services/project-service/pom.xml services/project-service/
 
-RUN ./mvnw dependency:go-offline -pl services/user-service -q
+RUN ./mvnw dependency:go-offline -pl services/project-service -q
 
-COPY services/user-service/src services/user-service/src
-RUN ./mvnw package -pl services/user-service -DskipTests -q
+COPY services/project-service/src services/project-service/src
+RUN ./mvnw package -pl services/project-service -DskipTests -q
 
 # ── Stage 2: runtime ──────────────────────────────────────────────
 FROM eclipse-temurin:21-jre-alpine
@@ -27,8 +27,8 @@ WORKDIR /app
 RUN addgroup -S epm && adduser -S epm -G epm
 USER epm
 
-COPY --from=build /app/services/user-service/target/*.jar app.jar
+COPY --from=build /app/services/project-service/target/*.jar app.jar
 
-EXPOSE 8082
+EXPOSE 8083
 
 ENTRYPOINT ["java", "-jar", "app.jar"]
