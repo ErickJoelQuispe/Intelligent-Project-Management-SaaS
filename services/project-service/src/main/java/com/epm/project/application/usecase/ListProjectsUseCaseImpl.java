@@ -22,7 +22,18 @@ public class ListProjectsUseCaseImpl implements ListProjectsUseCase {
 
     @Override
     public List<ProjectResult> execute(UUID callerProfileId, UUID tenantId) {
-        return projectRepository.findAllByMemberProfileId(callerProfileId, tenantId)
+        return execute(callerProfileId, tenantId, false);
+    }
+
+    @Override
+    public List<ProjectResult> execute(UUID callerProfileId, UUID tenantId, boolean includeArchived) {
+        if (includeArchived) {
+            return projectRepository.findAllByMemberProfileId(callerProfileId, tenantId)
+                    .stream()
+                    .map(CreateProjectUseCaseImpl::toResult)
+                    .toList();
+        }
+        return projectRepository.findAllByMemberProfileIdExcludingArchived(callerProfileId, tenantId)
                 .stream()
                 .map(CreateProjectUseCaseImpl::toResult)
                 .toList();

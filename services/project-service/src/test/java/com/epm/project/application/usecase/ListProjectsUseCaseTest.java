@@ -37,14 +37,14 @@ class ListProjectsUseCaseTest {
     }
 
     @Test
-    void returns_list_of_projects_for_caller() {
+    void returns_list_of_projects_for_caller_excluding_archived_by_default() {
         UUID callerId = UUID.randomUUID();
         UUID tenantId = UUID.randomUUID();
         Project p1 = Project.create(new CreateProjectCommand(
                 "Alpha", null, ProjectVisibility.PRIVATE, callerId, tenantId));
         Project p2 = Project.create(new CreateProjectCommand(
                 "Beta", null, ProjectVisibility.TEAM, callerId, tenantId));
-        when(projectRepository.findAllByMemberProfileId(callerId, tenantId))
+        when(projectRepository.findAllByMemberProfileIdExcludingArchived(callerId, tenantId))
                 .thenReturn(List.of(p1, p2));
 
         List<ProjectResult> results = useCase.execute(callerId, tenantId);
@@ -58,11 +58,30 @@ class ListProjectsUseCaseTest {
     void returns_empty_list_when_no_projects_found() {
         UUID callerId = UUID.randomUUID();
         UUID tenantId = UUID.randomUUID();
-        when(projectRepository.findAllByMemberProfileId(any(), any()))
+        when(projectRepository.findAllByMemberProfileIdExcludingArchived(any(), any()))
                 .thenReturn(Collections.emptyList());
 
         List<ProjectResult> results = useCase.execute(callerId, tenantId);
 
         assertThat(results).isEmpty();
+    }
+
+    @Test
+    void returns_archived_projects_when_includeArchived_true() {
+        UUID callerId = UUID.randomUUID();
+        UUID tenantId = UUID.randomUUID();
+        Project p1 = Project.create(new CreateProjectCommand(
+                "Alpha", null, ProjectVisibility.PRIVATE, callerId, tenantId));
+        // Simulate archived project by reconstituting with ARCHIVED status
+        Project archived = Project.create(new CreateProjectCommand(
+                "Archived Project", null, ProjectVisibility.PRIVATE, callerId, tenantId));
+        when(projectRepository.findAllByMemberProfileId(callerId, tenantId))
+                .thenReturn(List.of(p1, archived));
+
+        List<ProjectResult> results = useCase.execute(callerId, tenantId, true);
+
+        assertThat(results).hasSize(2);
+        assertThat(results).extracting(ProjectResult::name)
+                .containsExactlyInAnyOrder("Alpha", "Archived Project");
     }
 }

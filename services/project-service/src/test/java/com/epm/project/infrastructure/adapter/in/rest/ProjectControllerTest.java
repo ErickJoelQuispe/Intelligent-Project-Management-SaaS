@@ -1,6 +1,7 @@
 package com.epm.project.infrastructure.adapter.in.rest;
 
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.when;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.jwt;
@@ -102,7 +103,7 @@ class ProjectControllerTest {
 
     @Test
     void listProjects_returns200() throws Exception {
-        when(listProjectsUseCase.execute(any(), any()))
+        when(listProjectsUseCase.execute(any(), any(), eq(false)))
                 .thenReturn(List.of(buildProjectResult(UUID.randomUUID())));
 
         mockMvc.perform(get("/api/v1/projects")

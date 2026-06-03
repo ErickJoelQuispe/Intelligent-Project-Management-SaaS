@@ -62,6 +62,13 @@ public class ProjectPersistenceAdapter implements ProjectRepository {
     }
 
     @Override
+    public List<Project> findAllByMemberProfileIdExcludingArchived(UUID profileId, UUID tenantId) {
+        return projectJpaRepo.findAllProjectsByMemberProfileIdExcludingArchived(profileId, tenantId).stream()
+                .map(this::reconstitute)
+                .toList();
+    }
+
+    @Override
     public List<Project> findAllByTeamId(UUID teamId, UUID tenantId) {
         return teamJpaRepo.findByTeamIdAndOrphanedAtIsNull(teamId).stream()
                 .filter(pt -> pt.getTenantId().equals(tenantId))
