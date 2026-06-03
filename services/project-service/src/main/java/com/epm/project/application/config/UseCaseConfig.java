@@ -2,6 +2,7 @@ package com.epm.project.application.config;
 
 import com.epm.project.application.usecase.ArchiveProjectUseCaseImpl;
 import com.epm.project.application.usecase.AssignTeamToProjectUseCaseImpl;
+import com.epm.project.application.usecase.CheckProjectMembershipUseCaseImpl;
 import com.epm.project.application.usecase.CreateProjectUseCaseImpl;
 import com.epm.project.application.usecase.GetProjectUseCaseImpl;
 import com.epm.project.application.usecase.ListProjectsUseCaseImpl;
@@ -52,5 +53,10 @@ public class UseCaseConfig {
     AssignTeamToProjectUseCaseImpl assignTeamToProjectUseCase(ProjectRepository projectRepository,
             DomainEventPublisher eventPublisher) {
         return new AssignTeamToProjectUseCaseImpl(projectRepository, eventPublisher);
+    }
+
+    @Bean
+    CheckProjectMembershipUseCaseImpl checkProjectMembershipUseCase(ProjectRepository projectRepository) {
+        return new CheckProjectMembershipUseCaseImpl(projectRepository);
     }
 }
