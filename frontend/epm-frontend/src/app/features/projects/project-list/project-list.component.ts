@@ -1,5 +1,5 @@
 import { Component, OnInit, inject, signal } from '@angular/core';
-import { Router } from '@angular/router';
+import { Router, RouterLink } from '@angular/router';
 import { DatePipe } from '@angular/common';
 import { MatTableModule } from '@angular/material/table';
 import { MatButtonModule } from '@angular/material/button';
@@ -13,6 +13,7 @@ import { Project } from '../../../core/models/project.model';
   standalone: true,
   imports: [
     DatePipe,
+    RouterLink,
     MatTableModule,
     MatButtonModule,
     MatIconModule,

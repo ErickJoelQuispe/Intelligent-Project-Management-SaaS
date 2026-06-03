@@ -1,0 +1,28 @@
+<mat-card class="task-card">
+  <mat-card-content>
+    <div class="task-card__header">
+      <span class="task-card__title">{{ task().title }}</span>
+      <mat-chip
+        class="task-card__priority"
+        [style.background-color]="priorityColor(task().priority)"
+        [attr.aria-label]="'Priority: ' + task().priority"
+      >
+        {{ task().priority }}
+      </mat-chip>
+    </div>
+
+    @if (task().deadline) {
+      <div class="task-card__deadline">
+        <mat-icon class="task-card__deadline-icon">schedule</mat-icon>
+        <span>{{ task().deadline | date: 'mediumDate' }}</span>
+      </div>
+    }
+
+    @if (task().assigneeId) {
+      <div class="task-card__assignee">
+        <mat-icon class="task-card__assignee-icon">person</mat-icon>
+        <span class="task-card__assignee-id">{{ task().assigneeId }}</span>
+      </div>
+    }
+  </mat-card-content>
+</mat-card>

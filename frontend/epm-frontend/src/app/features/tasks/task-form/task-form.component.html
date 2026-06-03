@@ -1,0 +1,60 @@
+<div class="task-form-container">
+  <h2>{{ taskId() ? 'Edit Task' : 'New Task' }}</h2>
+
+  @if (error()) {
+    <div class="error-message">{{ error() }}</div>
+  }
+
+  <form [formGroup]="form" (ngSubmit)="onSubmit()" class="task-form" novalidate>
+    <mat-form-field appearance="outline" class="task-form__field">
+      <mat-label>Title</mat-label>
+      <input matInput formControlName="title" placeholder="Task title" />
+      @if (form.get('title')?.hasError('required') && form.get('title')?.touched) {
+        <mat-error>Title is required</mat-error>
+      }
+      @if (form.get('title')?.hasError('minlength') && form.get('title')?.touched) {
+        <mat-error>Title must not be empty</mat-error>
+      }
+    </mat-form-field>
+
+    <mat-form-field appearance="outline" class="task-form__field">
+      <mat-label>Description</mat-label>
+      <textarea matInput formControlName="description" rows="3" placeholder="Optional description"></textarea>
+    </mat-form-field>
+
+    <mat-form-field appearance="outline" class="task-form__field">
+      <mat-label>Priority</mat-label>
+      <mat-select formControlName="priority">
+        @for (p of priorities; track p) {
+          <mat-option [value]="p">{{ p }}</mat-option>
+        }
+      </mat-select>
+      @if (form.get('priority')?.hasError('required') && form.get('priority')?.touched) {
+        <mat-error>Priority is required</mat-error>
+      }
+    </mat-form-field>
+
+    <mat-form-field appearance="outline" class="task-form__field">
+      <mat-label>Deadline</mat-label>
+      <input matInput [matDatepicker]="picker" formControlName="deadline" />
+      <mat-datepicker-toggle matIconSuffix [for]="picker" />
+      <mat-datepicker #picker />
+    </mat-form-field>
+
+    <div class="task-form__actions">
+      <button mat-button type="button" (click)="onCancel()">Cancel</button>
+      <button
+        mat-raised-button
+        color="primary"
+        type="submit"
+        [disabled]="loading()"
+      >
+        @if (loading()) {
+          <mat-spinner diameter="20" />
+        } @else {
+          {{ taskId() ? 'Save Changes' : 'Create Task' }}
+        }
+      </button>
+    </div>
+  </form>
+</div>

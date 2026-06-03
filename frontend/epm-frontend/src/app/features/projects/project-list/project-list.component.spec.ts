@@ -2,7 +2,7 @@ import { TestBed } from '@angular/core/testing';
 import { ComponentFixture } from '@angular/core/testing';
 import { provideRouter } from '@angular/router';
 import { provideAnimations } from '@angular/platform-browser/animations';
-import { of } from 'rxjs';
+import { of, throwError } from 'rxjs';
 import { ProjectListComponent } from './project-list.component';
 import { ProjectService } from '../project.service';
 import { Project, ProjectStatus, ProjectVisibility } from '../../../core/models/project.model';
@@ -90,5 +90,19 @@ describe('ProjectListComponent', () => {
     const emptyState = fixture.nativeElement.querySelector('[data-testid="empty-state"]');
     expect(emptyState).toBeTruthy();
     expect(emptyState.textContent).toContain('No projects yet. Create your first one.');
+  });
+
+  // W-05: error display assertion — DOM element must be visible, not just absence of navigation
+  it('should display .error-message element when API returns error (W-05)', async () => {
+    projectServiceMock.list.mockReturnValue(
+      throwError(() => ({ status: 500, statusText: 'Internal Server Error' })),
+    );
+    fixture.detectChanges();
+    await fixture.whenStable();
+    fixture.detectChanges();
+
+    const errorEl = fixture.nativeElement.querySelector('.error-message');
+    expect(errorEl).not.toBeNull();
+    expect(errorEl.textContent).toContain('Failed to load projects');
   });
 });
