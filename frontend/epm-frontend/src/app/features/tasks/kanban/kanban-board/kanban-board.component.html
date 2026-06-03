@@ -4,7 +4,7 @@
     <div class="kanban-board__actions">
       <a
         mat-stroked-button
-        [routerLink]="['..', 'tasks']"
+        [routerLink]="['/projects', projectId, 'tasks']"
         aria-label="View task list"
       >
         <mat-icon>list</mat-icon>
@@ -13,7 +13,7 @@
       <a
         mat-raised-button
         color="primary"
-        [routerLink]="['..', 'tasks', 'new']"
+        [routerLink]="['/projects', projectId, 'tasks', 'new']"
         aria-label="Create new task"
       >
         <mat-icon>add</mat-icon>

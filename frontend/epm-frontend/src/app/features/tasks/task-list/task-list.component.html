@@ -2,11 +2,11 @@
   <div class="task-list-header">
     <h1>Tasks</h1>
     <div class="task-list-actions">
-      <a mat-stroked-button [routerLink]="['..', 'kanban']">
+      <a mat-stroked-button [routerLink]="['/projects', projectId, 'tasks', 'kanban']">
         <mat-icon>view_kanban</mat-icon>
         Kanban View
       </a>
-      <a mat-raised-button color="primary" [routerLink]="['new']">
+      <a mat-raised-button color="primary" [routerLink]="['/projects', projectId, 'tasks', 'new']">
         <mat-icon>add</mat-icon>
         New Task
       </a>

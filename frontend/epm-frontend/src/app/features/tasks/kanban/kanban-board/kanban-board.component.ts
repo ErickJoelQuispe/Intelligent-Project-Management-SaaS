@@ -23,9 +23,10 @@ import { KanbanColumnComponent } from '../kanban-column/kanban-column.component'
 export class KanbanBoardComponent implements OnInit {
   private readonly route = inject(ActivatedRoute);
   readonly store = inject(TaskStore);
+  projectId = '';
 
   ngOnInit(): void {
-    const projectId = this.route.snapshot.paramMap.get('projectId') ?? '';
-    this.store.loadKanban(projectId);
+    this.projectId = this.route.snapshot.paramMap.get('projectId') ?? '';
+    this.store.loadKanban(this.projectId);
   }
 }
