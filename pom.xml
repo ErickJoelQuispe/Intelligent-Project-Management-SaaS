@@ -50,6 +50,7 @@
         <module>services/auth-service</module>
         <module>services/user-service</module>
         <module>services/project-service</module>
+        <module>services/task-service</module>
     </modules>
 
     <profiles>
