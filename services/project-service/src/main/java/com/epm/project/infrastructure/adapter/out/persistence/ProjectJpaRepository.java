@@ -26,4 +26,17 @@ public interface ProjectJpaRepository extends JpaRepository<ProjectJpaEntity, UU
     List<ProjectJpaEntity> findAllProjectsByMemberProfileId(
             @Param("profileId") UUID profileId,
             @Param("tenantId") UUID tenantId);
+
+    @Query("""
+            SELECT DISTINCT p FROM ProjectJpaEntity p
+            JOIN ProjectMemberJpaEntity m ON p.id = m.projectId
+            WHERE m.profileId = :profileId
+              AND p.tenantId = :tenantId
+              AND p.deletedAt IS NULL
+              AND p.status != 'ARCHIVED'
+              AND m.removedAt IS NULL
+            """)
+    List<ProjectJpaEntity> findAllProjectsByMemberProfileIdExcludingArchived(
+            @Param("profileId") UUID profileId,
+            @Param("tenantId") UUID tenantId);
 }

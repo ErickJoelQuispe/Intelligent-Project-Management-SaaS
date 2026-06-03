@@ -25,6 +25,7 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 
@@ -75,10 +76,12 @@ public class ProjectController {
 
     /** GET /api/v1/projects → 200 */
     @GetMapping
-    public List<ProjectResponse> listProjects(@AuthenticationPrincipal Jwt jwt) {
+    public List<ProjectResponse> listProjects(
+            @AuthenticationPrincipal Jwt jwt,
+            @RequestParam(defaultValue = "false") boolean includeArchived) {
         UUID callerId = jwtClaimsExtractor.getUserId(jwt);
         UUID tenantId = jwtClaimsExtractor.getTenantId(jwt);
-        return listProjectsUseCase.execute(callerId, tenantId).stream()
+        return listProjectsUseCase.execute(callerId, tenantId, includeArchived).stream()
                 .map(this::toResponse)
                 .toList();
     }
