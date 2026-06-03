@@ -57,5 +57,6 @@ spring:
                 - Path=/api/v1/projects/**
             - id: task-service
               uri: lb://task-service
+              order: -1
               predicates:
                 - Path=/api/v1/tasks/**, /api/v1/projects/*/tasks/**
