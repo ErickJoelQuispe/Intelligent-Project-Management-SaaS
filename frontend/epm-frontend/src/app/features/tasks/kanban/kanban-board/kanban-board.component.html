@@ -1,0 +1,40 @@
+<div class="kanban-board">
+  <div class="kanban-board__toolbar">
+    <h1 class="kanban-board__title">Kanban Board</h1>
+    <div class="kanban-board__actions">
+      <a
+        mat-stroked-button
+        [routerLink]="['..', 'tasks']"
+        aria-label="View task list"
+      >
+        <mat-icon>list</mat-icon>
+        List View
+      </a>
+      <a
+        mat-raised-button
+        color="primary"
+        [routerLink]="['..', 'tasks', 'new']"
+        aria-label="Create new task"
+      >
+        <mat-icon>add</mat-icon>
+        New Task
+      </a>
+    </div>
+  </div>
+
+  @if (store.isLoading()) {
+    <div class="kanban-board__loading">
+      <mat-spinner diameter="48" />
+    </div>
+  }
+
+  @if (store.error()) {
+    <div class="kanban-board__error">{{ store.error() }}</div>
+  }
+
+  <div class="kanban-board__columns">
+    @for (col of store.kanbanColumns(); track col.status) {
+      <app-kanban-column [status]="col.status" [tasks]="col.tasks" />
+    }
+  </div>
+</div>

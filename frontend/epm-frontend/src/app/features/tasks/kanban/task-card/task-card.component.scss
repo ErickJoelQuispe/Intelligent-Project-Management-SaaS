@@ -1,0 +1,52 @@
+.task-card {
+  margin-bottom: var(--task-card-gap, 8px);
+  cursor: pointer;
+
+  &:hover {
+    box-shadow: var(--mat-sys-level2);
+  }
+
+  &__header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 8px;
+  }
+
+  &__title {
+    font-size: 0.875rem;
+    font-weight: 500;
+    flex: 1;
+  }
+
+  &__priority {
+    font-size: 0.7rem;
+    height: 20px;
+    color: #fff;
+    min-height: unset;
+  }
+
+  &__deadline,
+  &__assignee {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    margin-top: 6px;
+    font-size: 0.75rem;
+    color: var(--mat-sys-on-surface-variant, #666);
+  }
+
+  &__deadline-icon,
+  &__assignee-icon {
+    font-size: 14px;
+    width: 14px;
+    height: 14px;
+  }
+
+  &__assignee-id {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    max-width: 120px;
+  }
+}

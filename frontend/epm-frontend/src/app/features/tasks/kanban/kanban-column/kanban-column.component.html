@@ -1,0 +1,19 @@
+<div class="kanban-column">
+  <div class="kanban-column__header">
+    <span class="kanban-column__status-label">{{ statusLabel }}</span>
+    <span class="kanban-column__count">{{ tasks().length }}</span>
+  </div>
+
+  <div class="kanban-column__cards">
+    @if (tasks().length === 0) {
+      <div class="kanban-column__empty">
+        <mat-icon class="kanban-column__empty-icon">inbox</mat-icon>
+        <span>No tasks</span>
+      </div>
+    } @else {
+      @for (task of tasks(); track task.taskId) {
+        <app-task-card [task]="task" />
+      }
+    }
+  </div>
+</div>
