@@ -307,8 +307,8 @@ services:
     environment:
       SPRING_CONFIG_IMPORT: "optional:configserver:http://epm-config:8888"
       SPRING_DATASOURCE_URL: "jdbc:postgresql://epm-postgres:5432/task_db"
-      SPRING_DATASOURCE_USERNAME: "task_user"
-      SPRING_DATASOURCE_PASSWORD: "task_pass"
+      SPRING_DATASOURCE_USERNAME: "epm_admin"
+      SPRING_DATASOURCE_PASSWORD: "${POSTGRES_PASSWORD:-changeme}"
       SPRING_SECURITY_OAUTH2_RESOURCESERVER_JWT_JWKS_URI: "http://epm-keycloak:8080/realms/epm/protocol/openid-connect/certs"
       EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: "http://epm-discovery:8761/eureka/"
       EUREKA_CLIENT_ENABLED: "true"

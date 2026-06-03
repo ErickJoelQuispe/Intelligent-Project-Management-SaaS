@@ -4,8 +4,8 @@ server:
 spring:
   datasource:
     url: jdbc:postgresql://epm-postgres:5432/task_db
-    username: task_user
-    password: task_pass
+    username: epm_admin
+    password: changeme
     driver-class-name: org.postgresql.Driver
   jpa:
     hibernate:
