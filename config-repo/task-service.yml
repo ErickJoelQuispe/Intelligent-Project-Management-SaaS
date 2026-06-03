@@ -1,0 +1,67 @@
+server:
+  port: 8084
+
+spring:
+  datasource:
+    url: jdbc:postgresql://epm-postgres:5432/task_db
+    username: task_user
+    password: task_pass
+    driver-class-name: org.postgresql.Driver
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    show-sql: false
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.PostgreSQLDialect
+  flyway:
+    enabled: true
+    locations: classpath:db/migration
+  kafka:
+    bootstrap-servers: epm-kafka:9092
+    producer:
+      key-serializer: org.apache.kafka.common.serialization.StringSerializer
+      value-serializer: org.apache.kafka.common.serialization.StringSerializer
+    consumer:
+      group-id: task-service
+      auto-offset-reset: earliest
+      key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      value-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+  security:
+    oauth2:
+      resourceserver:
+        jwt:
+          jwks-uri: http://epm-keycloak:8080/realms/epm/protocol/openid-connect/certs
+
+eureka:
+  client:
+    service-url:
+      defaultZone: http://epm-discovery:8761/eureka/
+  instance:
+    prefer-ip-address: true
+
+feign:
+  client:
+    config:
+      project-service:
+        connectTimeout: 2000
+        readTimeout: 2000
+
+resilience4j:
+  circuitbreaker:
+    instances:
+      projectService:
+        failureRateThreshold: 50
+        minimumNumberOfCalls: 3
+        slidingWindowSize: 5
+        waitDurationInOpenState: 30s
+  timelimiter:
+    instances:
+      projectService:
+        timeoutDuration: 2s
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics

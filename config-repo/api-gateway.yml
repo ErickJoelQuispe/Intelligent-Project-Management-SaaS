@@ -55,3 +55,7 @@ spring:
               uri: lb://project-service
               predicates:
                 - Path=/api/v1/projects/**
+            - id: task-service
+              uri: lb://task-service
+              predicates:
+                - Path=/api/v1/tasks/**, /api/v1/projects/*/tasks/**
