@@ -1,6 +1,8 @@
 import { Injectable, inject } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Observable } from 'rxjs';
+import { RxStomp, RxStompConfig } from '@stomp/rx-stomp';
+import { IMessage } from '@stomp/stompjs';
 import { environment } from '../../../../environments/environment';
 import { Notification } from '../models/notification.model';
 
@@ -8,6 +10,11 @@ import { Notification } from '../models/notification.model';
 export class NotificationService {
   private readonly http = inject(HttpClient);
   private readonly baseUrl = `${environment.apiBaseUrl}/notifications`;
+
+  /** Exposed for testing only — do not access in production code. */
+  _rxStomp: RxStomp | null = null;
+
+  // ─── HTTP methods ────────────────────────────────────────────────────────────
 
   getNotifications(): Observable<Notification[]> {
     return this.http.get<Notification[]>(this.baseUrl);
@@ -23,5 +30,32 @@ export class NotificationService {
 
   markAllAsRead(): Observable<void> {
     return this.http.post<void>(`${this.baseUrl}/mark-all-read`, {});
+  }
+
+  // ─── WebSocket methods ───────────────────────────────────────────────────────
+
+  connect(userId: string, token: string): void {
+    this._rxStomp = new RxStomp();
+    const config: RxStompConfig = {
+      brokerURL: `${environment.wsBaseUrl}?token=${token}`,
+      reconnectDelay: 5000,
+    };
+    this._rxStomp.configure(config);
+    this._rxStomp.activate();
+  }
+
+  disconnect(): void {
+    if (this._rxStomp) {
+      this._rxStomp.deactivate();
+    }
+  }
+
+  getNotificationStream(userId: string): Observable<IMessage> {
+    return this._rxStomp!.watch(`/topic/notifications/${userId}`);
+  }
+
+  /** @internal — for unit testing access to the RxStomp instance. */
+  getRxStomp(): RxStomp | null {
+    return this._rxStomp;
   }
 }
