@@ -6,7 +6,8 @@ import java.util.UUID;
 import com.epm.notification.application.usecase.NotificationApplicationService;
 import com.epm.notification.domain.model.Notification;
 import com.epm.notification.domain.model.NotificationType;
-import com.epm.notification.infrastructure.adapter.in.sse.SseEmitterManager;
+import com.epm.notification.domain.port.out.NotificationPushPort;
+import com.epm.notification.infrastructure.adapter.in.web.NotificationResponse;
 import com.epm.notification.infrastructure.adapter.out.persistence.ProcessedEventJpaEntity;
 import com.epm.notification.infrastructure.adapter.out.persistence.ProcessedEventJpaRepository;
 import com.fasterxml.jackson.databind.JsonNode;
@@ -23,6 +24,10 @@ import org.springframework.transaction.annotation.Transactional;
  * <p>Dispatches by {@code eventType} field in the JSON envelope and creates
  * in-app notifications for relevant task domain events. Uses {@code processed_events}
  * table for idempotency — duplicate events are skipped.
+ *
+ * <p>After persisting each notification, pushes it via {@link NotificationPushPort}
+ * (STOMP/WebSocket) to connected clients. Fire-and-forget — if user is disconnected,
+ * the push is silently dropped.
  */
 @Component
 public class TaskEventConsumer {
@@ -32,16 +37,16 @@ public class TaskEventConsumer {
 
     private final NotificationApplicationService notificationService;
     private final ProcessedEventJpaRepository processedEventRepo;
-    private final SseEmitterManager sseEmitterManager;
+    private final NotificationPushPort notificationPushPort;
     private final ObjectMapper objectMapper;
 
     public TaskEventConsumer(NotificationApplicationService notificationService,
             ProcessedEventJpaRepository processedEventRepo,
-            SseEmitterManager sseEmitterManager,
+            NotificationPushPort notificationPushPort,
             ObjectMapper objectMapper) {
         this.notificationService = notificationService;
         this.processedEventRepo = processedEventRepo;
-        this.sseEmitterManager = sseEmitterManager;
+        this.notificationPushPort = notificationPushPort;
         this.objectMapper = objectMapper;
     }
 
@@ -82,7 +87,7 @@ public class TaskEventConsumer {
                     Notification notification = notificationService.create(tenantId, assigneeId,
                             NotificationType.TASK_ASSIGNED, taskId,
                             "Task was assigned to you");
-                    sseEmitterManager.emitNotification(notification);
+                    notificationPushPort.pushToUser(assigneeId, NotificationResponse.from(notification));
                 }
             }
             case "TaskStatusChanged" -> {
@@ -93,7 +98,7 @@ public class TaskEventConsumer {
                     Notification notification = notificationService.create(tenantId, assigneeId,
                             NotificationType.TASK_STATUS_CHANGED, taskId,
                             "Task status changed to " + newStatus);
-                    sseEmitterManager.emitNotification(notification);
+                    notificationPushPort.pushToUser(assigneeId, NotificationResponse.from(notification));
                 }
             }
             case "TaskDeleted" -> {
@@ -102,7 +107,7 @@ public class TaskEventConsumer {
                     Notification notification = notificationService.create(tenantId, assigneeId,
                             NotificationType.TASK_DELETED, taskId,
                             "A task you were assigned to was deleted");
-                    sseEmitterManager.emitNotification(notification);
+                    notificationPushPort.pushToUser(assigneeId, NotificationResponse.from(notification));
                 }
             }
             case "TaskCreated" -> {
@@ -111,7 +116,7 @@ public class TaskEventConsumer {
                     Notification notification = notificationService.create(tenantId, actorId,
                             NotificationType.TASK_CREATED, taskId,
                             "Task '" + titleOrDefault(payload) + "' was created");
-                    sseEmitterManager.emitNotification(notification);
+                    notificationPushPort.pushToUser(actorId, NotificationResponse.from(notification));
                 }
             }
             default -> log.debug("Ignoring unknown task event type: {}", eventType);
