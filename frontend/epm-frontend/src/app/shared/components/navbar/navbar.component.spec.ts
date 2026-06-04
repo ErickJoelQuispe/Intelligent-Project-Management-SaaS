@@ -18,8 +18,7 @@ function createStoreMock() {
     loadNotifications: vi.fn(),
     markAsRead: vi.fn(),
     markAllAsRead: vi.fn(),
-    connectSse: vi.fn(),
-    disconnectSse: vi.fn(),
+    pollNotifications: vi.fn(),
   };
 }
 

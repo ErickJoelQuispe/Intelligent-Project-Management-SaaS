@@ -1,4 +1,4 @@
-import { Component, inject, OnInit, OnDestroy } from '@angular/core';
+import { Component, inject, OnInit } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { MatToolbarModule } from '@angular/material/toolbar';
 import { MatButtonModule } from '@angular/material/button';
@@ -48,16 +48,12 @@ import { NotificationStore } from '../../../features/notifications/store/notific
     }
   `],
 })
-export class NavbarComponent implements OnInit, OnDestroy {
+export class NavbarComponent implements OnInit {
   private readonly oauthService = inject(OAuthService);
   private readonly store = inject(NotificationStore);
 
   ngOnInit(): void {
-    this.store.connectSse();
-  }
-
-  ngOnDestroy(): void {
-    this.store.disconnectSse();
+    this.store.pollNotifications();
   }
 
   logout(): void {
