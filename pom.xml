@@ -51,6 +51,7 @@
         <module>services/user-service</module>
         <module>services/project-service</module>
         <module>services/task-service</module>
+        <module>services/notification-service</module>
     </modules>
 
     <profiles>
