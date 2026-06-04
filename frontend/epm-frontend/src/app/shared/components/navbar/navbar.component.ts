@@ -1,14 +1,16 @@
-import { Component, inject } from '@angular/core';
+import { Component, inject, OnInit } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { MatToolbarModule } from '@angular/material/toolbar';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import { OAuthService } from 'angular-oauth2-oidc';
+import { NotificationBellComponent } from '../../../features/notifications/components/notification-bell/notification-bell.component';
+import { NotificationStore } from '../../../features/notifications/store/notification.store';
 
 @Component({
   selector: 'app-navbar',
   standalone: true,
-  imports: [RouterLink, MatToolbarModule, MatButtonModule, MatIconModule],
+  imports: [RouterLink, MatToolbarModule, MatButtonModule, MatIconModule, NotificationBellComponent],
   template: `
     <mat-toolbar color="primary" class="navbar">
       <span class="brand">EPM</span>
@@ -16,6 +18,7 @@ import { OAuthService } from 'angular-oauth2-oidc';
         <a mat-button routerLink="/projects">Projects</a>
       </nav>
       <span class="spacer"></span>
+      <app-notification-bell />
       <button mat-icon-button (click)="logout()" aria-label="Logout">
         <mat-icon>logout</mat-icon>
       </button>
@@ -45,8 +48,13 @@ import { OAuthService } from 'angular-oauth2-oidc';
     }
   `],
 })
-export class NavbarComponent {
+export class NavbarComponent implements OnInit {
   private readonly oauthService = inject(OAuthService);
+  private readonly store = inject(NotificationStore);
+
+  ngOnInit(): void {
+    this.store.pollNotifications();
+  }
 
   logout(): void {
     this.oauthService.logOut();
