@@ -15,19 +15,26 @@ function createStoreMock() {
     unreadCount: signal(0),
     loading: signal(false),
     error: signal(null),
+    wsConnected: signal(false),
     loadNotifications: vi.fn(),
     markAsRead: vi.fn(),
     markAllAsRead: vi.fn(),
-    pollNotifications: vi.fn(),
+    connectWebSocket: vi.fn(),
   };
 }
 
 describe('NavbarComponent', () => {
   let fixture: ComponentFixture<NavbarComponent>;
+  let storeMock: ReturnType<typeof createStoreMock>;
+  let oauthMock: { logOut: ReturnType<typeof vi.fn>; getAccessToken: ReturnType<typeof vi.fn>; getIdentityClaims: ReturnType<typeof vi.fn> };
 
   beforeEach(async () => {
-    const oauthMock = { logOut: vi.fn() };
-    const storeMock = createStoreMock();
+    storeMock = createStoreMock();
+    oauthMock = {
+      logOut: vi.fn(),
+      getAccessToken: vi.fn().mockReturnValue('mock-jwt'),
+      getIdentityClaims: vi.fn().mockReturnValue({ sub: 'user-99' }),
+    };
 
     await TestBed.configureTestingModule({
       imports: [NavbarComponent, RouterModule.forRoot([])],
@@ -60,5 +67,15 @@ describe('NavbarComponent', () => {
     const el = fixture.nativeElement as HTMLElement;
     const btn = el.querySelector('[aria-label="Logout"]');
     expect(btn).toBeTruthy();
+  });
+
+  it('ngOnInit calls connectWebSocket with userId and token from OAuthService', () => {
+    expect(oauthMock.getAccessToken).toHaveBeenCalled();
+    expect(oauthMock.getIdentityClaims).toHaveBeenCalled();
+    expect(storeMock.connectWebSocket).toHaveBeenCalledWith('user-99', 'mock-jwt');
+  });
+
+  it('does NOT call the removed pollNotifications method', () => {
+    expect((storeMock as any).pollNotifications).toBeUndefined();
   });
 });

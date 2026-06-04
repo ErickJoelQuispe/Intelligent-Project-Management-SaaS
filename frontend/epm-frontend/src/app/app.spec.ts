@@ -1,8 +1,11 @@
 import { TestBed } from '@angular/core/testing';
 import { provideRouter } from '@angular/router';
 import { provideAnimations } from '@angular/platform-browser/animations';
+import { signal } from '@angular/core';
 import { OAuthService } from 'angular-oauth2-oidc';
 import { App } from './app';
+import { NotificationStore } from './features/notifications/store/notification.store';
+import { NotificationService } from './features/notifications/services/notification.service';
 
 describe('App', () => {
   beforeEach(async () => {
@@ -10,6 +13,19 @@ describe('App', () => {
       logOut: vi.fn(),
       hasValidAccessToken: vi.fn().mockReturnValue(true),
       getAccessToken: vi.fn().mockReturnValue('mock-token'),
+      getIdentityClaims: vi.fn().mockReturnValue({ sub: 'user-test' }),
+    };
+
+    const storeMock = {
+      notifications: signal([]),
+      unreadCount: signal(0),
+      loading: signal(false),
+      error: signal(null),
+      wsConnected: signal(false),
+      loadNotifications: vi.fn(),
+      markAsRead: vi.fn(),
+      markAllAsRead: vi.fn(),
+      connectWebSocket: vi.fn(),
     };
 
     await TestBed.configureTestingModule({
@@ -18,6 +34,8 @@ describe('App', () => {
         provideRouter([]),
         provideAnimations(),
         { provide: OAuthService, useValue: oauthServiceMock },
+        { provide: NotificationStore, useValue: storeMock },
+        { provide: NotificationService, useValue: {} },
       ],
     }).compileComponents();
   });

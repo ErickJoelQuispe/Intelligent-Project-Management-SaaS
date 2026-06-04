@@ -53,7 +53,12 @@ export class NavbarComponent implements OnInit {
   private readonly store = inject(NotificationStore);
 
   ngOnInit(): void {
-    this.store.pollNotifications();
+    const token = this.oauthService.getAccessToken();
+    const claims = this.oauthService.getIdentityClaims() as { sub?: string } | null;
+    const userId = claims?.sub ?? '';
+    if (userId && token) {
+      this.store.connectWebSocket(userId, token);
+    }
   }
 
   logout(): void {
