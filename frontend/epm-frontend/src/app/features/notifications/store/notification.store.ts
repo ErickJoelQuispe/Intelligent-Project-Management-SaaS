@@ -4,6 +4,7 @@ import { rxMethod } from '@ngrx/signals/rxjs-interop';
 import { pipe, switchMap } from 'rxjs';
 import { tapResponse } from '@ngrx/operators';
 import { OAuthService } from 'angular-oauth2-oidc';
+import { environment } from '../../../../environments/environment';
 import { Notification } from '../models/notification.model';
 import { NotificationService } from '../services/notification.service';
 
@@ -164,7 +165,7 @@ export const NotificationStore = signalStore(
         abortController = new AbortController();
         resetHeartbeat();
 
-        fetch('/api/v1/notifications/stream', {
+        fetch(`${environment.apiBaseUrl}/notifications/stream`, {
           headers: { Authorization: `Bearer ${token}` },
           signal: abortController.signal,
         })
