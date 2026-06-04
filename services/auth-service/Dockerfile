@@ -11,6 +11,7 @@ COPY services/auth-service/pom.xml services/auth-service/
 COPY services/user-service/pom.xml services/user-service/
 COPY services/project-service/pom.xml services/project-service/
 COPY services/task-service/pom.xml services/task-service/
+COPY services/notification-service/pom.xml services/notification-service/
 RUN ./mvnw dependency:go-offline -pl services/auth-service -q
 COPY services/auth-service/src services/auth-service/src
 RUN ./mvnw package -pl services/auth-service -DskipTests -q
