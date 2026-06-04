@@ -103,3 +103,12 @@ spring:
               order: 0 # independent path; no conflict with existing routes
               predicates:
                 - Path=/api/v1/notifications/**
+            # WebSocket route — must use lb:ws:// prefix for WebSocket proxying in SCG.
+            # JWT auth is handled at STOMP level by WebSocketChannelInterceptor,
+            # NOT at gateway level — no JWT filter applied here.
+            - id: notification-ws
+              uri: lb:ws://notification-service
+              order: 0
+              predicates:
+                - Path=/ws/notifications/**
+              filters: []
