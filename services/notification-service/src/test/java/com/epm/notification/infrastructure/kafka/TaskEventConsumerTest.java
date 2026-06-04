@@ -11,8 +11,8 @@ import java.util.UUID;
 import com.epm.notification.application.usecase.NotificationApplicationService;
 import com.epm.notification.domain.model.Notification;
 import com.epm.notification.domain.model.NotificationType;
+import com.epm.notification.domain.port.out.NotificationPushPort;
 import com.epm.notification.infrastructure.adapter.in.messaging.TaskEventConsumer;
-import com.epm.notification.infrastructure.adapter.in.sse.SseEmitterManager;
 import com.epm.notification.infrastructure.adapter.out.persistence.ProcessedEventJpaEntity;
 import com.epm.notification.infrastructure.adapter.out.persistence.ProcessedEventJpaRepository;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -37,7 +37,7 @@ class TaskEventConsumerTest {
     private ProcessedEventJpaRepository processedEventRepo;
 
     @Mock
-    private SseEmitterManager sseEmitterManager;
+    private NotificationPushPort notificationPushPort;
 
     private TaskEventConsumer consumer;
     private ObjectMapper objectMapper;
@@ -46,7 +46,7 @@ class TaskEventConsumerTest {
     void setUp() {
         objectMapper = new ObjectMapper();
         objectMapper.findAndRegisterModules();
-        consumer = new TaskEventConsumer(notificationService, processedEventRepo, sseEmitterManager, objectMapper);
+        consumer = new TaskEventConsumer(notificationService, processedEventRepo, notificationPushPort, objectMapper);
     }
 
     // ── T-C-05: TASK_ASSIGNED dispatches notification to assignee ──────────
@@ -72,6 +72,7 @@ class TaskEventConsumerTest {
         verify(notificationService).create(tenantId, assigneeId,
                 NotificationType.TASK_ASSIGNED, taskId, "Task was assigned to you");
         verify(processedEventRepo).save(any(ProcessedEventJpaEntity.class));
+        verify(notificationPushPort).pushToUser(any(UUID.class), any());
     }
 
     @Test
@@ -94,6 +95,7 @@ class TaskEventConsumerTest {
 
         verify(notificationService).create(tenantId, assigneeId,
                 NotificationType.TASK_STATUS_CHANGED, taskId, "Task status changed to IN_PROGRESS");
+        verify(notificationPushPort).pushToUser(any(UUID.class), any());
     }
 
     // ── T-C-05: Idempotency — duplicate events are skipped ──────────────────
@@ -115,6 +117,7 @@ class TaskEventConsumerTest {
 
         verify(notificationService, never()).create(any(), any(), any(), any(), any());
         verify(processedEventRepo, never()).save(any());
+        verify(notificationPushPort, never()).pushToUser(any(), any());
     }
 
     // ── T-C-05: TASK_DELETED dispatches notification (if assignee present) ─
@@ -139,6 +142,7 @@ class TaskEventConsumerTest {
 
         verify(notificationService).create(tenantId, assigneeId,
                 NotificationType.TASK_DELETED, taskId, "A task you were assigned to was deleted");
+        verify(notificationPushPort).pushToUser(any(UUID.class), any());
     }
 
     // ── Helper ────────────────────────────────────────────────────────────────
