@@ -1,0 +1,19 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <title>Task Created</title>
+</head>
+<body>
+    <h1>New Task Created</h1>
+    <p>Hi there,</p>
+    <p>
+        <span th:text="${creatorName}">Creator</span>
+        created the task
+        <strong th:text="${taskTitle}">Task Title</strong>
+        in project <strong th:text="${projectName}">Project Name</strong>.
+    </p>
+    <hr />
+    <p>This is an automated notification from your project management system.</p>
+</body>
+</html>
