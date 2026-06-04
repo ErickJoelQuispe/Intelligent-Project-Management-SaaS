@@ -18,7 +18,10 @@ import com.epm.notification.domain.exception.NotificationNotFoundException;
 import com.epm.notification.domain.model.Notification;
 import com.epm.notification.domain.model.NotificationType;
 import com.epm.notification.domain.model.UserEmailCache;
+import com.epm.notification.domain.model.NotificationChannel;
+import com.epm.notification.domain.model.NotificationPreference;
 import com.epm.notification.domain.port.out.EmailPort;
+import com.epm.notification.domain.port.out.NotificationPreferenceRepository;
 import com.epm.notification.domain.port.out.NotificationRepository;
 import com.epm.notification.domain.port.out.UserEmailCacheRepository;
 import org.junit.jupiter.api.BeforeEach;
@@ -46,6 +49,9 @@ class NotificationApplicationServiceTest {
     @Mock
     private UserEmailCacheRepository userEmailCacheRepository;
 
+    @Mock
+    private NotificationPreferenceRepository preferenceRepository;
+
     private NotificationApplicationService service;
 
     private UUID tenantId;
@@ -54,7 +60,7 @@ class NotificationApplicationServiceTest {
     @BeforeEach
     void setUp() {
         service = new NotificationApplicationService(
-                notificationRepository, emailPort, userEmailCacheRepository);
+                notificationRepository, emailPort, userEmailCacheRepository, preferenceRepository);
         tenantId = UUID.randomUUID();
         userId = UUID.randomUUID();
     }
@@ -90,6 +96,69 @@ class NotificationApplicationServiceTest {
                 referenceId, "Status changed");
 
         assertThat(result.getType()).isEqualTo(NotificationType.TASK_STATUS_CHANGED);
+    }
+
+    // ── Preference check: IN_APP disabled → notification not persisted ─────
+
+    @Test
+    void create_whenInAppPreferenceDisabled_skipsNotificationPersist() {
+        UUID referenceId = UUID.randomUUID();
+        NotificationPreference disabledPref = new NotificationPreference(
+                UUID.randomUUID(), userId, tenantId,
+                NotificationType.TASK_ASSIGNED, NotificationChannel.IN_APP, false);
+        when(preferenceRepository.findByUserIdAndEventTypeAndChannel(
+                userId, NotificationType.TASK_ASSIGNED, NotificationChannel.IN_APP))
+                .thenReturn(Optional.of(disabledPref));
+
+        service.create(tenantId, userId, NotificationType.TASK_ASSIGNED, referenceId, "Task assigned");
+
+        verify(notificationRepository, never()).save(any(Notification.class));
+    }
+
+    @Test
+    void create_whenInAppPreferenceEnabled_persistsNotification() {
+        UUID referenceId = UUID.randomUUID();
+        NotificationPreference enabledPref = new NotificationPreference(
+                UUID.randomUUID(), userId, tenantId,
+                NotificationType.TASK_ASSIGNED, NotificationChannel.IN_APP, true);
+        when(preferenceRepository.findByUserIdAndEventTypeAndChannel(
+                userId, NotificationType.TASK_ASSIGNED, NotificationChannel.IN_APP))
+                .thenReturn(Optional.of(enabledPref));
+        Notification expected = Notification.create(tenantId, userId,
+                NotificationType.TASK_ASSIGNED, referenceId, "Task assigned");
+        when(notificationRepository.save(any())).thenReturn(expected);
+        when(userEmailCacheRepository.findByUserId(userId)).thenReturn(Optional.empty());
+
+        Notification result = service.create(tenantId, userId, NotificationType.TASK_ASSIGNED,
+                referenceId, "Task assigned");
+
+        assertThat(result).isNotNull();
+        verify(notificationRepository).save(any(Notification.class));
+    }
+
+    // ── Preference check: EMAIL disabled → email not dispatched ───────────
+
+    @Test
+    void create_whenEmailPreferenceDisabled_skipsEmailDispatch() {
+        UUID referenceId = UUID.randomUUID();
+        // IN_APP enabled (default)
+        when(preferenceRepository.findByUserIdAndEventTypeAndChannel(
+                userId, NotificationType.TASK_ASSIGNED, NotificationChannel.IN_APP))
+                .thenReturn(Optional.empty()); // default → enabled
+        // EMAIL disabled
+        NotificationPreference emailDisabled = new NotificationPreference(
+                UUID.randomUUID(), userId, tenantId,
+                NotificationType.TASK_ASSIGNED, NotificationChannel.EMAIL, false);
+        when(preferenceRepository.findByUserIdAndEventTypeAndChannel(
+                userId, NotificationType.TASK_ASSIGNED, NotificationChannel.EMAIL))
+                .thenReturn(Optional.of(emailDisabled));
+        Notification expected = Notification.create(tenantId, userId,
+                NotificationType.TASK_ASSIGNED, referenceId, "Task assigned");
+        when(notificationRepository.save(any())).thenReturn(expected);
+
+        service.create(tenantId, userId, NotificationType.TASK_ASSIGNED, referenceId, "Task assigned");
+
+        verify(emailPort, never()).send(any(), any(), any(), any());
     }
 
     // ── Email dispatch: cache hit → send ──────────────────────────────────

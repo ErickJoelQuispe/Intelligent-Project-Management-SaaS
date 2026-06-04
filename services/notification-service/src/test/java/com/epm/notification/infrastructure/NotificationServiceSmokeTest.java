@@ -4,7 +4,9 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import com.epm.notification.application.usecase.NotificationApplicationService;
 import com.epm.notification.domain.port.out.EmailPort;
+import com.epm.notification.domain.port.out.NotificationPreferenceRepository;
 import com.epm.notification.infrastructure.adapter.out.persistence.NotificationJpaRepository;
+import com.epm.notification.infrastructure.adapter.out.persistence.NotificationPreferencesRepositoryAdapter;
 import com.epm.notification.infrastructure.adapter.out.persistence.NotificationRepositoryAdapter;
 import com.epm.notification.infrastructure.adapter.out.persistence.UserEmailCacheRepositoryAdapter;
 import org.junit.jupiter.api.Test;
@@ -26,6 +28,7 @@ import org.springframework.test.context.TestPropertySource;
 @Import({
     NotificationRepositoryAdapter.class,
     UserEmailCacheRepositoryAdapter.class,
+    NotificationPreferencesRepositoryAdapter.class,
     NotificationApplicationService.class
 })
 @TestPropertySource(properties = {
@@ -46,10 +49,14 @@ class NotificationServiceSmokeTest {
     private NotificationRepositoryAdapter repositoryAdapter;
 
     @Autowired
+    private NotificationPreferencesRepositoryAdapter preferenceRepositoryAdapter;
+
+    @Autowired
     private NotificationApplicationService applicationService;
 
     /**
      * Validates the persistence layer is correctly wired and Flyway migrations ran (V1–V4).
+     * V3 adds notification_preferences; V4 adds user_email_cache.
      */
     @Test
     void smokeTest_dbContextLoadsAndMigrationsApplied() {
