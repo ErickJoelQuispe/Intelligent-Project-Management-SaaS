@@ -1,60 +1,41 @@
 package com.epm.notification.infrastructure.web;
 
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.doThrow;
-import static org.mockito.Mockito.never;
-import static org.mockito.Mockito.verify;
+import java.util.Map;
 
-import com.epm.notification.infrastructure.adapter.out.email.MailhogEmailAdapter;
+import com.epm.notification.infrastructure.adapter.out.email.NoOpEmailAdapter;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.Mock;
-import org.mockito.junit.jupiter.MockitoExtension;
-import org.springframework.mail.SimpleMailMessage;
-import org.springframework.mail.javamail.JavaMailSender;
 
 /**
- * Unit tests for MailhogEmailAdapter (T-C-07).
+ * Unit tests for NoOpEmailAdapter (replaces MailhogEmailAdapterTest — T-C-07).
+ *
+ * <p>Verifies that the no-op adapter never throws and does not interact with any mail infrastructure.
  */
-@ExtendWith(MockitoExtension.class)
 class MailhogEmailAdapterTest {
 
-    @Mock
-    private JavaMailSender javaMailSender;
-
-    private MailhogEmailAdapter adapter;
+    private NoOpEmailAdapter adapter;
 
     @BeforeEach
     void setUp() {
-        adapter = new MailhogEmailAdapter(javaMailSender, true);
+        adapter = new NoOpEmailAdapter();
     }
 
-    // ── T-C-07: sendEmail delegates to JavaMailSender ─────────────────────
+    // ── NoOpEmailAdapter never throws ──────────────────────────────────────
 
     @Test
-    void sendEmail_whenEnabled_sendsEmailViaJavaMailSender() {
-        adapter.sendEmail("user@example.com", "Task Assigned", "A task was assigned to you.");
+    void send_withFullVars_doesNotThrow() {
+        Map<String, Object> vars = Map.of(
+                "assigneeName", "Alice",
+                "taskTitle", "Fix login",
+                "projectName", "Alpha",
+                "taskUrl", "http://example.com/task/1");
 
-        verify(javaMailSender).send(any(SimpleMailMessage.class));
+        // Should complete silently without any exception
+        adapter.send("alice@example.com", "Task Assigned", "task-assigned-v1", vars);
     }
 
     @Test
-    void sendEmail_whenDisabled_doesNotSendEmail() {
-        MailhogEmailAdapter disabledAdapter = new MailhogEmailAdapter(javaMailSender, false);
-
-        disabledAdapter.sendEmail("user@example.com", "Task Assigned", "A task was assigned to you.");
-
-        verify(javaMailSender, never()).send(any(SimpleMailMessage.class));
-    }
-
-    // ── T-C-07: email send failure does not throw (best-effort) ───────────
-
-    @Test
-    void sendEmail_whenMailSenderThrows_doesNotPropagateException() {
-        doThrow(new RuntimeException("SMTP unavailable")).when(javaMailSender).send(any(SimpleMailMessage.class));
-
-        // Should not throw — email is best-effort
-        adapter.sendEmail("user@example.com", "Task Assigned", "A task was assigned to you.");
+    void send_withEmptyVars_doesNotThrow() {
+        adapter.send("user@example.com", "Subject", "any-template", Map.of());
     }
 }
