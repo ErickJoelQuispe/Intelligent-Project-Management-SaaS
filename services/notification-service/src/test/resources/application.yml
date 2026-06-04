@@ -1,0 +1,25 @@
+spring:
+  datasource:
+    url: jdbc:postgresql://localhost:5432/notification_test
+    username: epm_admin
+    password: changeme
+  jpa:
+    hibernate:
+      ddl-auto: validate
+  flyway:
+    enabled: true
+  kafka:
+    bootstrap-servers: ${spring.embedded.kafka.brokers:localhost:9092}
+    consumer:
+      group-id: notification-group-test
+  security:
+    oauth2:
+      resourceserver:
+        jwt:
+          jwks-uri: http://localhost:8180/realms/epm/protocol/openid-connect/certs
+  mail:
+    host: localhost
+    port: 1025
+
+server:
+  port: 0

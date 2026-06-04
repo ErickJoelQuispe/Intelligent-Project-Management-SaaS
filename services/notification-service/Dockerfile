@@ -6,8 +6,6 @@ COPY mvnw ./
 COPY .mvn/ .mvn/
 COPY pom.xml ./
 
-# El parent POM declara todos los módulos — Maven necesita encontrar
-# el pom.xml de cada uno para resolver el reactor, aunque no los compile.
 COPY build-tools/ build-tools/
 COPY services/service-template/pom.xml services/service-template/
 COPY services/discovery-service/pom.xml services/discovery-service/
@@ -17,14 +15,12 @@ COPY services/auth-service/pom.xml services/auth-service/
 COPY services/user-service/pom.xml services/user-service/
 COPY services/project-service/pom.xml services/project-service/
 COPY services/task-service/pom.xml services/task-service/
-
-# Descarga dependencias solo del módulo a compilar
 COPY services/notification-service/pom.xml services/notification-service/
-RUN ./mvnw dependency:go-offline -pl services/discovery-service -q
 
-# Copia el código fuente y compila
-COPY services/discovery-service/src services/discovery-service/src
-RUN ./mvnw package -pl services/discovery-service -DskipTests -q
+RUN ./mvnw dependency:go-offline -pl services/notification-service -q
+
+COPY services/notification-service/src services/notification-service/src
+RUN ./mvnw package -pl services/notification-service -DskipTests -q
 
 # ── Stage 2: runtime ──────────────────────────────────────────────
 FROM eclipse-temurin:21-jre-alpine
@@ -33,8 +29,8 @@ WORKDIR /app
 RUN addgroup -S epm && adduser -S epm -G epm
 USER epm
 
-COPY --from=build /app/services/discovery-service/target/*.jar app.jar
+COPY --from=build /app/services/notification-service/target/*.jar app.jar
 
-EXPOSE 8761
+EXPOSE 8085
 
 ENTRYPOINT ["java", "-jar", "app.jar"]

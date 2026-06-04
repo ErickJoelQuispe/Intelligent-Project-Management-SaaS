@@ -16,6 +16,7 @@ COPY services/user-service/pom.xml services/user-service/
 COPY services/project-service/pom.xml services/project-service/
 COPY services/task-service/pom.xml services/task-service/
 
+COPY services/notification-service/pom.xml services/notification-service/
 RUN ./mvnw dependency:go-offline -pl services/api-gateway -q
 
 COPY services/api-gateway/src services/api-gateway/src
