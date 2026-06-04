@@ -8,8 +8,10 @@ import com.epm.task.domain.exception.ProjectMembershipRequiredException;
 import com.epm.task.domain.exception.ProjectServiceUnavailableException;
 import com.epm.task.domain.exception.TaskNotFoundException;
 import com.epm.task.domain.exception.TenantRequiredException;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ProblemDetail;
+import org.springframework.http.ResponseEntity;
 import org.springframework.validation.FieldError;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
@@ -54,16 +56,22 @@ public class GlobalExceptionHandler {
         return problem;
     }
 
-    /** 503 Service Unavailable — project-service circuit breaker open. */
+    /**
+     * 503 Service Unavailable — project-service circuit breaker open.
+     *
+     * <p>Sets {@code Retry-After} as an HTTP response header per RFC 7231 §7.1.3.
+     * The header value is NOT included in the JSON body.
+     */
     @ExceptionHandler(ProjectServiceUnavailableException.class)
-    public ProblemDetail handleServiceUnavailable(ProjectServiceUnavailableException ex) {
+    public ResponseEntity<ProblemDetail> handleServiceUnavailable(ProjectServiceUnavailableException ex) {
         ProblemDetail problem = ProblemDetail.forStatus(HttpStatus.SERVICE_UNAVAILABLE);
         problem.setType(URI.create("https://api.epm.com/errors/project-service-unavailable"));
         problem.setTitle("Project Service Unavailable");
         problem.setDetail(ex.getMessage());
         problem.setProperty("errorCode", "PROJECT_SERVICE_UNAVAILABLE");
-        problem.setProperty("Retry-After", "30");
-        return problem;
+        HttpHeaders headers = new HttpHeaders();
+        headers.set("Retry-After", "30");
+        return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE).headers(headers).body(problem);
     }
 
     /** 400 Bad Request — tenant required. */

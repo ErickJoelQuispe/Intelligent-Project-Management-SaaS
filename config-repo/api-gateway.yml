@@ -1,5 +1,33 @@
 # Configuración específica del api-gateway.
 # Este servicio no necesita datasource ni Flyway — sin DB propia.
+#
+# ─── API Gateway Route Order Convention ───────────────────────────────────────
+# The `order` field controls evaluation priority across routes.
+#
+#   Rule: LOWER order value → HIGHER priority (evaluated first).
+#
+#   Convention:
+#     - Routes with SPECIFIC path patterns (e.g. /api/v1/projects/*/tasks/**)
+#       MUST have a LOWER (more negative) order than routes with BROAD patterns
+#       (e.g. /api/v1/projects/**).
+#     - Routes WITHOUT an explicit `order` field default to 0 (lowest priority).
+#
+#   Why this matters:
+#     Spring Cloud Gateway evaluates routes in ascending order value. If
+#     /api/v1/projects/** (order: 0) is evaluated before
+#     /api/v1/projects/*/tasks/** (order: -1), requests to /projects/X/tasks
+#     would be incorrectly routed to project-service instead of task-service.
+#
+#   Order table (current assignments):
+#     order: -1  → task-service   (specific: /api/v1/projects/*/tasks/**)
+#     order:  0  → all other routes (broad patterns, default)
+#
+#   Adding a new service:
+#     1. If the path is a SUB-PATH of an existing route, assign a more
+#        negative order (e.g. order: -2 for sub-sub-paths).
+#     2. If the path is independent (no conflict), use order: 0 (default).
+#     3. Document the reasoning with an inline comment on the `order:` line.
+# ─────────────────────────────────────────────────────────────────────────────
 spring:
   datasource:
     url: ""
@@ -34,6 +62,7 @@ spring:
                 allowCredentials: true
                 maxAge: 3600
           routes:
+            # order: 0 (default) — broad /auth/** pattern, no conflict
             - id: auth-register-public
               uri: lb://auth-service
               predicates:
@@ -43,20 +72,34 @@ spring:
               uri: lb://auth-service
               predicates:
                 - Path=/api/v1/auth/**
+            # order: 0 (default) — /users/** has no sub-path conflicts
             - id: user-service
               uri: lb://user-service
               predicates:
                 - Path=/api/v1/users/**
+            # order: 0 (default) — /teams/** has no sub-path conflicts
             - id: teams-service
               uri: lb://user-service
               predicates:
                 - Path=/api/v1/teams/**
+            # order: 0 (default) — /projects/** broad pattern; task-service
+            #   uses order: -1 to take precedence for /projects/*/tasks/**
             - id: project-service
               uri: lb://project-service
               predicates:
                 - Path=/api/v1/projects/**
+            # order: -1 — HIGHER priority than project-service (order: 0).
+            #   Required because /api/v1/projects/*/tasks/** is a SUB-PATH of
+            #   /api/v1/projects/**, and Spring Cloud Gateway would otherwise
+            #   route task requests to project-service first.
             - id: task-service
               uri: lb://task-service
-              order: -1
+              order: -1 # specific sub-path of /projects/**; must precede project-service
               predicates:
                 - Path=/api/v1/tasks/**, /api/v1/projects/*/tasks/**
+            # order: 0 (default) — /notifications/** is independent (no conflict)
+            - id: notification-service
+              uri: lb://notification-service
+              order: 0 # independent path; no conflict with existing routes
+              predicates:
+                - Path=/api/v1/notifications/**

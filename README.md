@@ -126,3 +126,5 @@ Ver [`docs/adr/`](./docs/adr/) para las Architecture Decision Records.
 ## Convenciones
 
 Ver [`docs/conventions.md`](./docs/conventions.md).
+
+Ver [`docs/angular-routing-guide.md`](./docs/angular-routing-guide.md) para la convención de rutas absolutas vs. relativas en Angular.
