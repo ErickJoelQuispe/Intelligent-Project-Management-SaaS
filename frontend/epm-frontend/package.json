@@ -22,6 +22,7 @@
     "@angular/router": "^21.2.0",
     "@ngrx/operators": "^21.1.0",
     "@ngrx/signals": "^21.1.0",
+    "@stomp/rx-stomp": "^2.4.0",
     "angular-oauth2-oidc": "^20.0.2",
     "rxjs": "~7.8.0",
     "tslib": "^2.3.0",

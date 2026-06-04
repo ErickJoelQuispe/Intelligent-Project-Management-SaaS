@@ -8,6 +8,14 @@ export const routes: Routes = [
     pathMatch: 'full',
   },
   {
+    path: 'settings/notifications',
+    loadComponent: () =>
+      import('./features/notifications/components/notification-preferences/notification-preferences.component').then(
+        (m) => m.NotificationPreferencesComponent,
+      ),
+    canActivate: [authGuard],
+  },
+  {
     path: 'projects',
     loadComponent: () =>
       import('./features/projects/project-list/project-list.component').then(

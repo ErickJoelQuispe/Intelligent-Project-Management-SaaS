@@ -1,7 +1,7 @@
-import { TestBed, fakeAsync, tick } from '@angular/core/testing';
+import { TestBed } from '@angular/core/testing';
 import { provideHttpClient } from '@angular/common/http';
 import { provideHttpClientTesting } from '@angular/common/http/testing';
-import { of, throwError } from 'rxjs';
+import { Subject, of, throwError } from 'rxjs';
 import { OAuthService } from 'angular-oauth2-oidc';
 import { NotificationStore } from './notification.store';
 import { NotificationService } from '../services/notification.service';
@@ -24,6 +24,9 @@ describe('NotificationStore', () => {
     getUnreadCount: ReturnType<typeof vi.fn>;
     markAsRead: ReturnType<typeof vi.fn>;
     markAllAsRead: ReturnType<typeof vi.fn>;
+    connect: ReturnType<typeof vi.fn>;
+    disconnect: ReturnType<typeof vi.fn>;
+    getNotificationStream: ReturnType<typeof vi.fn>;
   };
 
   let oauthMock: { getAccessToken: ReturnType<typeof vi.fn> };
@@ -34,6 +37,9 @@ describe('NotificationStore', () => {
       getUnreadCount: vi.fn(),
       markAsRead: vi.fn(),
       markAllAsRead: vi.fn(),
+      connect: vi.fn(),
+      disconnect: vi.fn(),
+      getNotificationStream: vi.fn(),
     };
 
     oauthMock = {
@@ -58,6 +64,10 @@ describe('NotificationStore', () => {
     expect(store.unreadCount()).toBe(0);
     expect(store.loading()).toBe(false);
     expect(store.error()).toBeNull();
+  });
+
+  it('should expose wsConnected signal initialized to false', () => {
+    expect(store.wsConnected()).toBe(false);
   });
 
   it('loadNotifications() populates notifications signal on success', () => {
@@ -117,5 +127,90 @@ describe('NotificationStore', () => {
     expect(serviceMock.markAllAsRead).toHaveBeenCalled();
     expect(store.notifications().every((n) => n.read)).toBe(true);
     expect(store.unreadCount()).toBe(0);
+  });
+
+  // ─── WebSocket tests ─────────────────────────────────────────────────────────
+
+  it('pollNotifications does NOT exist on the store', () => {
+    // The method was removed; accessing it should be undefined
+    expect((store as any).pollNotifications).toBeUndefined();
+  });
+
+  it('connectWebSocket() calls service.connect with userId and token', () => {
+    const messageSubject = new Subject();
+    serviceMock.getNotificationStream.mockReturnValue(messageSubject.asObservable());
+
+    TestBed.runInInjectionContext(() => {
+      store.connectWebSocket('user-42', 'jwt-token');
+    });
+
+    expect(serviceMock.connect).toHaveBeenCalledWith('user-42', 'jwt-token');
+    expect(serviceMock.getNotificationStream).toHaveBeenCalledWith('user-42');
+  });
+
+  it('connectWebSocket() sets wsConnected to true', () => {
+    const messageSubject = new Subject();
+    serviceMock.getNotificationStream.mockReturnValue(messageSubject.asObservable());
+
+    TestBed.runInInjectionContext(() => {
+      store.connectWebSocket('user-42', 'jwt-token');
+    });
+
+    expect(store.wsConnected()).toBe(true);
+  });
+
+  it('incoming STOMP message prepends notification and increments unreadCount', () => {
+    const messageSubject = new Subject<{ body: string }>();
+    serviceMock.getNotificationStream.mockReturnValue(messageSubject.asObservable());
+
+    TestBed.runInInjectionContext(() => {
+      store.connectWebSocket('user-42', 'jwt-token');
+    });
+
+    const newNotification = mockNotification({ id: 'n-ws', message: 'WS notification', read: false });
+
+    messageSubject.next({ body: JSON.stringify(newNotification) });
+
+    expect(store.notifications().length).toBe(1);
+    expect(store.notifications()[0].id).toBe('n-ws');
+    expect(store.unreadCount()).toBe(1);
+  });
+
+  it('incoming STOMP message prepends to existing list (most recent first)', () => {
+    const existing = mockNotification({ id: 'n-existing', read: true });
+    serviceMock.getNotifications.mockReturnValue(of([existing]));
+    serviceMock.getUnreadCount.mockReturnValue(of(0));
+    const messageSubject = new Subject<{ body: string }>();
+    serviceMock.getNotificationStream.mockReturnValue(messageSubject.asObservable());
+
+    TestBed.runInInjectionContext(() => {
+      store.loadNotifications();
+      store.connectWebSocket('user-42', 'jwt-token');
+    });
+
+    const newNotification = mockNotification({ id: 'n-new', read: false });
+    messageSubject.next({ body: JSON.stringify(newNotification) });
+
+    expect(store.notifications().length).toBe(2);
+    expect(store.notifications()[0].id).toBe('n-new'); // newest first
+    expect(store.notifications()[1].id).toBe('n-existing');
+    expect(store.unreadCount()).toBe(1);
+  });
+
+  it('calling connectWebSocket again with new token disconnects and reconnects', () => {
+    const subject1 = new Subject<{ body: string }>();
+    const subject2 = new Subject<{ body: string }>();
+    serviceMock.getNotificationStream
+      .mockReturnValueOnce(subject1.asObservable())
+      .mockReturnValueOnce(subject2.asObservable());
+
+    TestBed.runInInjectionContext(() => {
+      store.connectWebSocket('user-42', 'old-token');
+      store.connectWebSocket('user-42', 'new-token');
+    });
+
+    expect(serviceMock.disconnect).toHaveBeenCalledOnce();
+    expect(serviceMock.connect).toHaveBeenCalledTimes(2);
+    expect(serviceMock.connect).toHaveBeenLastCalledWith('user-42', 'new-token');
   });
 });

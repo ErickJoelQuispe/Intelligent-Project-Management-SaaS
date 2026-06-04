@@ -1,7 +1,7 @@
 import { inject } from '@angular/core';
 import { signalStore, withState, withMethods, patchState } from '@ngrx/signals';
 import { rxMethod } from '@ngrx/signals/rxjs-interop';
-import { pipe, switchMap, tap, interval, startWith, exhaustMap } from 'rxjs';
+import { pipe, switchMap } from 'rxjs';
 import { tapResponse } from '@ngrx/operators';
 import { Notification } from '../models/notification.model';
 import { NotificationService } from '../services/notification.service';
@@ -11,6 +11,7 @@ interface NotificationState {
   unreadCount: number;
   loading: boolean;
   error: string | null;
+  wsConnected: boolean;
 }
 
 const initialState: NotificationState = {
@@ -18,9 +19,8 @@ const initialState: NotificationState = {
   unreadCount: 0,
   loading: false,
   error: null,
+  wsConnected: false,
 };
-
-const POLL_INTERVAL_MS = 5_000;
 
 export const NotificationStore = signalStore(
   { providedIn: 'root' },
@@ -98,30 +98,23 @@ export const NotificationStore = signalStore(
       ),
     ),
 
-    pollNotifications: rxMethod<void>(
-      pipe(
-        exhaustMap(() =>
-          interval(POLL_INTERVAL_MS).pipe(
-            startWith(0),
-            tap(() => {
-              patchState(store, { loading: true, error: null });
-              service.getNotifications().pipe(
-                tapResponse({
-                  next: (notifications) => {
-                    const unreadCount = notifications.filter((n) => !n.read).length;
-                    patchState(store, { notifications, unreadCount, loading: false });
-                  },
-                  error: (err: unknown) =>
-                    patchState(store, {
-                      loading: false,
-                      error: err instanceof Error ? err.message : 'Poll failed',
-                    }),
-                }),
-              ).subscribe();
-            }),
-          ),
-        ),
-      ),
-    ),
+    connectWebSocket(userId: string, token: string): void {
+      // Disconnect any existing connection before reconnecting
+      if (store.wsConnected()) {
+        service.disconnect();
+      }
+
+      service.connect(userId, token);
+      patchState(store, { wsConnected: true });
+
+      service.getNotificationStream(userId).subscribe({
+        next: (message) => {
+          const notification: Notification = JSON.parse(message.body);
+          const notifications = [notification, ...store.notifications()];
+          const unreadCount = notifications.filter((n) => !n.read).length;
+          patchState(store, { notifications, unreadCount });
+        },
+      });
+    },
   })),
 );
