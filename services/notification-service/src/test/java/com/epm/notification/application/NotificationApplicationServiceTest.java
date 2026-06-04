@@ -4,9 +4,11 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.when;
 
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -15,12 +17,17 @@ import com.epm.notification.domain.exception.NotificationAccessDeniedException;
 import com.epm.notification.domain.exception.NotificationNotFoundException;
 import com.epm.notification.domain.model.Notification;
 import com.epm.notification.domain.model.NotificationType;
+import com.epm.notification.domain.model.UserEmailCache;
+import com.epm.notification.domain.port.out.EmailPort;
 import com.epm.notification.domain.port.out.NotificationRepository;
+import com.epm.notification.domain.port.out.UserEmailCacheRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+
+import java.time.LocalDateTime;
 
 /**
  * Unit tests for NotificationApplicationService (T-C-03).
@@ -33,6 +40,12 @@ class NotificationApplicationServiceTest {
     @Mock
     private NotificationRepository notificationRepository;
 
+    @Mock
+    private EmailPort emailPort;
+
+    @Mock
+    private UserEmailCacheRepository userEmailCacheRepository;
+
     private NotificationApplicationService service;
 
     private UUID tenantId;
@@ -40,7 +53,8 @@ class NotificationApplicationServiceTest {
 
     @BeforeEach
     void setUp() {
-        service = new NotificationApplicationService(notificationRepository);
+        service = new NotificationApplicationService(
+                notificationRepository, emailPort, userEmailCacheRepository);
         tenantId = UUID.randomUUID();
         userId = UUID.randomUUID();
     }
@@ -53,6 +67,7 @@ class NotificationApplicationServiceTest {
         Notification expected = Notification.create(tenantId, userId,
                 NotificationType.TASK_ASSIGNED, referenceId, "Task assigned to you");
         when(notificationRepository.save(any())).thenReturn(expected);
+        when(userEmailCacheRepository.findByUserId(userId)).thenReturn(Optional.empty());
 
         Notification result = service.create(tenantId, userId, NotificationType.TASK_ASSIGNED,
                 referenceId, "Task assigned to you");
@@ -69,11 +84,66 @@ class NotificationApplicationServiceTest {
         Notification expected = Notification.create(tenantId, userId,
                 NotificationType.TASK_STATUS_CHANGED, referenceId, "Status changed");
         when(notificationRepository.save(any())).thenReturn(expected);
+        when(userEmailCacheRepository.findByUserId(userId)).thenReturn(Optional.empty());
 
         Notification result = service.create(tenantId, userId, NotificationType.TASK_STATUS_CHANGED,
                 referenceId, "Status changed");
 
         assertThat(result.getType()).isEqualTo(NotificationType.TASK_STATUS_CHANGED);
+    }
+
+    // ── Email dispatch: cache hit → send ──────────────────────────────────
+
+    @Test
+    void create_whenEmailCacheHit_sendsEmail() {
+        UUID referenceId = UUID.randomUUID();
+        Notification expected = Notification.create(tenantId, userId,
+                NotificationType.TASK_ASSIGNED, referenceId, "Task assigned to you");
+        when(notificationRepository.save(any())).thenReturn(expected);
+        UserEmailCache cachedEmail = new UserEmailCache(userId, tenantId, "user@example.com", LocalDateTime.now());
+        when(userEmailCacheRepository.findByUserId(userId)).thenReturn(Optional.of(cachedEmail));
+
+        service.create(tenantId, userId, NotificationType.TASK_ASSIGNED, referenceId, "Task assigned to you");
+
+        verify(emailPort).send(
+                org.mockito.ArgumentMatchers.eq("user@example.com"),
+                any(String.class),
+                org.mockito.ArgumentMatchers.eq("email/task-assigned-v1"),
+                any(Map.class));
+    }
+
+    @Test
+    void create_whenEmailCacheMiss_skipsEmailAndDoesNotFail() {
+        UUID referenceId = UUID.randomUUID();
+        Notification expected = Notification.create(tenantId, userId,
+                NotificationType.TASK_ASSIGNED, referenceId, "Task assigned to you");
+        when(notificationRepository.save(any())).thenReturn(expected);
+        when(userEmailCacheRepository.findByUserId(userId)).thenReturn(Optional.empty());
+
+        // Should not throw
+        service.create(tenantId, userId, NotificationType.TASK_ASSIGNED, referenceId, "Task assigned to you");
+
+        verify(emailPort, never()).send(any(), any(), any(), any());
+    }
+
+    @Test
+    void create_whenEmailPortThrows_notificationIsStillPersisted() {
+        UUID referenceId = UUID.randomUUID();
+        Notification expected = Notification.create(tenantId, userId,
+                NotificationType.TASK_ASSIGNED, referenceId, "Task assigned to you");
+        when(notificationRepository.save(any())).thenReturn(expected);
+        UserEmailCache cachedEmail = new UserEmailCache(userId, tenantId, "user@example.com", LocalDateTime.now());
+        when(userEmailCacheRepository.findByUserId(userId)).thenReturn(Optional.of(cachedEmail));
+        org.mockito.Mockito.doThrow(new RuntimeException("SMTP down"))
+                .when(emailPort).send(any(), any(), any(), any());
+
+        // Should not throw despite email failure
+        Notification result = service.create(tenantId, userId, NotificationType.TASK_ASSIGNED,
+                referenceId, "Task assigned to you");
+
+        // Notification was persisted
+        assertThat(result).isNotNull();
+        verify(notificationRepository).save(any(Notification.class));
     }
 
     // ── T-C-03: ListNotificationsUseCase ─────────────────────────────────

@@ -3,13 +3,15 @@ package com.epm.notification.infrastructure;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import com.epm.notification.application.usecase.NotificationApplicationService;
-import com.epm.notification.infrastructure.adapter.in.web.NotificationController;
+import com.epm.notification.domain.port.out.EmailPort;
 import com.epm.notification.infrastructure.adapter.out.persistence.NotificationJpaRepository;
 import com.epm.notification.infrastructure.adapter.out.persistence.NotificationRepositoryAdapter;
+import com.epm.notification.infrastructure.adapter.out.persistence.UserEmailCacheRepositoryAdapter;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.autoconfigure.orm.jpa.DataJpaTest;
 import org.springframework.boot.test.autoconfigure.jdbc.AutoConfigureTestDatabase;
+import org.springframework.boot.test.autoconfigure.orm.jpa.DataJpaTest;
+import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.context.annotation.Import;
 import org.springframework.test.context.TestPropertySource;
 
@@ -23,6 +25,7 @@ import org.springframework.test.context.TestPropertySource;
 @AutoConfigureTestDatabase(replace = AutoConfigureTestDatabase.Replace.NONE)
 @Import({
     NotificationRepositoryAdapter.class,
+    UserEmailCacheRepositoryAdapter.class,
     NotificationApplicationService.class
 })
 @TestPropertySource(properties = {
@@ -32,6 +35,9 @@ import org.springframework.test.context.TestPropertySource;
     "eureka.client.enabled=false"
 })
 class NotificationServiceSmokeTest {
+
+    @MockBean
+    private EmailPort emailPort;
 
     @Autowired
     private NotificationJpaRepository jpaRepository;
@@ -43,11 +49,11 @@ class NotificationServiceSmokeTest {
     private NotificationApplicationService applicationService;
 
     /**
-     * Validates the persistence layer is correctly wired and Flyway migrations ran.
+     * Validates the persistence layer is correctly wired and Flyway migrations ran (V1–V4).
      */
     @Test
     void smokeTest_dbContextLoadsAndMigrationsApplied() {
-        // Flyway migrations V1 and V2 must have created the tables — verify by counting (not throwing)
+        // Flyway migrations V1–V4 must have created the tables — verify by counting (not throwing)
         long count = jpaRepository.count();
         assertThat(count).isGreaterThanOrEqualTo(0);
     }

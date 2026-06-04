@@ -87,6 +87,12 @@
             <artifactId>spring-boot-starter-websocket</artifactId>
         </dependency>
 
+        <!-- Thymeleaf (HTML email templates) -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-thymeleaf</artifactId>
+        </dependency>
+
         <!-- Mail (JavaMailSender for email adapter) -->
         <dependency>
             <groupId>org.springframework.boot</groupId>

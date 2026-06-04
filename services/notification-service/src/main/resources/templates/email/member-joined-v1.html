@@ -1,0 +1,17 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <title>Member Joined Team</title>
+</head>
+<body>
+    <h1>Welcome to the Team</h1>
+    <p>Hi <span th:text="${memberName}">Member</span>,</p>
+    <p>
+        You have joined team <strong th:text="${teamName}">Team Name</strong>
+        working on project <strong th:text="${projectName}">Project Name</strong>.
+    </p>
+    <hr />
+    <p>This is an automated notification from your project management system.</p>
+</body>
+</html>
