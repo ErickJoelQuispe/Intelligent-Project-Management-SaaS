@@ -2,6 +2,7 @@ import { TestBed, fakeAsync, tick } from '@angular/core/testing';
 import { provideHttpClient } from '@angular/common/http';
 import { provideHttpClientTesting } from '@angular/common/http/testing';
 import { of, throwError } from 'rxjs';
+import { OAuthService } from 'angular-oauth2-oidc';
 import { NotificationStore } from './notification.store';
 import { NotificationService } from '../services/notification.service';
 import { Notification } from '../models/notification.model';
@@ -25,6 +26,8 @@ describe('NotificationStore', () => {
     markAllAsRead: ReturnType<typeof vi.fn>;
   };
 
+  let oauthMock: { getAccessToken: ReturnType<typeof vi.fn> };
+
   beforeEach(() => {
     serviceMock = {
       getNotifications: vi.fn(),
@@ -33,12 +36,17 @@ describe('NotificationStore', () => {
       markAllAsRead: vi.fn(),
     };
 
+    oauthMock = {
+      getAccessToken: vi.fn().mockReturnValue('mock-token'),
+    };
+
     TestBed.configureTestingModule({
       providers: [
         provideHttpClient(),
         provideHttpClientTesting(),
         NotificationStore,
         { provide: NotificationService, useValue: serviceMock },
+        { provide: OAuthService, useValue: oauthMock },
       ],
     });
 

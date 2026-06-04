@@ -12,5 +12,6 @@ public record TaskCreated(
         UUID projectId,
         String title,
         UUID tenantId,
+        UUID actorId,
         Instant occurredAt) {
 }

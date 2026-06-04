@@ -1,8 +1,9 @@
 import { inject } from '@angular/core';
 import { signalStore, withState, withMethods, patchState } from '@ngrx/signals';
 import { rxMethod } from '@ngrx/signals/rxjs-interop';
-import { pipe, switchMap, tap, interval, startWith, exhaustMap } from 'rxjs';
+import { pipe, switchMap } from 'rxjs';
 import { tapResponse } from '@ngrx/operators';
+import { OAuthService } from 'angular-oauth2-oidc';
 import { Notification } from '../models/notification.model';
 import { NotificationService } from '../services/notification.service';
 
@@ -20,7 +21,10 @@ const initialState: NotificationState = {
   error: null,
 };
 
-const POLL_INTERVAL_MS = 30_000;
+/** SSE heartbeat timeout — if no event arrives within this window, fall back to poll. */
+const SSE_HEARTBEAT_MS = 60_000;
+/** Fallback polling interval when SSE is disconnected. */
+const FALLBACK_POLL_MS = 60_000;
 
 export const NotificationStore = signalStore(
   { providedIn: 'root' },
@@ -97,31 +101,141 @@ export const NotificationStore = signalStore(
         }),
       ),
     ),
-
-    pollNotifications: rxMethod<void>(
-      pipe(
-        exhaustMap(() =>
-          interval(POLL_INTERVAL_MS).pipe(
-            startWith(0),
-            tap(() => {
-              patchState(store, { loading: true, error: null });
-              service.getNotifications().pipe(
-                tapResponse({
-                  next: (notifications) => {
-                    const unreadCount = notifications.filter((n) => !n.read).length;
-                    patchState(store, { notifications, unreadCount, loading: false });
-                  },
-                  error: (err: unknown) =>
-                    patchState(store, {
-                      loading: false,
-                      error: err instanceof Error ? err.message : 'Poll failed',
-                    }),
-                }),
-              ).subscribe();
-            }),
-          ),
-        ),
-      ),
-    ),
   })),
+  withMethods((store, service = inject(NotificationService), oauthService = inject(OAuthService)) => {
+    let abortController: AbortController | null = null;
+    let heartbeatTimer: ReturnType<typeof setTimeout> | null = null;
+    let fallbackTimer: ReturnType<typeof setInterval> | null = null;
+
+    /** Reloads notifications — shared by SSE event handler and fallback poll. */
+    function reload() {
+      service.getNotifications().subscribe({
+        next: (notifications) => {
+          const unreadCount = notifications.filter((n) => !n.read).length;
+          patchState(store, { notifications, unreadCount, loading: false });
+        },
+        error: (err: unknown) =>
+          patchState(store, {
+            error: err instanceof Error ? err.message : 'Reload failed',
+          }),
+      });
+    }
+
+    /** Resets the heartbeat timer that detects a dead SSE connection. */
+    function resetHeartbeat() {
+      if (heartbeatTimer) clearTimeout(heartbeatTimer);
+      heartbeatTimer = setTimeout(() => {
+        console.warn('[NotificationStore] SSE heartbeat expired — reconnecting');
+        ctx.disconnectSse();
+        ctx.startFallbackPoll();
+      }, SSE_HEARTBEAT_MS);
+    }
+
+    /** Simple SSE frame parser. The wire format is:
+     *    event: <type>\n
+     *    data: <json>\n
+     *    \n
+     */
+    function onSseChunk(chunk: string) {
+      // Look for event type in the frame
+      if (chunk.includes('event: notification') || chunk.includes('"notification"')) {
+        reload();
+      }
+      // Any data resets the heartbeat
+      resetHeartbeat();
+    }
+
+    const ctx = {
+      /** Opens an SSE connection using fetch (needed for the Authorization header). */
+      connectSse(): void {
+        // Clean any previous connection
+        ctx.disconnectSse();
+
+        const token = oauthService.getAccessToken();
+        if (!token) {
+          ctx.startFallbackPoll();
+          return;
+        }
+
+        // Initial load so the UI is not empty while SSE connects
+        patchState(store, { loading: true, error: null });
+        reload();
+
+        abortController = new AbortController();
+        resetHeartbeat();
+
+        fetch('/api/v1/notifications/stream', {
+          headers: { Authorization: `Bearer ${token}` },
+          signal: abortController.signal,
+        })
+          .then((response) => {
+            if (!response.body) {
+              ctx.startFallbackPoll();
+              return;
+            }
+
+            const reader = response.body.getReader();
+            const decoder = new TextDecoder();
+            let buffer = '';
+
+            function read() {
+              reader
+                .read()
+                .then(({ done, value }) => {
+                  if (done) {
+                    // Stream ended — fall back to polling
+                    ctx.startFallbackPoll();
+                    return;
+                  }
+
+                  buffer += decoder.decode(value, { stream: true });
+
+                  // SSE frames are separated by \n\n
+                  const frames = buffer.split('\n\n');
+                  // Keep the last (potentially incomplete) fragment in the buffer
+                  buffer = frames.pop() || '';
+
+                  for (const frame of frames) {
+                    onSseChunk(frame);
+                  }
+
+                  read();
+                })
+                .catch(() => {
+                  // Aborted or network error — silent
+                });
+            }
+
+            read();
+          })
+          .catch(() => {
+            ctx.startFallbackPoll();
+          });
+      },
+
+      /** Closes the SSE connection and cancels all timers. */
+      disconnectSse(): void {
+        if (abortController) {
+          abortController.abort();
+          abortController = null;
+        }
+        if (heartbeatTimer) {
+          clearTimeout(heartbeatTimer);
+          heartbeatTimer = null;
+        }
+        if (fallbackTimer) {
+          clearInterval(fallbackTimer);
+          fallbackTimer = null;
+        }
+      },
+
+      /** Starts a fallback polling interval (used when SSE is unavailable). */
+      startFallbackPoll(): void {
+        if (fallbackTimer) return;
+        fallbackTimer = setInterval(() => reload(), FALLBACK_POLL_MS);
+      },
+    };
+
+    return ctx;
+  }),
 );

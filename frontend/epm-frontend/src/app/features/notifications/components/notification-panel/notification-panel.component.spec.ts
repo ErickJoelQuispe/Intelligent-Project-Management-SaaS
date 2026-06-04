@@ -29,7 +29,6 @@ function createStoreMock(notifications: Notification[] = []) {
     loadNotifications: vi.fn(),
     markAsRead: vi.fn(),
     markAllAsRead: vi.fn(),
-    pollNotifications: vi.fn(),
   };
 }
 

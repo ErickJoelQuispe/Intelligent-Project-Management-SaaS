@@ -97,6 +97,9 @@ public class OutboxDomainEventPublisher implements DomainEventPublisher {
             payload.put("taskId", event.taskId().toString());
             payload.put("projectId", event.projectId().toString());
             payload.put("title", event.title());
+            if (event.actorId() != null) {
+                payload.put("actorId", event.actorId().toString());
+            }
             envelope.set("payload", payload);
             return objectMapper.writeValueAsString(envelope);
         } catch (JsonProcessingException e) {

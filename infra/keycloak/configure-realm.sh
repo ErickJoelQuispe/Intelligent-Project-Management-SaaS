@@ -6,8 +6,7 @@
 # Script is IDEMPOTENT — safe to run multiple times.
 #
 # Usage:
-#   docker exec epm-keycloak bash /configure-realm.sh
-#   OR run from host with KEYCLOAK_URL set to the container URL.
+#   docker exec epm-keycloak bash /opt/keycloak/data/import/configure-realm.sh
 # =============================================================================
 set -e
 
@@ -15,13 +14,14 @@ KEYCLOAK_URL="${KEYCLOAK_URL:-http://localhost:8080}"
 REALM="epm"
 ADMIN_USER="${KEYCLOAK_ADMIN:-admin}"
 ADMIN_PASS="${KEYCLOAK_ADMIN_PASSWORD:-admin}"
+KCADM="/opt/keycloak/bin/kcadm.sh"
 
 echo "Waiting for Keycloak at $KEYCLOAK_URL..."
 
 # ---------------------------------------------------------------------------
 # 1. Authenticate via kcadm.sh
 # ---------------------------------------------------------------------------
-/opt/keycloak/bin/kcadm.sh config credentials \
+$KCADM config credentials \
   --server "$KEYCLOAK_URL" \
   --realm master \
   --user "$ADMIN_USER" \
@@ -31,21 +31,25 @@ echo "Waiting for Keycloak at $KEYCLOAK_URL..."
 # 2. tenant_id claim mapper (idempotent)
 # ---------------------------------------------------------------------------
 
-# Get epm-frontend client ID
-CLIENT_UUID=$(/opt/keycloak/bin/kcadm.sh get clients -r "$REALM" --fields id,clientId 2>/dev/null \
-  | python3 -c "import sys,json; clients=json.load(sys.stdin); print(next(c['id'] for c in clients if c['clientId']=='epm-frontend'))")
+# Get epm-frontend client UUID using grep+sed (no python3 in Keycloak image)
+CLIENT_UUID=$($KCADM get clients -r "$REALM" --fields id,clientId 2>/dev/null \
+  | grep -B1 '"clientId" : "epm-frontend"' \
+  | grep '"id"' \
+  | sed 's/.*"id" : "\([^"]*\)".*/\1/')
 
 echo "epm-frontend client UUID: $CLIENT_UUID"
 
 # Check if tenant_id mapper already exists
-EXISTING=$(/opt/keycloak/bin/kcadm.sh get "clients/$CLIENT_UUID/protocol-mappers/models" -r "$REALM" 2>/dev/null \
-  | python3 -c "import sys,json; mappers=json.load(sys.stdin); print(next((m['id'] for m in mappers if m['name']=='tenant_id'), ''))")
+EXISTING=$($KCADM get "clients/$CLIENT_UUID/protocol-mappers/models" -r "$REALM" 2>/dev/null \
+  | grep -B1 '"name" : "tenant_id"' \
+  | grep '"id"' \
+  | sed 's/.*"id" : "\([^"]*\)".*/\1/')
 
 if [ -n "$EXISTING" ]; then
   echo "tenant_id mapper already exists ($EXISTING) — skipping"
 else
   echo "Adding tenant_id hardcoded claim mapper..."
-  /opt/keycloak/bin/kcadm.sh create "clients/$CLIENT_UUID/protocol-mappers/models" -r "$REALM" -f - <<'JSON'
+  $KCADM create "clients/$CLIENT_UUID/protocol-mappers/models" -r "$REALM" -f - <<'JSON'
 {
   "name": "tenant_id",
   "protocol": "openid-connect",
@@ -72,41 +76,39 @@ create_user_if_not_exists() {
   local PASSWORD="$2"
   local ROLE="$3"
 
-  # Check if user already exists (kcadm returns a list; empty = not found)
-  EXISTING_USER=$(/opt/keycloak/bin/kcadm.sh get users -r "$REALM" \
+  # Check if user already exists
+  EXISTING_USER=$($KCADM get users -r "$REALM" \
     -q "username=$USERNAME" --fields id,username 2>/dev/null \
-    | python3 -c "import sys,json; users=json.load(sys.stdin); print(next((u['id'] for u in users if u['username']=='$USERNAME'), ''))")
+    | grep '"id"' \
+    | sed 's/.*"id" : "\([^"]*\)".*/\1/')
 
   if [ -n "$EXISTING_USER" ]; then
-    echo "User '$USERNAME' already exists ($EXISTING_USER) — skipping creation"
+    echo "User '$USERNAME' already exists ($EXISTING_USER) — updating password"
   else
     echo "Creating user '$USERNAME'..."
-    /opt/keycloak/bin/kcadm.sh create users -r "$REALM" \
+    $KCADM create users -r "$REALM" \
       -s username="$USERNAME" \
       -s email="$USERNAME" \
       -s enabled=true \
       -s emailVerified=true
-
-    # Set password (temporary=false → user does not need to reset on first login)
-    USER_ID=$(/opt/keycloak/bin/kcadm.sh get users -r "$REALM" \
-      -q "username=$USERNAME" --fields id 2>/dev/null \
-      | python3 -c "import sys,json; users=json.load(sys.stdin); print(users[0]['id'])")
-
-    /opt/keycloak/bin/kcadm.sh set-password -r "$REALM" \
-      --username "$USERNAME" \
-      --new-password "$PASSWORD" \
-      --temporary false
-
-    echo "User '$USERNAME' created (id=$USER_ID)"
+    echo "User '$USERNAME' created OK"
   fi
 
-  # Assign realm role (idempotent — kcadm add-roles is safe if role already assigned)
+  # Always set password (ensures it's correct even for re-runs)
+  echo "Setting password for '$USERNAME'..."
+  $KCADM set-password -r "$REALM" \
+    --username "$USERNAME" \
+    --new-password "$PASSWORD"
+  echo "Password set OK for '$USERNAME'"
+
+  # Assign realm role (idempotent)
   if [ -n "$ROLE" ]; then
     echo "Assigning role '$ROLE' to user '$USERNAME'..."
-    /opt/keycloak/bin/kcadm.sh add-roles -r "$REALM" \
+    $KCADM add-roles -r "$REALM" \
       --uusername "$USERNAME" \
-      --rolename "$ROLE" 2>/dev/null && echo "Role '$ROLE' assigned to '$USERNAME'" \
-      || echo "Role '$ROLE' already assigned or not found for '$USERNAME' — skipping"
+      --rolename "$ROLE" 2>/dev/null \
+      && echo "Role '$ROLE' assigned to '$USERNAME'" \
+      || echo "Role '$ROLE' already assigned or not found — skipping"
   fi
 }
 
@@ -114,10 +116,7 @@ create_user_if_not_exists() {
 # 4. Test user creation (idempotent)
 # ---------------------------------------------------------------------------
 
-# admin@epm.com — gets ROLE_ADMIN
 create_user_if_not_exists "admin@epm.com" "Admin1234!" "ROLE_ADMIN"
-
-# user@epm.com — gets ROLE_USER
 create_user_if_not_exists "user@epm.com" "User1234!" "ROLE_USER"
 
 echo "Realm configuration complete."

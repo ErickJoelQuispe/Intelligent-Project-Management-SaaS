@@ -75,6 +75,7 @@ public class Task {
                 command.projectId(),
                 command.title(),
                 command.tenantId(),
+                command.callerId(),
                 now));
         return task;
     }
@@ -113,6 +114,7 @@ public class Task {
                 command.projectId(),
                 command.title(),
                 command.tenantId(),
+                command.callerId(),
                 now));
         return task;
     }

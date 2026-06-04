@@ -1,5 +1,7 @@
 package com.epm.task.application.usecase;
 
+import java.util.List;
+
 import com.epm.task.domain.exception.MaxDepthExceededException;
 import com.epm.task.domain.exception.TaskNotFoundException;
 import com.epm.task.domain.model.ActivityLog;
@@ -54,8 +56,9 @@ public class CreateSubtaskUseCaseImpl implements CreateSubtaskUseCase {
                 command.assigneeId());
 
         Task subtask = Task.createSubtask(createCommand, command.parentTaskId());
+        List<Object> events = subtask.pullDomainEvents();
         Task saved = taskRepository.save(subtask);
-        eventPublisher.publish(saved.pullDomainEvents());
+        eventPublisher.publish(events);
 
         ActivityLog log = ActivityLog.create(
                 saved.getId(), command.tenantId(), "CREATED", command.callerId());

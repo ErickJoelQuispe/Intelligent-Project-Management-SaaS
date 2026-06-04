@@ -4,7 +4,9 @@ import java.time.Instant;
 import java.util.UUID;
 
 import com.epm.notification.application.usecase.NotificationApplicationService;
+import com.epm.notification.domain.model.Notification;
 import com.epm.notification.domain.model.NotificationType;
+import com.epm.notification.infrastructure.adapter.in.sse.SseEmitterManager;
 import com.epm.notification.infrastructure.adapter.out.persistence.ProcessedEventJpaEntity;
 import com.epm.notification.infrastructure.adapter.out.persistence.ProcessedEventJpaRepository;
 import com.fasterxml.jackson.databind.JsonNode;
@@ -30,13 +32,16 @@ public class TaskEventConsumer {
 
     private final NotificationApplicationService notificationService;
     private final ProcessedEventJpaRepository processedEventRepo;
+    private final SseEmitterManager sseEmitterManager;
     private final ObjectMapper objectMapper;
 
     public TaskEventConsumer(NotificationApplicationService notificationService,
             ProcessedEventJpaRepository processedEventRepo,
+            SseEmitterManager sseEmitterManager,
             ObjectMapper objectMapper) {
         this.notificationService = notificationService;
         this.processedEventRepo = processedEventRepo;
+        this.sseEmitterManager = sseEmitterManager;
         this.objectMapper = objectMapper;
     }
 
@@ -74,9 +79,10 @@ public class TaskEventConsumer {
             case "TaskAssigned" -> {
                 UUID assigneeId = uuidOrNull(payload, "assigneeId");
                 if (assigneeId != null) {
-                    notificationService.create(tenantId, assigneeId,
+                    Notification notification = notificationService.create(tenantId, assigneeId,
                             NotificationType.TASK_ASSIGNED, taskId,
                             "Task was assigned to you");
+                    sseEmitterManager.emitNotification(notification);
                 }
             }
             case "TaskStatusChanged" -> {
@@ -84,26 +90,28 @@ public class TaskEventConsumer {
                 if (assigneeId != null) {
                     String newStatus = payload.has("newStatus")
                             ? payload.get("newStatus").asText() : "unknown";
-                    notificationService.create(tenantId, assigneeId,
+                    Notification notification = notificationService.create(tenantId, assigneeId,
                             NotificationType.TASK_STATUS_CHANGED, taskId,
                             "Task status changed to " + newStatus);
+                    sseEmitterManager.emitNotification(notification);
                 }
             }
             case "TaskDeleted" -> {
                 UUID assigneeId = uuidOrNull(payload, "assigneeId");
                 if (assigneeId != null) {
-                    notificationService.create(tenantId, assigneeId,
+                    Notification notification = notificationService.create(tenantId, assigneeId,
                             NotificationType.TASK_DELETED, taskId,
                             "A task you were assigned to was deleted");
+                    sseEmitterManager.emitNotification(notification);
                 }
             }
             case "TaskCreated" -> {
-                // TaskCreated: store project-level notification using actorId as creator
                 UUID actorId = uuidOrNull(payload, "actorId");
                 if (actorId != null) {
-                    notificationService.create(tenantId, actorId,
+                    Notification notification = notificationService.create(tenantId, actorId,
                             NotificationType.TASK_CREATED, taskId,
                             "Task '" + titleOrDefault(payload) + "' was created");
+                    sseEmitterManager.emitNotification(notification);
                 }
             }
             default -> log.debug("Ignoring unknown task event type: {}", eventType);

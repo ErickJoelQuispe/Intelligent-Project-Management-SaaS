@@ -9,6 +9,7 @@ describe('App', () => {
     const oauthServiceMock = {
       logOut: vi.fn(),
       hasValidAccessToken: vi.fn().mockReturnValue(true),
+      getAccessToken: vi.fn().mockReturnValue('mock-token'),
     };
 
     await TestBed.configureTestingModule({

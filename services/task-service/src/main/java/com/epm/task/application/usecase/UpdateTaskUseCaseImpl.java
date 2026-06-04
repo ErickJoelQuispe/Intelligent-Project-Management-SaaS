@@ -1,5 +1,7 @@
 package com.epm.task.application.usecase;
 
+import java.util.List;
+
 import com.epm.task.domain.exception.TaskNotFoundException;
 import com.epm.task.domain.model.ActivityLog;
 import com.epm.task.domain.model.Task;
@@ -35,8 +37,9 @@ public class UpdateTaskUseCaseImpl implements UpdateTaskUseCase {
                 .orElseThrow(() -> new TaskNotFoundException(command.taskId(), command.tenantId()));
 
         task.update(command.title(), command.description(), command.priority(), command.deadline());
+        List<Object> events = task.pullDomainEvents();
         Task saved = taskRepository.save(task);
-        eventPublisher.publish(saved.pullDomainEvents());
+        eventPublisher.publish(events);
 
         ActivityLog log = ActivityLog.create(
                 saved.getId(), command.tenantId(), "UPDATED", command.callerId());

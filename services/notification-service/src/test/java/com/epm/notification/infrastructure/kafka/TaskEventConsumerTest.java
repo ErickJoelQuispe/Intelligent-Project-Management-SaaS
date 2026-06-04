@@ -12,6 +12,7 @@ import com.epm.notification.application.usecase.NotificationApplicationService;
 import com.epm.notification.domain.model.Notification;
 import com.epm.notification.domain.model.NotificationType;
 import com.epm.notification.infrastructure.adapter.in.messaging.TaskEventConsumer;
+import com.epm.notification.infrastructure.adapter.in.sse.SseEmitterManager;
 import com.epm.notification.infrastructure.adapter.out.persistence.ProcessedEventJpaEntity;
 import com.epm.notification.infrastructure.adapter.out.persistence.ProcessedEventJpaRepository;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -35,6 +36,9 @@ class TaskEventConsumerTest {
     @Mock
     private ProcessedEventJpaRepository processedEventRepo;
 
+    @Mock
+    private SseEmitterManager sseEmitterManager;
+
     private TaskEventConsumer consumer;
     private ObjectMapper objectMapper;
 
@@ -42,7 +46,7 @@ class TaskEventConsumerTest {
     void setUp() {
         objectMapper = new ObjectMapper();
         objectMapper.findAndRegisterModules();
-        consumer = new TaskEventConsumer(notificationService, processedEventRepo, objectMapper);
+        consumer = new TaskEventConsumer(notificationService, processedEventRepo, sseEmitterManager, objectMapper);
     }
 
     // ── T-C-05: TASK_ASSIGNED dispatches notification to assignee ──────────
