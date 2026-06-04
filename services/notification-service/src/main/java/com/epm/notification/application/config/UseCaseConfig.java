@@ -2,8 +2,12 @@ package com.epm.notification.application.config;
 
 import com.epm.notification.application.usecase.CacheUserEmailService;
 import com.epm.notification.application.usecase.NotificationApplicationService;
+import com.epm.notification.application.usecase.NotificationPreferencesService;
 import com.epm.notification.domain.port.in.CacheUserEmailUseCase;
+import com.epm.notification.domain.port.in.GetPreferencesUseCase;
+import com.epm.notification.domain.port.in.UpdatePreferenceUseCase;
 import com.epm.notification.domain.port.out.EmailPort;
+import com.epm.notification.domain.port.out.NotificationPreferenceRepository;
 import com.epm.notification.domain.port.out.NotificationPushPort;
 import com.epm.notification.domain.port.out.NotificationRepository;
 import com.epm.notification.domain.port.out.UserEmailCacheRepository;
@@ -25,9 +29,11 @@ public class UseCaseConfig {
     NotificationApplicationService notificationApplicationService(
             NotificationRepository notificationRepository,
             EmailPort emailPort,
-            UserEmailCacheRepository userEmailCacheRepository) {
+            UserEmailCacheRepository userEmailCacheRepository,
+            NotificationPreferenceRepository notificationPreferenceRepository) {
         return new NotificationApplicationService(
-                notificationRepository, emailPort, userEmailCacheRepository);
+                notificationRepository, emailPort, userEmailCacheRepository,
+                notificationPreferenceRepository);
     }
 
     @Bean
@@ -38,5 +44,15 @@ public class UseCaseConfig {
     @Bean
     CacheUserEmailUseCase cacheUserEmailUseCase(UserEmailCacheRepository userEmailCacheRepository) {
         return new CacheUserEmailService(userEmailCacheRepository);
+    }
+
+    @Bean
+    GetPreferencesUseCase getPreferencesUseCase(NotificationPreferenceRepository preferenceRepository) {
+        return new NotificationPreferencesService(preferenceRepository);
+    }
+
+    @Bean
+    UpdatePreferenceUseCase updatePreferenceUseCase(NotificationPreferenceRepository preferenceRepository) {
+        return new NotificationPreferencesService(preferenceRepository);
     }
 }

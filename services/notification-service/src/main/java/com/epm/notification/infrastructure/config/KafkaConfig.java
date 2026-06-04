@@ -3,12 +3,15 @@ package com.epm.notification.infrastructure.config;
 import java.util.HashMap;
 import java.util.Map;
 
+import org.apache.kafka.clients.consumer.ConsumerConfig;
 import org.apache.kafka.clients.producer.ProducerConfig;
 import org.apache.kafka.common.TopicPartition;
 import org.apache.kafka.common.serialization.StringSerializer;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.kafka.config.ConcurrentKafkaListenerContainerFactory;
+import org.springframework.kafka.core.ConsumerFactory;
 import org.springframework.kafka.core.DefaultKafkaProducerFactory;
 import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.kafka.core.ProducerFactory;
@@ -21,6 +24,10 @@ import org.springframework.util.backoff.FixedBackOff;
  *
  * <p>Uses same DLQ pattern as task-service: DefaultErrorHandler +
  * DeadLetterPublishingRecoverer → task.events.DLT, 3 retries, 500ms backoff.
+ *
+ * <p>Also configures a dedicated container factory for the {@code ai.events} listener
+ * that sets {@code missingTopicsFatal=false} so the service starts even when
+ * the topic doesn't yet exist.
  */
 @Configuration
 public class KafkaConfig {
@@ -50,5 +57,19 @@ public class KafkaConfig {
                 kafkaTemplate,
                 (record, exception) -> new TopicPartition(record.topic() + ".DLT", 0));
         return new DefaultErrorHandler(recoverer, new FixedBackOff(500L, 3L));
+    }
+
+    /**
+     * Container factory for the ai.events consumer.
+     * Sets missingTopicsFatal=false so the service starts even when ai.events does not exist.
+     */
+    @Bean
+    ConcurrentKafkaListenerContainerFactory<String, String> aiEventsContainerFactory(
+            ConsumerFactory<String, String> consumerFactory) {
+        ConcurrentKafkaListenerContainerFactory<String, String> factory =
+                new ConcurrentKafkaListenerContainerFactory<>();
+        factory.setConsumerFactory(consumerFactory);
+        factory.getContainerProperties().setMissingTopicsFatal(false);
+        return factory;
     }
 }
