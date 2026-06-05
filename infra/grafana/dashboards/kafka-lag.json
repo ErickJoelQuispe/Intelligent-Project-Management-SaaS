@@ -1,0 +1,129 @@
+{
+  "uid": "epm-kafka-lag",
+  "title": "Kafka Consumer Lag",
+  "description": "Kafka consumer fetch manager records lag per group and topic",
+  "tags": ["kafka", "consumer-lag", "observability"],
+  "schemaVersion": 38,
+  "version": 1,
+  "refresh": "30s",
+  "time": {
+    "from": "now-1h",
+    "to": "now"
+  },
+  "templating": {
+    "list": [
+      {
+        "name": "datasource",
+        "type": "datasource",
+        "pluginId": "prometheus",
+        "label": "Datasource",
+        "hide": 0,
+        "refresh": 1
+      },
+      {
+        "name": "group",
+        "type": "query",
+        "datasource": "${datasource}",
+        "query": "label_values(kafka_consumer_fetch_manager_records_lag_max, spring_id)",
+        "label": "Consumer Group",
+        "hide": 0,
+        "refresh": 2,
+        "sort": 1,
+        "multi": false,
+        "includeAll": true,
+        "allValue": ".*"
+      },
+      {
+        "name": "topic",
+        "type": "query",
+        "datasource": "${datasource}",
+        "query": "label_values(kafka_consumer_fetch_manager_records_lag_max, topic)",
+        "label": "Topic",
+        "hide": 0,
+        "refresh": 2,
+        "sort": 1,
+        "multi": false,
+        "includeAll": true,
+        "allValue": ".*"
+      }
+    ]
+  },
+  "panels": [
+    {
+      "id": 1,
+      "title": "Consumer Lag (Max) per Topic",
+      "type": "timeseries",
+      "gridPos": { "x": 0, "y": 0, "w": 24, "h": 10 },
+      "datasource": "${datasource}",
+      "targets": [
+        {
+          "expr": "kafka_consumer_fetch_manager_records_lag_max{spring_id=~\"$group\", topic=~\"$topic\"}",
+          "legendFormat": "{{spring_id}} / {{topic}} / partition {{partition}}",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "min": 0,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "green", "value": null },
+              { "color": "yellow", "value": 100 },
+              { "color": "red", "value": 1000 }
+            ]
+          },
+          "custom": { "lineWidth": 2 }
+        }
+      }
+    },
+    {
+      "id": 2,
+      "title": "Consumer Lag Sum by Group",
+      "type": "stat",
+      "gridPos": { "x": 0, "y": 10, "w": 12, "h": 6 },
+      "datasource": "${datasource}",
+      "targets": [
+        {
+          "expr": "sum(kafka_consumer_fetch_manager_records_lag_max{spring_id=~\"$group\", topic=~\"$topic\"}) by (spring_id)",
+          "legendFormat": "{{spring_id}}",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "green", "value": null },
+              { "color": "yellow", "value": 100 },
+              { "color": "red", "value": 1000 }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "id": 3,
+      "title": "Records Consumed Rate",
+      "type": "timeseries",
+      "gridPos": { "x": 12, "y": 10, "w": 12, "h": 6 },
+      "datasource": "${datasource}",
+      "targets": [
+        {
+          "expr": "rate(kafka_consumer_fetch_manager_records_consumed_total{spring_id=~\"$group\", topic=~\"$topic\"}[5m])",
+          "legendFormat": "{{spring_id}} / {{topic}}",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "custom": { "lineWidth": 2 }
+        }
+      }
+    }
+  ]
+}
