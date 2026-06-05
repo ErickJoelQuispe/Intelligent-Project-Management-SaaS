@@ -120,8 +120,6 @@ class GenerateTasksUseCaseImplTest {
 
     @Test
     void execute_bypassCache_alwaysCallsModelEvenWhenCacheHasData() {
-        AiResponse cached = new AiResponse(TASKS_JSON, 100, 200, "deepseek-chat", true);
-        when(cachePort.get(anyString())).thenReturn(Optional.of(cached));
         when(contextPort.fetchProjectContext("proj-1", "tenant-1")).thenReturn(SAMPLE_CONTEXT);
         when(modelPort.generate(any(AiRequest.class))).thenReturn(MODEL_RESPONSE);
 
@@ -129,6 +127,7 @@ class GenerateTasksUseCaseImplTest {
 
         assertThat(tasks).hasSize(2);
         verify(modelPort).generate(any(AiRequest.class));
+        verify(cachePort, never()).get(anyString());
     }
 
     // --- Model failure ---

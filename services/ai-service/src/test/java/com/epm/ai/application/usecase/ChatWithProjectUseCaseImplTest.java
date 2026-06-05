@@ -3,6 +3,7 @@ package com.epm.ai.application.usecase;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -56,7 +57,7 @@ class ChatWithProjectUseCaseImplTest {
         assertThat(response.inputTokens()).isEqualTo(50);
         assertThat(response.outputTokens()).isEqualTo(80);
         verify(modelPort).chat(any(AiRequest.class));
-        verify(tokenTracker).trackTokens(50, 80, "deepseek-chat", any(Double.class));
+        verify(tokenTracker).trackTokens(eq(50), eq(80), eq("deepseek-chat"), any(Double.class));
     }
 
     // --- Project context is injected into the request prompt ---
