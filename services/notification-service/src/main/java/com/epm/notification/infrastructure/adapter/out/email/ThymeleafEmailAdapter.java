@@ -4,6 +4,7 @@ import java.nio.charset.StandardCharsets;
 import java.util.Map;
 
 import com.epm.notification.domain.port.out.EmailPort;
+import io.github.resilience4j.circuitbreaker.annotation.CircuitBreaker;
 import jakarta.mail.internet.MimeMessage;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -40,6 +41,7 @@ public class ThymeleafEmailAdapter implements EmailPort {
     }
 
     @Override
+    @CircuitBreaker(name = "emailAdapter", fallbackMethod = "sendFallback")
     public void send(String to, String subject, String templateName, Map<String, Object> variables) {
         try {
             Context context = new Context();
@@ -59,5 +61,17 @@ public class ThymeleafEmailAdapter implements EmailPort {
             log.error("Failed to send email to {} via template {}: {}", to, templateName, e.getMessage(), e);
             // Best-effort: do NOT rethrow — email failure must not roll back notification persistence
         }
+    }
+
+    /**
+     * Fallback for {@link #send} — invoked when the emailAdapter circuit breaker is OPEN.
+     *
+     * <p>Email is best-effort: log the circuit-open event and return without rethrowing,
+     * consistent with the fire-and-forget contract of this adapter.
+     */
+    public void sendFallback(String to, String subject, String templateName,
+                             Map<String, Object> variables, Throwable ex) {
+        log.warn("Email circuit breaker OPEN — skipping email to {}: {}", to, ex.getMessage());
+        // Best-effort: do NOT rethrow — email failure must not roll back notification persistence
     }
 }
