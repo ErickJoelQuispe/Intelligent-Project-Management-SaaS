@@ -115,3 +115,17 @@ spring:
               predicates:
                 - Path=/ws/notifications/**
               filters: []
+            # order: 100 — /api/v1/ai/** is an independent path (no sub-path conflict
+            #   with existing routes). Higher order value keeps it evaluated last,
+            #   but since there is no overlap with other routes it has no practical
+            #   effect. Using 100 as a positive sentinel to distinguish it visually.
+            - id: ai-service
+              uri: lb://ai-service
+              order: 100
+              predicates:
+                - Path=/api/v1/ai/**
+              filters:
+                - name: CircuitBreaker
+                  args:
+                    name: ai-service
+                    fallbackUri: forward:/fallback/ai

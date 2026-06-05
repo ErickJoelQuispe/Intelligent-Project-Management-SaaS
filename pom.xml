@@ -35,6 +35,13 @@
                 <scope>import</scope>
             </dependency>
             <dependency>
+                <groupId>org.springframework.ai</groupId>
+                <artifactId>spring-ai-bom</artifactId>
+                <version>1.0.3</version>
+                <type>pom</type>
+                <scope>import</scope>
+            </dependency>
+            <dependency>
                 <groupId>com.github.f4b6a3</groupId>
                 <artifactId>uuid-creator</artifactId>
                 <version>6.0.0</version>
@@ -58,6 +65,7 @@
         <module>services/project-service</module>
         <module>services/task-service</module>
         <module>services/notification-service</module>
+        <module>services/ai-service</module>
     </modules>
 
     <profiles>
