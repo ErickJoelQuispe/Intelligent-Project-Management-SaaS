@@ -105,6 +105,18 @@
             <artifactId>logstash-logback-encoder</artifactId>
         </dependency>
 
+        <!-- Resilience4j (Circuit Breaker via Spring Cloud) -->
+        <dependency>
+            <groupId>org.springframework.cloud</groupId>
+            <artifactId>spring-cloud-starter-circuitbreaker-resilience4j</artifactId>
+        </dependency>
+
+        <!-- AOP — required for Resilience4j annotations (@CircuitBreaker, @Retry) -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-aop</artifactId>
+        </dependency>
+
         <!-- UUID v7 -->
         <dependency>
             <groupId>com.github.f4b6a3</groupId>

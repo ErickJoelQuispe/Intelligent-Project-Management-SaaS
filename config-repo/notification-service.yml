@@ -48,7 +48,7 @@ eureka:
 
 notifications:
   email:
-    enabled: false
+    enabled: true
 
 management:
   endpoints:
@@ -58,3 +58,9 @@ management:
   endpoint:
     health:
       show-details: always
+
+resilience4j:
+  circuitbreaker:
+    instances:
+      emailAdapter:
+        baseConfig: default

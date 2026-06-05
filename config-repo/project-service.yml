@@ -40,3 +40,9 @@ management:
     web:
       exposure:
         include: health,info,metrics
+
+resilience4j:
+  circuitbreaker:
+    instances:
+      projectService:
+        baseConfig: default
