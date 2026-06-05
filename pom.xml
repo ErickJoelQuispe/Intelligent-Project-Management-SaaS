@@ -39,6 +39,12 @@
                 <artifactId>uuid-creator</artifactId>
                 <version>6.0.0</version>
             </dependency>
+            <!-- logstash-logback-encoder is NOT in Spring Boot BOM — explicit version required -->
+            <dependency>
+                <groupId>net.logstash.logback</groupId>
+                <artifactId>logstash-logback-encoder</artifactId>
+                <version>8.0</version>
+            </dependency>
         </dependencies>
     </dependencyManagement>
 
