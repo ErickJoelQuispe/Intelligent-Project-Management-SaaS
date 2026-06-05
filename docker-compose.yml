@@ -387,6 +387,51 @@ services:
     restart: unless-stopped
 
   # ─────────────────────────────────────────────────────────────────
+  # ai-service — AI-assisted task generation and summarization
+  # Uses DeepSeek via Spring AI OpenAI-compatible adapter.
+  # Requires: discovery-service, config-service, keycloak, postgres,
+  #           kafka, redis
+  # ─────────────────────────────────────────────────────────────────
+  ai-service:
+    build:
+      context: .
+      dockerfile: services/ai-service/Dockerfile
+    container_name: epm-ai-service
+    ports:
+      - "8086:8086"
+    environment:
+      SPRING_CONFIG_IMPORT: "optional:configserver:http://epm-config:8888"
+      SPRING_DATASOURCE_URL: "jdbc:postgresql://epm-postgres:5432/ai_db"
+      SPRING_DATASOURCE_USERNAME: "epm_admin"
+      SPRING_DATASOURCE_PASSWORD: "${POSTGRES_PASSWORD:-changeme}"
+      SPRING_SECURITY_OAUTH2_RESOURCESERVER_JWT_JWKS_URI: "http://epm-keycloak:8080/realms/epm/protocol/openid-connect/certs"
+      EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: "http://epm-discovery:8761/eureka/"
+      EUREKA_CLIENT_ENABLED: "true"
+      SPRING_KAFKA_BOOTSTRAP_SERVERS: "epm-kafka:9092"
+      DEEPSEEK_API_KEY: "${DEEPSEEK_API_KEY}"
+      SPRING_PROFILES_ACTIVE: "docker"
+    depends_on:
+      discovery-service:
+        condition: service_healthy
+      config-service:
+        condition: service_healthy
+      keycloak:
+        condition: service_healthy
+      postgres:
+        condition: service_healthy
+      kafka:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:8086/actuator/health || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 10
+      start_period: 120s
+    restart: unless-stopped
+
+  # ─────────────────────────────────────────────────────────────────
   # Prometheus — metrics scraping
   # ─────────────────────────────────────────────────────────────────
   prometheus:
