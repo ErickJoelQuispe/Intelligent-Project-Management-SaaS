@@ -16,6 +16,8 @@ import com.epm.notification.infrastructure.adapter.in.messaging.TaskEventConsume
 import com.epm.notification.infrastructure.adapter.out.persistence.ProcessedEventJpaEntity;
 import com.epm.notification.infrastructure.adapter.out.persistence.ProcessedEventJpaRepository;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import org.apache.kafka.clients.consumer.ConsumerRecord;
+import org.apache.kafka.common.header.internals.RecordHeaders;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -67,7 +69,7 @@ class TaskEventConsumerTest {
                 NotificationType.TASK_ASSIGNED, taskId, "Task was assigned to you");
         when(notificationService.create(any(), any(), any(), any(), any())).thenReturn(mockNotif);
 
-        consumer.consume(message);
+        consumer.consume(toRecord(message));
 
         verify(notificationService).create(tenantId, assigneeId,
                 NotificationType.TASK_ASSIGNED, taskId, "Task was assigned to you");
@@ -91,7 +93,7 @@ class TaskEventConsumerTest {
                 NotificationType.TASK_STATUS_CHANGED, taskId, "Task status changed to IN_PROGRESS");
         when(notificationService.create(any(), any(), any(), any(), any())).thenReturn(mockNotif);
 
-        consumer.consume(message);
+        consumer.consume(toRecord(message));
 
         verify(notificationService).create(tenantId, assigneeId,
                 NotificationType.TASK_STATUS_CHANGED, taskId, "Task status changed to IN_PROGRESS");
@@ -113,7 +115,7 @@ class TaskEventConsumerTest {
 
         when(processedEventRepo.existsByEventId(eventId.toString())).thenReturn(true);
 
-        consumer.consume(message);
+        consumer.consume(toRecord(message));
 
         verify(notificationService, never()).create(any(), any(), any(), any(), any());
         verify(processedEventRepo, never()).save(any());
@@ -138,14 +140,21 @@ class TaskEventConsumerTest {
                 NotificationType.TASK_DELETED, taskId, "A task you were assigned to was deleted");
         when(notificationService.create(any(), any(), any(), any(), any())).thenReturn(mockNotif);
 
-        consumer.consume(message);
+        consumer.consume(toRecord(message));
 
         verify(notificationService).create(tenantId, assigneeId,
                 NotificationType.TASK_DELETED, taskId, "A task you were assigned to was deleted");
         verify(notificationPushPort).pushToUser(any(UUID.class), any());
     }
 
-    // ── Helper ────────────────────────────────────────────────────────────────
+    // ── Helpers ────────────────────────────────────────────────────────────────
+
+    private ConsumerRecord<String, String> toRecord(String value) {
+        return new ConsumerRecord<>("task.events", 0, 0L,
+                ConsumerRecord.NO_TIMESTAMP, org.apache.kafka.common.record.TimestampType.NO_TIMESTAMP_TYPE,
+                ConsumerRecord.NULL_SIZE, ConsumerRecord.NULL_SIZE,
+                null, value, new RecordHeaders(), java.util.Optional.empty());
+    }
 
     private String buildEvent(String eventId, String eventType, String tenantId,
             String taskId, String newStatus, String assigneeId, String actorId, String oldStatus) {

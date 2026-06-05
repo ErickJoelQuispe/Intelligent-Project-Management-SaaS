@@ -17,6 +17,8 @@ import com.epm.notification.infrastructure.adapter.in.messaging.UserEventConsume
 import com.epm.notification.infrastructure.adapter.out.persistence.ProcessedEventJpaEntity;
 import com.epm.notification.infrastructure.adapter.out.persistence.ProcessedEventJpaRepository;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import org.apache.kafka.clients.consumer.ConsumerRecord;
+import org.apache.kafka.common.header.internals.RecordHeaders;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -64,7 +66,7 @@ class UserEventConsumerTest {
 
         when(processedEventRepo.existsByEventId(eventId.toString())).thenReturn(false);
 
-        consumer.consume(message);
+        consumer.consume(toRecord(message));
 
         verify(cacheUserEmailUseCase).cacheUserEmail(userId, tenantId, "john@example.com");
         verify(processedEventRepo).save(any(ProcessedEventJpaEntity.class));
@@ -81,7 +83,7 @@ class UserEventConsumerTest {
 
         when(processedEventRepo.existsByEventId(eventId.toString())).thenReturn(false);
 
-        consumer.consume(message);
+        consumer.consume(toRecord(message));
 
         verify(notificationService, never()).create(any(), any(), any(), any(), any());
     }
@@ -103,7 +105,7 @@ class UserEventConsumerTest {
         when(notificationService.create(any(), any(), eq(NotificationType.MEMBER_JOINED_TEAM), any(), any()))
                 .thenReturn(mockNotif);
 
-        consumer.consume(message);
+        consumer.consume(toRecord(message));
 
         verify(notificationService).create(
                 eq(tenantId), eq(userId),
@@ -128,7 +130,7 @@ class UserEventConsumerTest {
         when(notificationService.create(any(), any(), eq(NotificationType.MEMBER_LEFT_TEAM), any(), any()))
                 .thenReturn(mockNotif);
 
-        consumer.consume(message);
+        consumer.consume(toRecord(message));
 
         verify(notificationService).create(
                 eq(tenantId), eq(userId),
@@ -149,7 +151,7 @@ class UserEventConsumerTest {
 
         when(processedEventRepo.existsByEventId(eventId.toString())).thenReturn(true);
 
-        consumer.consume(message);
+        consumer.consume(toRecord(message));
 
         verify(cacheUserEmailUseCase, never()).cacheUserEmail(any(), any(), any());
         verify(processedEventRepo, never()).save(any());
@@ -169,7 +171,7 @@ class UserEventConsumerTest {
         when(processedEventRepo.existsByEventId(eventId.toString())).thenReturn(false);
 
         // Should not throw
-        consumer.consume(message);
+        consumer.consume(toRecord(message));
 
         // Neither cache nor notification should be invoked for unknown types
         verify(cacheUserEmailUseCase, never()).cacheUserEmail(any(), any(), any());
@@ -179,6 +181,13 @@ class UserEventConsumerTest {
     }
 
     // ── Helper ────────────────────────────────────────────────────────────────
+
+    private ConsumerRecord<String, String> toRecord(String value) {
+        return new ConsumerRecord<>("user.events", 0, 0L,
+                ConsumerRecord.NO_TIMESTAMP, org.apache.kafka.common.record.TimestampType.NO_TIMESTAMP_TYPE,
+                ConsumerRecord.NULL_SIZE, ConsumerRecord.NULL_SIZE,
+                null, value, new RecordHeaders(), java.util.Optional.empty());
+    }
 
     private String buildUserEvent(String eventId, String eventType, String tenantId,
             String userId, String email, String teamName, String projectName, String extra) {

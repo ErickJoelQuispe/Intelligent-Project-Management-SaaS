@@ -16,6 +16,8 @@ import com.epm.notification.infrastructure.adapter.in.messaging.ProjectEventCons
 import com.epm.notification.infrastructure.adapter.out.persistence.ProcessedEventJpaEntity;
 import com.epm.notification.infrastructure.adapter.out.persistence.ProcessedEventJpaRepository;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import org.apache.kafka.clients.consumer.ConsumerRecord;
+import org.apache.kafka.common.header.internals.RecordHeaders;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -66,7 +68,7 @@ class ProjectEventConsumerTest {
                 eq(NotificationType.PROJECT_CREATED), any(), any()))
                 .thenReturn(mockNotif);
 
-        consumer.consume(message);
+        consumer.consume(toRecord(message));
 
         verify(notificationService).create(
                 eq(tenantId), eq(ownerId),
@@ -95,7 +97,7 @@ class ProjectEventConsumerTest {
                 eq(NotificationType.TEAM_ASSIGNED_TO_PROJECT), any(), any()))
                 .thenReturn(mockNotif);
 
-        consumer.consume(message);
+        consumer.consume(toRecord(message));
 
         verify(notificationService, times(2)).create(
                 eq(tenantId), any(),
@@ -123,7 +125,7 @@ class ProjectEventConsumerTest {
                 eq(NotificationType.PROJECT_ARCHIVED), any(), any()))
                 .thenReturn(mockNotif);
 
-        consumer.consume(message);
+        consumer.consume(toRecord(message));
 
         verify(notificationService).create(
                 eq(tenantId), eq(ownerId),
@@ -146,7 +148,7 @@ class ProjectEventConsumerTest {
 
         when(processedEventRepo.existsByEventId(eventId.toString())).thenReturn(true);
 
-        consumer.consume(message);
+        consumer.consume(toRecord(message));
 
         verify(notificationService, never()).create(any(), any(), any(), any(), any());
         verify(processedEventRepo, never()).save(any());
@@ -167,7 +169,7 @@ class ProjectEventConsumerTest {
         when(processedEventRepo.existsByEventId(eventId.toString())).thenReturn(false);
 
         // Should NOT throw
-        consumer.consume(message);
+        consumer.consume(toRecord(message));
 
         verify(notificationService, never()).create(any(), any(), any(), any(), any());
         // Processed event is still saved to prevent log spam on re-delivery
@@ -175,6 +177,13 @@ class ProjectEventConsumerTest {
     }
 
     // ── Helpers ───────────────────────────────────────────────────────────────
+
+    private ConsumerRecord<String, String> toRecord(String value) {
+        return new ConsumerRecord<>("project.events", 0, 0L,
+                ConsumerRecord.NO_TIMESTAMP, org.apache.kafka.common.record.TimestampType.NO_TIMESTAMP_TYPE,
+                ConsumerRecord.NULL_SIZE, ConsumerRecord.NULL_SIZE,
+                null, value, new RecordHeaders(), java.util.Optional.empty());
+    }
 
     private String buildProjectEvent(String eventId, String eventType, String tenantId,
             String projectId, String ownerId, String memberIds, String teamId, String name) {

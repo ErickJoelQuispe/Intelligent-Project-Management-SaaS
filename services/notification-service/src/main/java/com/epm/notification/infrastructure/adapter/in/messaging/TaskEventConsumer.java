@@ -10,8 +10,12 @@ import com.epm.notification.domain.port.out.NotificationPushPort;
 import com.epm.notification.infrastructure.adapter.in.web.NotificationResponse;
 import com.epm.notification.infrastructure.adapter.out.persistence.ProcessedEventJpaEntity;
 import com.epm.notification.infrastructure.adapter.out.persistence.ProcessedEventJpaRepository;
+import com.epm.notification.infrastructure.messaging.tracing.KafkaTracingSupport;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import io.opentelemetry.context.Context;
+import io.opentelemetry.context.Scope;
+import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.kafka.annotation.KafkaListener;
@@ -52,7 +56,14 @@ public class TaskEventConsumer {
 
     @KafkaListener(topics = TOPIC, groupId = "notification-group")
     @Transactional
-    public void consume(String message) {
+    public void consume(ConsumerRecord<String, String> record) {
+        Context traceContext = KafkaTracingSupport.extractTraceContext(record.headers());
+        try (Scope ignored = traceContext.makeCurrent()) {
+            processRecord(record.value());
+        }
+    }
+
+    private void processRecord(String message) {
         try {
             JsonNode root = objectMapper.readTree(message);
             String eventId = root.get("eventId").asText();
