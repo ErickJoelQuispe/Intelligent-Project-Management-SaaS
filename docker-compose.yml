@@ -366,6 +366,7 @@ services:
       SPRING_KAFKA_BOOTSTRAP_SERVERS: "epm-kafka:9092"
       SPRING_MAIL_HOST: "epm-mailhog"
       SPRING_MAIL_PORT: "1025"
+      NOTIFICATIONS_EMAIL_ENABLED: "true"
     depends_on:
       discovery-service:
         condition: service_healthy
@@ -385,6 +386,86 @@ services:
       start_period: 60s
     restart: unless-stopped
 
+  # ─────────────────────────────────────────────────────────────────
+  # Prometheus — metrics scraping
+  # ─────────────────────────────────────────────────────────────────
+  prometheus:
+    image: prom/prometheus:v2.54.0
+    container_name: epm-prometheus
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./infra/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus_data:/prometheus
+    restart: unless-stopped
+
+  # ─────────────────────────────────────────────────────────────────
+  # Grafana — dashboards and visualization
+  # ─────────────────────────────────────────────────────────────────
+  grafana:
+    image: grafana/grafana:11.1.0
+    container_name: epm-grafana
+    ports:
+      - "3000:3000"
+    environment:
+      GF_SECURITY_ADMIN_USER: admin
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_ADMIN_PASSWORD:-admin}
+      GF_AUTH_ANONYMOUS_ENABLED: "false"
+    volumes:
+      - ./infra/grafana/provisioning:/etc/grafana/provisioning:ro
+      - ./infra/grafana/dashboards:/var/lib/grafana/dashboards:ro
+      - grafana_data:/var/lib/grafana
+    restart: unless-stopped
+
+  # ─────────────────────────────────────────────────────────────────
+  # Loki — log aggregation
+  # ─────────────────────────────────────────────────────────────────
+  loki:
+    image: grafana/loki:3.1.0
+    container_name: epm-loki
+    ports:
+      - "3100:3100"
+    volumes:
+      - ./infra/loki/loki-config.yaml:/etc/loki/local-config.yaml:ro
+      - loki_data:/loki
+    command: -config.file=/etc/loki/local-config.yaml
+    restart: unless-stopped
+
+  # ─────────────────────────────────────────────────────────────────
+  # Tempo — distributed tracing backend
+  # ─────────────────────────────────────────────────────────────────
+  tempo:
+    image: grafana/tempo:2.5.0
+    container_name: epm-tempo
+    ports:
+      - "3200:3200"   # Tempo query API
+      - "4317:4317"   # OTLP gRPC
+      - "4318:4318"   # OTLP HTTP
+    volumes:
+      - ./infra/tempo/tempo-config.yaml:/etc/tempo/tempo.yaml:ro
+      - tempo_data:/var/tempo
+    command: -config.file=/etc/tempo/tempo.yaml
+    restart: unless-stopped
+
+  # ─────────────────────────────────────────────────────────────────
+  # Promtail — log shipper (Docker container logs → Loki)
+  # ─────────────────────────────────────────────────────────────────
+  promtail:
+    image: grafana/promtail:3.1.0
+    container_name: epm-promtail
+    volumes:
+      - ./infra/promtail/promtail-config.yaml:/etc/promtail/config.yml:ro
+      - /var/lib/docker/containers:/var/lib/docker/containers:ro
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    command: -config.file=/etc/promtail/config.yml
+    depends_on:
+      - loki
+    restart: unless-stopped
+
 volumes:
   postgres_data:
   kafka_data:
+  prometheus_data:
+  grafana_data:
+  loki_data:
+  tempo_data:
