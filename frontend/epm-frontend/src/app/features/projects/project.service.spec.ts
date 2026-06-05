@@ -71,4 +71,18 @@ describe('ProjectService', () => {
       req.flush(mockProject);
     });
   });
+
+  describe('getById()', () => {
+    it('should call GET /api/v1/projects/:id', () => {
+      const projectId = '11111111-1111-1111-1111-111111111111';
+
+      service.getById(projectId).subscribe((project) => {
+        expect(project).toEqual(mockProject);
+      });
+
+      const req = httpMock.expectOne(`${BASE_URL}/${projectId}`);
+      expect(req.request.method).toBe('GET');
+      req.flush(mockProject);
+    });
+  });
 });

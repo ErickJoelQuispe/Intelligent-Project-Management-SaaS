@@ -17,4 +17,8 @@ export class ProjectService {
   create(req: CreateProjectRequest): Observable<Project> {
     return this.http.post<Project>(this.baseUrl, req);
   }
+
+  getById(id: string): Observable<Project> {
+    return this.http.get<Project>(`${this.baseUrl}/${id}`);
+  }
 }
