@@ -21,6 +21,8 @@ import com.epm.notification.domain.port.out.EmailPort;
 import com.epm.notification.domain.port.out.NotificationPreferenceRepository;
 import com.epm.notification.domain.port.out.NotificationRepository;
 import com.epm.notification.domain.port.out.UserEmailCacheRepository;
+import io.micrometer.core.instrument.Counter;
+import io.micrometer.core.instrument.MeterRegistry;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -43,16 +45,19 @@ public class NotificationApplicationService
     private final EmailPort emailPort;
     private final UserEmailCacheRepository userEmailCacheRepository;
     private final NotificationPreferenceRepository preferenceRepository;
+    private final MeterRegistry meterRegistry;
 
     public NotificationApplicationService(
             NotificationRepository notificationRepository,
             EmailPort emailPort,
             UserEmailCacheRepository userEmailCacheRepository,
-            NotificationPreferenceRepository preferenceRepository) {
+            NotificationPreferenceRepository preferenceRepository,
+            MeterRegistry meterRegistry) {
         this.notificationRepository = notificationRepository;
         this.emailPort = emailPort;
         this.userEmailCacheRepository = userEmailCacheRepository;
         this.preferenceRepository = preferenceRepository;
+        this.meterRegistry = meterRegistry;
     }
 
     // ── CreateNotificationUseCase ─────────────────────────────────────────
@@ -74,6 +79,11 @@ public class NotificationApplicationService
 
         Notification notification = Notification.create(tenantId, recipientUserId, type, referenceId, message);
         Notification saved = notificationRepository.save(notification);
+
+        Counter.builder("notifications.sent")
+                .tag("type", type.name())
+                .register(meterRegistry)
+                .increment();
 
         // Best-effort email dispatch — failures MUST NOT propagate
         dispatchEmail(saved);

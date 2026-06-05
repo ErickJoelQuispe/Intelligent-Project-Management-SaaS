@@ -12,6 +12,8 @@ import com.epm.task.domain.port.out.ActivityLogRepository;
 import com.epm.task.domain.port.out.DomainEventPublisher;
 import com.epm.task.domain.port.out.ProjectMembershipPort;
 import com.epm.task.domain.port.out.TaskRepository;
+import io.micrometer.core.instrument.Counter;
+import io.micrometer.core.instrument.MeterRegistry;
 
 /**
  * Implementation of {@link CreateTaskUseCase}.
@@ -24,15 +26,18 @@ public class CreateTaskUseCaseImpl implements CreateTaskUseCase {
     private final ActivityLogRepository activityLogRepository;
     private final DomainEventPublisher eventPublisher;
     private final ProjectMembershipPort membershipPort;
+    private final MeterRegistry meterRegistry;
 
     public CreateTaskUseCaseImpl(TaskRepository taskRepository,
             ActivityLogRepository activityLogRepository,
             DomainEventPublisher eventPublisher,
-            ProjectMembershipPort membershipPort) {
+            ProjectMembershipPort membershipPort,
+            MeterRegistry meterRegistry) {
         this.taskRepository = taskRepository;
         this.activityLogRepository = activityLogRepository;
         this.eventPublisher = eventPublisher;
         this.membershipPort = membershipPort;
+        this.meterRegistry = meterRegistry;
     }
 
     @Override
@@ -49,6 +54,11 @@ public class CreateTaskUseCaseImpl implements CreateTaskUseCase {
 
         ActivityLog log = ActivityLog.create(saved.getId(), command.tenantId(), "CREATED", command.callerId());
         activityLogRepository.save(log);
+
+        Counter.builder("tasks.created")
+                .tag("tenantId", command.tenantId().toString())
+                .register(meterRegistry)
+                .increment();
 
         return TaskMapper.toResult(saved);
     }

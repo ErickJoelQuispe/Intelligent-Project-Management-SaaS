@@ -13,6 +13,7 @@ import com.epm.task.domain.port.out.DomainEventPublisher;
 import com.epm.task.domain.port.out.KanbanViewRepository;
 import com.epm.task.domain.port.out.ProjectMembershipPort;
 import com.epm.task.domain.port.out.TaskRepository;
+import io.micrometer.core.instrument.MeterRegistry;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
@@ -29,9 +30,10 @@ public class UseCaseConfig {
     CreateTaskUseCaseImpl createTaskUseCase(TaskRepository taskRepository,
             ActivityLogRepository activityLogRepository,
             DomainEventPublisher eventPublisher,
-            ProjectMembershipPort membershipPort) {
+            ProjectMembershipPort membershipPort,
+            MeterRegistry meterRegistry) {
         return new CreateTaskUseCaseImpl(taskRepository, activityLogRepository,
-                eventPublisher, membershipPort);
+                eventPublisher, membershipPort, meterRegistry);
     }
 
     @Bean

@@ -9,6 +9,7 @@ import com.epm.project.application.usecase.ListProjectsUseCaseImpl;
 import com.epm.project.application.usecase.UpdateProjectUseCaseImpl;
 import com.epm.project.domain.port.out.DomainEventPublisher;
 import com.epm.project.domain.port.out.ProjectRepository;
+import io.micrometer.core.instrument.MeterRegistry;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
@@ -23,8 +24,9 @@ public class UseCaseConfig {
 
     @Bean
     CreateProjectUseCaseImpl createProjectUseCase(ProjectRepository projectRepository,
-            DomainEventPublisher eventPublisher) {
-        return new CreateProjectUseCaseImpl(projectRepository, eventPublisher);
+            DomainEventPublisher eventPublisher,
+            MeterRegistry meterRegistry) {
+        return new CreateProjectUseCaseImpl(projectRepository, eventPublisher, meterRegistry);
     }
 
     @Bean

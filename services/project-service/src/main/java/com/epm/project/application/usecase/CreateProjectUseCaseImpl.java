@@ -10,6 +10,8 @@ import com.epm.project.domain.port.in.result.ProjectResult;
 import com.epm.project.domain.port.in.result.ProjectTeamResult;
 import com.epm.project.domain.port.out.DomainEventPublisher;
 import com.epm.project.domain.port.out.ProjectRepository;
+import io.micrometer.core.instrument.Counter;
+import io.micrometer.core.instrument.MeterRegistry;
 import jakarta.validation.ValidationException;
 
 /**
@@ -21,11 +23,14 @@ public class CreateProjectUseCaseImpl implements CreateProjectUseCase {
 
     private final ProjectRepository projectRepository;
     private final DomainEventPublisher eventPublisher;
+    private final MeterRegistry meterRegistry;
 
     public CreateProjectUseCaseImpl(ProjectRepository projectRepository,
-            DomainEventPublisher eventPublisher) {
+            DomainEventPublisher eventPublisher,
+            MeterRegistry meterRegistry) {
         this.projectRepository = projectRepository;
         this.eventPublisher = eventPublisher;
+        this.meterRegistry = meterRegistry;
     }
 
     @Override
@@ -40,6 +45,11 @@ public class CreateProjectUseCaseImpl implements CreateProjectUseCase {
         Project project = Project.create(command);
         eventPublisher.publish(project.pullDomainEvents());
         Project saved = projectRepository.save(project);
+
+        Counter.builder("projects.created")
+                .tag("tenantId", command.tenantId().toString())
+                .register(meterRegistry)
+                .increment();
 
         return toResult(saved);
     }

@@ -12,6 +12,7 @@ import com.epm.notification.domain.port.out.NotificationPushPort;
 import com.epm.notification.domain.port.out.NotificationRepository;
 import com.epm.notification.domain.port.out.UserEmailCacheRepository;
 import com.epm.notification.infrastructure.adapter.out.ws.StompNotificationPushAdapter;
+import io.micrometer.core.instrument.MeterRegistry;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
@@ -30,10 +31,11 @@ public class UseCaseConfig {
             NotificationRepository notificationRepository,
             EmailPort emailPort,
             UserEmailCacheRepository userEmailCacheRepository,
-            NotificationPreferenceRepository notificationPreferenceRepository) {
+            NotificationPreferenceRepository notificationPreferenceRepository,
+            MeterRegistry meterRegistry) {
         return new NotificationApplicationService(
                 notificationRepository, emailPort, userEmailCacheRepository,
-                notificationPreferenceRepository);
+                notificationPreferenceRepository, meterRegistry);
     }
 
     @Bean
