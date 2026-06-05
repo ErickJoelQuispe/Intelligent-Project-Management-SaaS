@@ -169,6 +169,7 @@ services:
       SPRING_CONFIG_IMPORT: "optional:configserver:http://epm-config:8888"
       SPRING_SECURITY_OAUTH2_RESOURCESERVER_JWT_JWKS_URI: "http://epm-keycloak:8080/realms/epm/protocol/openid-connect/certs"
       EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: "http://epm-discovery:8761/eureka/"
+      SPRING_PROFILES_ACTIVE: "docker"
     depends_on:
       discovery-service:
         condition: service_healthy
@@ -201,6 +202,7 @@ services:
       EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: "http://epm-discovery:8761/eureka/"
       EUREKA_CLIENT_ENABLED: "true"
       SPRING_KAFKA_BOOTSTRAP_SERVERS: "epm-kafka:9092"
+      SPRING_PROFILES_ACTIVE: "docker"
       KEYCLOAK_CLIENT_SECRET: "${KEYCLOAK_CLIENT_SECRET}"
       KEYCLOAK_SERVER_URL: "http://epm-keycloak:8080"
     depends_on:
@@ -237,6 +239,7 @@ services:
       EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: "http://epm-discovery:8761/eureka/"
       EUREKA_CLIENT_ENABLED: "true"
       SPRING_KAFKA_BOOTSTRAP_SERVERS: "epm-kafka:9092"
+      SPRING_PROFILES_ACTIVE: "docker"
     depends_on:
       discovery-service:
         condition: service_healthy
@@ -274,6 +277,7 @@ services:
       EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: "http://epm-discovery:8761/eureka/"
       EUREKA_CLIENT_ENABLED: "true"
       SPRING_KAFKA_BOOTSTRAP_SERVERS: "epm-kafka:9092"
+      SPRING_PROFILES_ACTIVE: "docker"
     depends_on:
       discovery-service:
         condition: service_healthy
@@ -313,6 +317,7 @@ services:
       EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: "http://epm-discovery:8761/eureka/"
       EUREKA_CLIENT_ENABLED: "true"
       SPRING_KAFKA_BOOTSTRAP_SERVERS: "epm-kafka:9092"
+      SPRING_PROFILES_ACTIVE: "docker"
     depends_on:
       discovery-service:
         condition: service_healthy
@@ -367,6 +372,7 @@ services:
       SPRING_MAIL_HOST: "epm-mailhog"
       SPRING_MAIL_PORT: "1025"
       NOTIFICATIONS_EMAIL_ENABLED: "true"
+      SPRING_PROFILES_ACTIVE: "docker"
     depends_on:
       discovery-service:
         condition: service_healthy

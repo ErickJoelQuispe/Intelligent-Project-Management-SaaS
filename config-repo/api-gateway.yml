@@ -36,6 +36,9 @@ spring:
       ddl-auto: none
   flyway:
     enabled: false
+  # Reactor context propagation — required for trace context across WebFlux operator boundaries
+  reactor:
+    context-propagation: auto
 
   # jwks-uri se configura via variable de entorno SPRING_SECURITY_OAUTH2_RESOURCESERVER_JWT_JWKS_URI
   # En Docker: http://epm-keycloak:8080/realms/epm/protocol/openid-connect/certs
