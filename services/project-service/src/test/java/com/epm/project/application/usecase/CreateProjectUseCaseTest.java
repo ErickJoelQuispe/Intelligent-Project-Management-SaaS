@@ -14,6 +14,7 @@ import com.epm.project.domain.port.in.command.CreateProjectCommand;
 import com.epm.project.domain.port.in.result.ProjectResult;
 import com.epm.project.domain.port.out.DomainEventPublisher;
 import com.epm.project.domain.port.out.ProjectRepository;
+import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 import jakarta.validation.ValidationException;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -38,7 +39,7 @@ class CreateProjectUseCaseTest {
 
     @BeforeEach
     void setUp() {
-        useCase = new CreateProjectUseCaseImpl(projectRepository, eventPublisher);
+        useCase = new CreateProjectUseCaseImpl(projectRepository, eventPublisher, new SimpleMeterRegistry());
     }
 
     @Test

@@ -24,6 +24,7 @@ import com.epm.notification.domain.port.out.EmailPort;
 import com.epm.notification.domain.port.out.NotificationPreferenceRepository;
 import com.epm.notification.domain.port.out.NotificationRepository;
 import com.epm.notification.domain.port.out.UserEmailCacheRepository;
+import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -60,7 +61,8 @@ class NotificationApplicationServiceTest {
     @BeforeEach
     void setUp() {
         service = new NotificationApplicationService(
-                notificationRepository, emailPort, userEmailCacheRepository, preferenceRepository);
+                notificationRepository, emailPort, userEmailCacheRepository,
+                preferenceRepository, new SimpleMeterRegistry());
         tenantId = UUID.randomUUID();
         userId = UUID.randomUUID();
     }

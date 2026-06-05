@@ -19,6 +19,7 @@ import com.epm.task.domain.port.out.ActivityLogRepository;
 import com.epm.task.domain.port.out.DomainEventPublisher;
 import com.epm.task.domain.port.out.ProjectMembershipPort;
 import com.epm.task.domain.port.out.TaskRepository;
+import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -44,7 +45,7 @@ class CreateTaskUseCaseImplTest {
     @BeforeEach
     void setUp() {
         useCase = new CreateTaskUseCaseImpl(taskRepository, activityLogRepository,
-                eventPublisher, membershipPort);
+                eventPublisher, membershipPort, new SimpleMeterRegistry());
     }
 
     @Test
