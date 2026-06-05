@@ -1,0 +1,36 @@
+apiVersion: 1
+
+datasources:
+  - name: Prometheus
+    type: prometheus
+    access: proxy
+    url: http://epm-prometheus:9090
+    isDefault: true
+    editable: false
+
+  - name: Loki
+    type: loki
+    access: proxy
+    url: http://epm-loki:3100
+    editable: false
+    jsonData:
+      derivedFields:
+        - datasourceUid: tempo
+          matcherRegex: '"traceId":"(\w+)"'
+          name: TraceID
+          url: '${__value.raw}'
+
+  - name: Tempo
+    type: tempo
+    access: proxy
+    url: http://epm-tempo:3200
+    uid: tempo
+    editable: false
+    jsonData:
+      tracesToLogs:
+        datasourceUid: loki
+        filterByTraceID: true
+        mapTagNamesEnabled: true
+        tags:
+          - key: service
+            value: service
