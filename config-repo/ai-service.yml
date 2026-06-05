@@ -73,6 +73,12 @@ ai:
 
 resilience4j:
   circuitbreaker:
+    configs:
+      default:
+        slidingWindowSize: 10
+        failureRateThreshold: 50
+        waitDurationInOpenState: 30s
+        permittedNumberOfCallsInHalfOpenState: 3
     instances:
       deepseek:
         baseConfig: default

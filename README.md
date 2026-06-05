@@ -101,11 +101,11 @@ KEYCLOAK_CLIENT_SECRET=<valor-copiado>
 | **0** | Fundaciones — repo, infra local, plantilla hexagonal | ✅ Completo |
 | **1** | Núcleo de plataforma — Eureka, Config, Gateway | ✅ Completo |
 | **2** | Identidad y usuarios — auth-service, user-service | ✅ Completo |
-| **3** | Dominio de proyectos — project-service | ⏳ Pendiente |
-| **4** | Dominio de tareas — task-service | ⏳ Pendiente |
-| **5** | IA provider-agnostic — ai-service | ⏳ Pendiente |
-| **6** | Notificaciones — notification-service | ⏳ Pendiente |
-| **7** | Resiliencia y observabilidad | ⏳ Pendiente |
+| **3** | Dominio de proyectos — project-service | ✅ Completo |
+| **4** | Dominio de tareas — task-service | ✅ Completo |
+| **5** | IA — DeepSeek via Spring AI (ai-service, Redis cache, Kafka outbox) | ✅ Completo |
+| **6** | Notificaciones — WebSocket/STOMP, email Thymeleaf, preferencias | ✅ Completo |
+| **7** | Resiliencia y observabilidad — Prometheus, Grafana, Loki, Tempo, R4J | ✅ Completo |
 | **8** | Testing serio | ⏳ Pendiente |
 | **9** | Containerización y CI/CD | ⏳ Pendiente |
 | **10** | Kubernetes (opcional) | ⏳ Pendiente |

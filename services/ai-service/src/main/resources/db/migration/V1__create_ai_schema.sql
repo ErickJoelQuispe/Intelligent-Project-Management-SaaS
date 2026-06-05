@@ -16,14 +16,18 @@ CREATE TABLE ai_request_log (
 );
 
 -- Outbox events table — transactional outbox pattern for Kafka publishing
-CREATE TABLE outbox_event (
-    id            UUID           PRIMARY KEY,
-    aggregate_id  VARCHAR(255)   NOT NULL,
-    event_type    VARCHAR(255)   NOT NULL,
-    event_payload JSONB          NOT NULL,
-    created_at    TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-    published_at  TIMESTAMP WITH TIME ZONE
+CREATE TABLE outbox_events (
+    id             UUID           PRIMARY KEY,
+    aggregate_id   UUID           NOT NULL,
+    aggregate_type VARCHAR(100)   NOT NULL,
+    event_type     VARCHAR(100)   NOT NULL,
+    topic          VARCHAR(255)   NOT NULL,
+    payload        TEXT           NOT NULL,
+    created_at     TIMESTAMP WITH TIME ZONE NOT NULL,
+    published_at   TIMESTAMP WITH TIME ZONE,
+    failed_at      TIMESTAMP WITH TIME ZONE,
+    error          TEXT
 );
 
 CREATE INDEX idx_ai_request_log_tenant ON ai_request_log(tenant_id, created_at);
-CREATE INDEX idx_outbox_unpublished ON outbox_event WHERE published_at IS NULL;
+CREATE INDEX idx_outbox_unpublished ON outbox_events(created_at) WHERE published_at IS NULL;

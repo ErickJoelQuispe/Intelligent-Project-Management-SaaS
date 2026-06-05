@@ -1,5 +1,7 @@
 package com.epm.ai.infrastructure.adapter.out.ai;
 
+import java.util.Iterator;
+
 import com.epm.ai.domain.model.AiRequest;
 import com.epm.ai.domain.model.AiResponse;
 import com.epm.ai.domain.port.out.AiModelPort;
@@ -64,6 +66,21 @@ public class SpringAiDeepSeekAdapter implements AiModelPort {
         } catch (Exception ex) {
             log.warn("DeepSeek chat failed, returning fallback: {}", ex.getMessage());
             return chatFallback(request, ex);
+        }
+    }
+
+    @Override
+    public Iterator<String> chatStream(AiRequest request) {
+        try {
+            return chatClient.prompt()
+                    .user(request.prompt())
+                    .stream()
+                    .content()
+                    .toIterable()
+                    .iterator();
+        } catch (Exception ex) {
+            log.warn("DeepSeek chatStream failed, returning fallback: {}", ex.getMessage());
+            return java.util.List.of(FALLBACK_CONTENT).iterator();
         }
     }
 

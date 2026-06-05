@@ -20,6 +20,7 @@ COPY services/task-service/pom.xml services/task-service/
 
 # Descarga dependencias solo del módulo a compilar
 COPY services/notification-service/pom.xml services/notification-service/
+COPY services/ai-service/pom.xml services/ai-service/
 RUN ./mvnw dependency:go-offline -pl services/discovery-service -q
 
 # Copia el código fuente y compila

@@ -1,5 +1,7 @@
 package com.epm.ai.application.usecase;
 
+import java.util.Iterator;
+
 import com.epm.ai.domain.model.AiRequest;
 import com.epm.ai.domain.model.AiResponse;
 import com.epm.ai.domain.model.ProjectContext;
@@ -49,6 +51,14 @@ public class ChatWithProjectUseCaseImpl implements ChatWithProjectUseCase {
         AiResponse response = modelPort.chat(request);
         trackCost(response);
         return response;
+    }
+
+    @Override
+    public Iterator<String> executeStream(String projectId, String userId, String tenantId, String message) {
+        ProjectContext context = contextPort.fetchProjectContext(projectId, tenantId);
+        String prompt = buildPrompt(context, message);
+        AiRequest request = new AiRequest(prompt, projectId, userId, tenantId);
+        return modelPort.chatStream(request);
     }
 
     private String buildPrompt(ProjectContext context, String userMessage) {

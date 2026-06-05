@@ -1,6 +1,9 @@
 package com.epm.ai.infrastructure.adapter.in.rest;
 
+import java.util.Iterator;
 import java.util.List;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 
 import com.epm.ai.domain.model.AiResponse;
 import com.epm.ai.domain.model.TaskDraft;
@@ -13,14 +16,17 @@ import com.epm.ai.infrastructure.adapter.in.rest.dto.GenerateTasksRequest;
 import com.epm.ai.infrastructure.adapter.in.rest.dto.GenerateTasksResponse;
 import com.epm.ai.infrastructure.adapter.in.rest.dto.SummaryResponse;
 import jakarta.validation.Valid;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.oauth2.jwt.Jwt;
+import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 
 /**
  * REST adapter for AI operations: task generation, project summary, and chat.
@@ -100,5 +106,41 @@ public class AiController {
                 response.model(),
                 response.inputTokens(),
                 response.outputTokens()));
+    }
+
+    /**
+     * GET /api/v1/ai/chat/stream
+     * SSE streaming chat endpoint. Returns tokens as they arrive from DeepSeek.
+     */
+    @GetMapping("/chat/stream")
+    public SseEmitter chatStream(
+            @AuthenticationPrincipal Jwt jwt,
+            @Valid @RequestBody ChatRequest request) {
+        String userId = jwt.getSubject();
+        String tenantId = jwt.getClaimAsString("tenant_id");
+
+        SseEmitter emitter = new SseEmitter(30000L);
+        ExecutorService executor = Executors.newSingleThreadExecutor();
+
+        executor.execute(() -> {
+            try {
+                Iterator<String> chunks = chatWithProjectUseCase.executeStream(
+                        request.projectId(), userId, tenantId, request.message());
+                while (chunks.hasNext()) {
+                    String chunk = chunks.next();
+                    emitter.send(SseEmitter.event()
+                            .name("message")
+                            .data(chunk, MediaType.TEXT_PLAIN));
+                }
+                emitter.send(SseEmitter.event().name("done").data("[DONE]"));
+                emitter.complete();
+            } catch (Exception e) {
+                emitter.completeWithError(e);
+            } finally {
+                executor.shutdown();
+            }
+        });
+
+        return emitter;
     }
 }
