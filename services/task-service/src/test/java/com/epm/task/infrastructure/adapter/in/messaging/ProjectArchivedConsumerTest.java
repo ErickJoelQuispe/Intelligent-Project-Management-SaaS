@@ -13,6 +13,7 @@ import com.epm.task.infrastructure.adapter.out.persistence.TaskJpaEntity;
 import com.epm.task.infrastructure.adapter.out.persistence.TaskJpaRepository;
 import com.epm.task.domain.model.TaskPriority;
 import org.apache.kafka.clients.producer.ProducerRecord;
+import com.epm.task.infrastructure.AbstractPostgresIT;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -25,6 +26,7 @@ import org.springframework.test.context.TestPropertySource;
  * Integration test for {@link ProjectArchivedConsumer}.
  *
  * <p>Uses @EmbeddedKafka to publish real Kafka messages and verify task cancellation.
+ * DB is provided by Testcontainers via AbstractPostgresIT (@ServiceConnection).
  */
 @SpringBootTest
 @EmbeddedKafka(partitions = 1, topics = {"project.project.archived"})
@@ -35,7 +37,7 @@ import org.springframework.test.context.TestPropertySource;
     "eureka.client.enabled=false",
     "spring.security.oauth2.resourceserver.jwt.jwks-uri=https://example.com/.well-known/jwks.json"
 })
-class ProjectArchivedConsumerTest {
+class ProjectArchivedConsumerTest extends AbstractPostgresIT {
 
     @Autowired
     private KafkaTemplate<String, String> kafkaTemplate;

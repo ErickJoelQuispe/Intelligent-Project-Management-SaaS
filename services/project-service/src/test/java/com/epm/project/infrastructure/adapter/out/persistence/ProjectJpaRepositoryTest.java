@@ -8,9 +8,9 @@ import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
+import com.epm.project.infrastructure.AbstractPostgresIT;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.autoconfigure.jdbc.AutoConfigureTestDatabase;
 import org.springframework.boot.test.autoconfigure.orm.jpa.DataJpaTest;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.test.context.TestPropertySource;
@@ -18,17 +18,16 @@ import org.springframework.test.context.TestPropertySource;
 /**
  * @DataJpaTest for {@link ProjectJpaRepository}.
  *
- * <p>Uses the real {@code project_test} PostgreSQL database — no H2.
+ * <p>Uses Testcontainers via AbstractPostgresIT — no external PostgreSQL required.
  */
 @DataJpaTest
-@AutoConfigureTestDatabase(replace = AutoConfigureTestDatabase.Replace.NONE)
 @TestPropertySource(properties = {
     "spring.config.import=",
     "spring.cloud.config.enabled=false",
     "spring.cloud.config.import-check.enabled=false",
     "eureka.client.enabled=false"
 })
-class ProjectJpaRepositoryTest {
+class ProjectJpaRepositoryTest extends AbstractPostgresIT {
 
     @Autowired
     private ProjectJpaRepository projectJpaRepository;

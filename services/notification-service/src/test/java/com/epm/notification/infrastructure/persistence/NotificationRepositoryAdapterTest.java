@@ -11,10 +11,10 @@ import com.epm.notification.domain.model.NotificationType;
 import com.epm.notification.infrastructure.adapter.out.persistence.NotificationJpaEntity;
 import com.epm.notification.infrastructure.adapter.out.persistence.NotificationJpaRepository;
 import com.epm.notification.infrastructure.adapter.out.persistence.NotificationRepositoryAdapter;
+import com.epm.notification.infrastructure.AbstractPostgresIT;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.autoconfigure.jdbc.AutoConfigureTestDatabase;
 import org.springframework.boot.test.autoconfigure.orm.jpa.DataJpaTest;
 import org.springframework.context.annotation.Import;
 import org.springframework.test.context.TestPropertySource;
@@ -22,10 +22,9 @@ import org.springframework.test.context.TestPropertySource;
 /**
  * Integration test for NotificationRepositoryAdapter using real PostgreSQL (T-C-04).
  *
- * <p>Uses notification_test database (same pattern as task-service).
+ * <p>Uses Testcontainers via AbstractPostgresIT — no external PostgreSQL required.
  */
 @DataJpaTest
-@AutoConfigureTestDatabase(replace = AutoConfigureTestDatabase.Replace.NONE)
 @Import({NotificationRepositoryAdapter.class})
 @TestPropertySource(properties = {
     "spring.config.import=",
@@ -33,7 +32,7 @@ import org.springframework.test.context.TestPropertySource;
     "spring.cloud.config.import-check.enabled=false",
     "eureka.client.enabled=false"
 })
-class NotificationRepositoryAdapterTest {
+class NotificationRepositoryAdapterTest extends AbstractPostgresIT {
 
     @Autowired
     private NotificationJpaRepository jpaRepository;

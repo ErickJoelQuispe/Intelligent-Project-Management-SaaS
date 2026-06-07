@@ -14,6 +14,7 @@ import com.epm.project.infrastructure.adapter.out.persistence.ProjectJpaEntity;
 import com.epm.project.infrastructure.adapter.out.persistence.ProjectMemberJpaEntity;
 import com.epm.project.infrastructure.adapter.out.persistence.ProjectTeamJpaEntity;
 import org.apache.kafka.clients.producer.ProducerRecord;
+import com.epm.project.infrastructure.AbstractPostgresIT;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -26,6 +27,7 @@ import org.springframework.test.context.TestPropertySource;
  * Integration test for {@link TeamDeletedConsumer}.
  *
  * <p>Uses @EmbeddedKafka to send real Kafka messages and verify the consumer processes them.
+ * DB is provided by Testcontainers via AbstractPostgresIT (@ServiceConnection).
  */
 @SpringBootTest
 @EmbeddedKafka(partitions = 1, topics = {"user.team.deleted"})
@@ -36,7 +38,7 @@ import org.springframework.test.context.TestPropertySource;
     "eureka.client.enabled=false",
     "spring.security.oauth2.resourceserver.jwt.jwks-uri=https://example.com/.well-known/jwks.json"
 })
-class TeamDeletedConsumerTest {
+class TeamDeletedConsumerTest extends AbstractPostgresIT {
 
     @Autowired
     private KafkaTemplate<String, String> kafkaTemplate;

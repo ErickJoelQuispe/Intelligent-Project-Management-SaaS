@@ -1,8 +1,4 @@
 spring:
-  datasource:
-    url: jdbc:postgresql://localhost:5432/task_test
-    username: epm_admin
-    password: changeme
   jpa:
     hibernate:
       ddl-auto: validate

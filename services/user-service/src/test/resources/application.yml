@@ -1,10 +1,6 @@
 spring:
   config:
     import: ""
-  datasource:
-    url: jdbc:postgresql://localhost:5432/test_db  # overridden by @DynamicPropertySource
-    username: test
-    password: test
   jpa:
     hibernate:
       ddl-auto: validate

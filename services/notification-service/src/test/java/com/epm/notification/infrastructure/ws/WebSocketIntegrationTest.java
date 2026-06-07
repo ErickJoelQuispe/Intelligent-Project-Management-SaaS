@@ -7,6 +7,7 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.TimeUnit;
 
 import com.epm.notification.domain.port.out.NotificationPushPort;
+import com.epm.notification.infrastructure.AbstractPostgresIT;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -30,6 +31,7 @@ import org.springframework.web.socket.messaging.WebSocketStompClient;
  *
  * <p>Uses mocked JwtDecoder to avoid Keycloak dependency in CI.
  * Uses @SpringBootTest RANDOM_PORT for real WebSocket server.
+ * DB is provided by Testcontainers via AbstractPostgresIT (@ServiceConnection).
  */
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
 @TestPropertySource(properties = {
@@ -38,15 +40,12 @@ import org.springframework.web.socket.messaging.WebSocketStompClient;
     "spring.cloud.config.import-check.enabled=false",
     "spring.security.oauth2.resourceserver.jwt.jwks-uri=https://example.com/.well-known/jwks.json",
     "eureka.client.enabled=false",
-    "spring.datasource.url=jdbc:postgresql://localhost:5432/notification_test",
-    "spring.datasource.username=epm_admin",
-    "spring.datasource.password=changeme",
     "spring.kafka.bootstrap-servers=localhost:9092",
     "spring.mail.host=localhost",
     "spring.mail.port=1025",
     "spring.jpa.hibernate.ddl-auto=validate"
 })
-class WebSocketIntegrationTest {
+class WebSocketIntegrationTest extends AbstractPostgresIT {
 
     @LocalServerPort
     private int port;

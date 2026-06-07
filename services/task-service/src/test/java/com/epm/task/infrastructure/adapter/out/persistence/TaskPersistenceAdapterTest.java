@@ -10,20 +10,19 @@ import com.epm.task.domain.model.Task;
 import com.epm.task.domain.model.TaskPriority;
 import com.epm.task.domain.model.TaskStatus;
 import com.epm.task.domain.port.in.command.CreateTaskCommand;
+import com.epm.task.infrastructure.AbstractPostgresIT;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.autoconfigure.jdbc.AutoConfigureTestDatabase;
 import org.springframework.boot.test.autoconfigure.orm.jpa.DataJpaTest;
 import org.springframework.context.annotation.Import;
 import org.springframework.test.context.TestPropertySource;
 
 /**
- * Integration test for {@link TaskPersistenceAdapter} — uses real PostgreSQL via Testcontainers.
+ * Integration test for {@link TaskPersistenceAdapter} — uses Testcontainers via AbstractPostgresIT.
  *
  * <p>Verifies W-02 (cross-tenant isolation): a task saved for tenantA is NOT visible to tenantB.
  */
 @DataJpaTest
-@AutoConfigureTestDatabase(replace = AutoConfigureTestDatabase.Replace.NONE)
 @Import({TaskPersistenceAdapter.class})
 @TestPropertySource(properties = {
     "spring.config.import=",
@@ -31,7 +30,7 @@ import org.springframework.test.context.TestPropertySource;
     "spring.cloud.config.import-check.enabled=false",
     "eureka.client.enabled=false"
 })
-class TaskPersistenceAdapterTest {
+class TaskPersistenceAdapterTest extends AbstractPostgresIT {
 
     @Autowired
     private TaskPersistenceAdapter adapter;

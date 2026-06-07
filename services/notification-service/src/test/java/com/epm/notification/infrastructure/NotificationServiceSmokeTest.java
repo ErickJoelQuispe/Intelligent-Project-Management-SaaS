@@ -4,14 +4,13 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import com.epm.notification.application.usecase.NotificationApplicationService;
 import com.epm.notification.domain.port.out.EmailPort;
-import com.epm.notification.domain.port.out.NotificationPreferenceRepository;
 import com.epm.notification.infrastructure.adapter.out.persistence.NotificationJpaRepository;
 import com.epm.notification.infrastructure.adapter.out.persistence.NotificationPreferencesRepositoryAdapter;
 import com.epm.notification.infrastructure.adapter.out.persistence.NotificationRepositoryAdapter;
 import com.epm.notification.infrastructure.adapter.out.persistence.UserEmailCacheRepositoryAdapter;
+import io.micrometer.core.instrument.MeterRegistry;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.autoconfigure.jdbc.AutoConfigureTestDatabase;
 import org.springframework.boot.test.autoconfigure.orm.jpa.DataJpaTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.context.annotation.Import;
@@ -21,10 +20,10 @@ import org.springframework.test.context.TestPropertySource;
  * Smoke test to validate the core service wiring (T-C-11).
  *
  * <p>Uses @DataJpaTest to verify DB connectivity and Spring context loads correctly.
+ * DB is provided by Testcontainers via AbstractPostgresIT (@ServiceConnection).
  * EmbeddedKafka is not started here — consumer is not loaded in @DataJpaTest scope.
  */
 @DataJpaTest
-@AutoConfigureTestDatabase(replace = AutoConfigureTestDatabase.Replace.NONE)
 @Import({
     NotificationRepositoryAdapter.class,
     UserEmailCacheRepositoryAdapter.class,
@@ -37,10 +36,13 @@ import org.springframework.test.context.TestPropertySource;
     "spring.cloud.config.import-check.enabled=false",
     "eureka.client.enabled=false"
 })
-class NotificationServiceSmokeTest {
+class NotificationServiceSmokeTest extends AbstractPostgresIT {
 
     @MockBean
     private EmailPort emailPort;
+
+    @MockBean
+    private MeterRegistry meterRegistry;
 
     @Autowired
     private NotificationJpaRepository jpaRepository;

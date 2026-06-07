@@ -10,9 +10,9 @@ import java.util.UUID;
 
 import com.epm.task.infrastructure.adapter.out.persistence.OutboxEventJpaEntity;
 import com.epm.task.infrastructure.adapter.out.persistence.OutboxEventJpaRepository;
+import com.epm.task.infrastructure.AbstractPostgresIT;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.autoconfigure.jdbc.AutoConfigureTestDatabase;
 import org.springframework.boot.test.autoconfigure.orm.jpa.DataJpaTest;
 import org.springframework.context.annotation.Import;
 import org.springframework.test.context.TestPropertySource;
@@ -22,10 +22,9 @@ import org.springframework.test.context.bean.override.mockito.MockitoBean;
  * Integration test for {@link OutboxRelayService}.
  *
  * <p>Verifies that PENDING outbox rows are marked PUBLISHED after relay.
- * Uses real PostgreSQL via Testcontainers. Kafka is mocked to avoid infrastructure deps.
+ * Uses Testcontainers via AbstractPostgresIT. Kafka is mocked to avoid infrastructure deps.
  */
 @DataJpaTest
-@AutoConfigureTestDatabase(replace = AutoConfigureTestDatabase.Replace.NONE)
 @Import({OutboxRelayService.class})
 @TestPropertySource(properties = {
     "spring.config.import=",
@@ -33,7 +32,7 @@ import org.springframework.test.context.bean.override.mockito.MockitoBean;
     "spring.cloud.config.import-check.enabled=false",
     "eureka.client.enabled=false"
 })
-class OutboxRelayServiceTest {
+class OutboxRelayServiceTest extends AbstractPostgresIT {
 
     @Autowired
     private OutboxRelayService outboxRelayService;
