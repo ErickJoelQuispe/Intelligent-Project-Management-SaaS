@@ -154,6 +154,13 @@
             <scope>test</scope>
         </dependency>
 
+        <!-- Spring Cloud Contract Stub Runner (consumer side) -->
+        <dependency>
+            <groupId>org.springframework.cloud</groupId>
+            <artifactId>spring-cloud-starter-contract-stub-runner</artifactId>
+            <scope>test</scope>
+        </dependency>
+
         <!-- Testcontainers -->
         <dependency>
             <groupId>org.springframework.boot</groupId>

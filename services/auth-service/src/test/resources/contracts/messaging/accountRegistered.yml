@@ -1,0 +1,51 @@
+description: Account registered event published to auth.account.registered
+label: auth.account.registered
+input:
+  triggeredBy: accountRegistration()
+outputMessage:
+  sentTo: auth.account.registered
+  body:
+    eventId: "019ea3cc-0000-7000-0000-000000000001"
+    eventType: "AccountRegistered"
+    eventVersion: 1
+    occurredAt: "2026-06-07T00:00:00Z"
+    aggregateId: "019ea3cc-0000-7000-0000-000000000002"
+    aggregateType: "Account"
+    tenantId: "019ea3cc-0000-7000-0000-000000000003"
+    traceId: "019ea3cc-0000-7000-0000-000000000004"
+    payload:
+      accountId: "019ea3cc-0000-7000-0000-000000000002"
+      email: "contract@example.com"
+      firstName: "Contract"
+      lastName: "Test"
+  matchers:
+    body:
+      - path: $.eventId
+        type: by_regex
+        value: "[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}"
+      - path: $.occurredAt
+        type: by_regex
+        value: ".*"
+      - path: $.aggregateId
+        type: by_regex
+        value: "[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}"
+      - path: $.tenantId
+        type: by_regex
+        value: "[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}"
+      - path: $.traceId
+        type: by_regex
+        value: "[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}"
+      - path: $.payload.accountId
+        type: by_regex
+        value: "[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}"
+      - path: $.payload.email
+        type: by_regex
+        value: ".+@.+"
+      - path: $.payload.firstName
+        type: by_regex
+        value: ".+"
+      - path: $.payload.lastName
+        type: by_regex
+        value: ".+"
+  headers:
+    contentType: application/json

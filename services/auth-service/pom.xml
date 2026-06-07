@@ -162,6 +162,13 @@
             <scope>test</scope>
         </dependency>
 
+        <!-- Spring Cloud Contract Verifier (producer side) -->
+        <dependency>
+            <groupId>org.springframework.cloud</groupId>
+            <artifactId>spring-cloud-contract-verifier</artifactId>
+            <scope>test</scope>
+        </dependency>
+
         <!-- WireMock for Keycloak Admin API mocking in tests -->
         <dependency>
             <groupId>org.wiremock</groupId>
@@ -198,6 +205,14 @@
             <plugin>
                 <groupId>org.springframework.boot</groupId>
                 <artifactId>spring-boot-maven-plugin</artifactId>
+            </plugin>
+            <plugin>
+                <groupId>org.springframework.cloud</groupId>
+                <artifactId>spring-cloud-contract-maven-plugin</artifactId>
+                <extensions>true</extensions>
+                <configuration>
+                    <baseClassForTests>com.epm.auth.ContractVerifierBase</baseClassForTests>
+                </configuration>
             </plugin>
         </plugins>
     </build>

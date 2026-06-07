@@ -8,6 +8,7 @@ on:
       - 'shared/**'
       - 'build-tools/**'
       - 'pom.xml'
+      - 'frontend/**'
       - '.github/workflows/ci-services.yml'
   pull_request:
     branches: [main]
@@ -16,6 +17,7 @@ on:
       - 'shared/**'
       - 'build-tools/**'
       - 'pom.xml'
+      - 'frontend/**'
       - '.github/workflows/ci-services.yml'
 
 jobs:
@@ -47,3 +49,17 @@ jobs:
           name: surefire-reports
           path: '**/target/surefire-reports/'
           retention-days: 7
+
+  frontend-test:
+    name: Frontend Tests
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: frontend/epm-frontend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+      - run: bun install --frozen-lockfile
+      - run: bun run ng test -- --watch=false
