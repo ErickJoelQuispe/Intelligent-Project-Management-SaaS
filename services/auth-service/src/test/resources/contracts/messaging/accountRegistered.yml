@@ -15,6 +15,7 @@ outputMessage:
     traceId: "019ea3cc-0000-7000-0000-000000000004"
     payload:
       accountId: "019ea3cc-0000-7000-0000-000000000002"
+      keycloakUserId: "019ea3cc-0000-7000-0000-000000000005"
       email: "contract@example.com"
       firstName: "Contract"
       lastName: "Test"
@@ -36,6 +37,9 @@ outputMessage:
         type: by_regex
         value: "[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}"
       - path: $.payload.accountId
+        type: by_regex
+        value: "[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}"
+      - path: $.payload.keycloakUserId
         type: by_regex
         value: "[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}"
       - path: $.payload.email
