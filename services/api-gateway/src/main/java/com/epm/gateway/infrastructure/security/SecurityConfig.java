@@ -37,6 +37,10 @@ public class SecurityConfig {
                 .pathMatchers(HttpMethod.OPTIONS, "/**").permitAll()
                 // Account registration is public — no JWT required
                 .pathMatchers(HttpMethod.POST, "/api/v1/auth/register").permitAll()
+                // WebSocket upgrade requests cannot carry Authorization headers (browser limitation).
+                // Authentication is delegated to WebSocketChannelInterceptor in notification-service,
+                // which validates the JWT passed as a query parameter (?token=...).
+                .pathMatchers("/ws/**").permitAll()
                 // Everything else requires a valid JWT
                 .anyExchange().authenticated()
             )
