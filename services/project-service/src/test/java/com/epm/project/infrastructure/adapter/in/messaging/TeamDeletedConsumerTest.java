@@ -116,12 +116,12 @@ class TeamDeletedConsumerTest extends AbstractPostgresIT {
 
         kafkaTemplate.send(new ProducerRecord<>("user.team.deleted", teamId.toString(), message));
 
-        // Poll until orphanedAt is set (consumer is async)
-        long deadline = System.currentTimeMillis() + 10_000;
+        // Poll until orphanedAt is set (consumer is async) — 20s for slow CI runners
+        long deadline = System.currentTimeMillis() + 20_000;
         while (System.currentTimeMillis() < deadline) {
             var rows = teamRepo.findByTeamIdAndOrphanedAtIsNull(teamId);
             if (rows.isEmpty()) break;
-            Thread.sleep(200);
+            Thread.sleep(300);
         }
 
         var orphaned = teamRepo.findAll().stream()

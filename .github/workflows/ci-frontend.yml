@@ -91,14 +91,14 @@ jobs:
           name: frontend-dist
           path: dist/
 
-      - name: Install audit tools
-        run: npm install -g @lhci/cli http-server
+      - name: Install Lighthouse CI
+        run: npm install -g @lhci/cli
 
       - name: Serve production build
-        run: http-server dist/epm-frontend/browser -p 4200 --silent &
+        run: npx http-server dist/epm-frontend/browser -p 4200 --silent &
 
       - name: Wait for server
-        run: sleep 3
+        run: sleep 5
 
       - name: Run Lighthouse CI
         run: lhci autorun
