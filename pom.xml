@@ -25,12 +25,22 @@
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <!-- Override Tomcat to patch CRITICAL CVEs: CVE-2026-41293, CVE-2026-43512, CVE-2026-43515 -->
         <tomcat.version>10.1.55</tomcat.version>
-        <!-- Override Spring Cloud Config to patch CVE-2026-40982 (Path Traversal, CRITICAL) -->
-        <spring-cloud-config.version>4.3.3</spring-cloud-config.version>
+
     </properties>
 
     <dependencyManagement>
         <dependencies>
+            <!-- CVE-2026-40982: spring-cloud-config-server Path Traversal (CRITICAL) — override BOM -->
+            <dependency>
+                <groupId>org.springframework.cloud</groupId>
+                <artifactId>spring-cloud-config-server</artifactId>
+                <version>4.3.3</version>
+            </dependency>
+            <dependency>
+                <groupId>org.springframework.cloud</groupId>
+                <artifactId>spring-cloud-config-client</artifactId>
+                <version>4.3.3</version>
+            </dependency>
             <dependency>
                 <groupId>org.springframework.cloud</groupId>
                 <artifactId>spring-cloud-dependencies</artifactId>
