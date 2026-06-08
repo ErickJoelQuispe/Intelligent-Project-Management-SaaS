@@ -3,6 +3,7 @@ import { HttpTestingController, provideHttpClientTesting } from '@angular/common
 import { provideHttpClient } from '@angular/common/http';
 import { Subject } from 'rxjs';
 import { RxStomp } from '@stomp/rx-stomp';
+import { OAuthService } from 'angular-oauth2-oidc';
 import { NotificationService } from './notification.service';
 import { Notification } from '../models/notification.model';
 
@@ -38,6 +39,10 @@ describe('NotificationService', () => {
         provideHttpClient(),
         provideHttpClientTesting(),
         NotificationService,
+        {
+          provide: OAuthService,
+          useValue: { getAccessToken: vi.fn().mockReturnValue('fresh-token') },
+        },
       ],
     });
 
@@ -108,7 +113,7 @@ describe('NotificationService', () => {
 
   // ─── WebSocket connect / disconnect ─────────────────────────────────────────
 
-  it('connect(userId, token) creates RxStomp and activates with correct WS URL + token', () => {
+  it('connect(userId, token) creates RxStomp and activates with webSocketFactory that uses fresh token', () => {
     service.connect('user-123', 'jwt-abc');
 
     const rx = stomp(service);
@@ -116,17 +121,19 @@ describe('NotificationService', () => {
     expect(rx.configure).toHaveBeenCalledOnce();
 
     const config = rx.configure.mock.calls[0][0];
-    expect(config.brokerURL).toContain('ws://localhost:8080/ws/notifications');
-    expect(config.brokerURL).toContain('token=jwt-abc');
+    // webSocketFactory is a function that builds a new WebSocket on each reconnect
+    expect(typeof config.webSocketFactory).toBe('function');
     expect(rx.activate).toHaveBeenCalledOnce();
   });
 
-  it('connect() with a different token produces a different brokerURL', () => {
-    service.connect('user-B', 'token-xyz');
+  it('connect() uses webSocketFactory (not brokerURL) so token is refreshed on each reconnect', () => {
+    service.connect('user-B', 'stale-token');
 
     const config = stomp(service).configure.mock.calls[0][0];
-    expect(config.brokerURL).toContain('token=token-xyz');
-    expect(config.brokerURL).not.toContain('token=jwt-abc');
+    // webSocketFactory must be a function — called on every reconnect with a fresh token
+    expect(typeof config.webSocketFactory).toBe('function');
+    // brokerURL must NOT be set (it would bake in the stale token)
+    expect(config.brokerURL).toBeUndefined();
   });
 
   it('disconnect() calls deactivate on the RxStomp instance', () => {

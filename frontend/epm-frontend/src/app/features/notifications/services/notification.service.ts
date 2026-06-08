@@ -3,12 +3,14 @@ import { HttpClient } from '@angular/common/http';
 import { Observable } from 'rxjs';
 import { RxStomp, RxStompConfig } from '@stomp/rx-stomp';
 import { IMessage } from '@stomp/stompjs';
+import { OAuthService } from 'angular-oauth2-oidc';
 import { environment } from '../../../../environments/environment';
 import { Notification } from '../models/notification.model';
 
 @Injectable({ providedIn: 'root' })
 export class NotificationService {
   private readonly http = inject(HttpClient);
+  private readonly oauthService = inject(OAuthService);
   private readonly baseUrl = `${environment.apiBaseUrl}/notifications`;
 
   /** Exposed for testing only — do not access in production code. */
@@ -36,8 +38,12 @@ export class NotificationService {
 
   connect(userId: string, token: string): void {
     this._rxStomp = new RxStomp();
+    // Use webSocketFactory so RxStomp fetches a fresh token on every
+    // reconnect attempt — prevents 401s after token expiry and refresh.
     const config: RxStompConfig = {
-      brokerURL: `${environment.wsBaseUrl}?token=${token}`,
+      webSocketFactory: () => new WebSocket(
+        `${environment.wsBaseUrl}?token=${this.oauthService.getAccessToken() ?? token}`
+      ),
       reconnectDelay: 5000,
     };
     this._rxStomp.configure(config);
