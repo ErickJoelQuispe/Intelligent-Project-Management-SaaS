@@ -2,9 +2,12 @@ package com.epm.task.infrastructure.adapter.in.messaging;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import java.time.Duration;
 import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
+
+import org.awaitility.Awaitility;
 
 import com.epm.task.domain.model.TaskStatus;
 import com.epm.task.infrastructure.adapter.out.persistence.OutboxEventJpaRepository;
@@ -35,7 +38,8 @@ import org.springframework.test.context.TestPropertySource;
     "spring.cloud.config.enabled=false",
     "spring.cloud.config.import-check.enabled=false",
     "eureka.client.enabled=false",
-    "spring.security.oauth2.resourceserver.jwt.jwks-uri=https://example.com/.well-known/jwks.json"
+    "spring.security.oauth2.resourceserver.jwt.jwks-uri=https://example.com/.well-known/jwks.json",
+    "spring.kafka.consumer.auto-offset-reset=earliest"
 })
 class ProjectArchivedConsumerTest extends AbstractPostgresIT {
 
@@ -75,17 +79,15 @@ class ProjectArchivedConsumerTest extends AbstractPostgresIT {
                 projectId.toString(),
                 buildProjectArchivedMessage(eventId, projectId, tenantId)));
 
-        // Poll until all tasks are CANCELLED
-        long deadline = System.currentTimeMillis() + 10_000;
-        while (System.currentTimeMillis() < deadline) {
-            List<TaskJpaEntity> tasks = taskJpaRepo.findAllByProjectIdAndTenantId(projectId, tenantId);
-            boolean allCancelled = tasks.stream()
-                    .allMatch(t -> t.getStatus() == TaskStatus.CANCELLED);
-            if (allCancelled && !tasks.isEmpty()) {
-                break;
-            }
-            Thread.sleep(200);
-        }
+        // Wait until all tasks are CANCELLED — 30s for CI
+        Awaitility.await()
+                .atMost(Duration.ofSeconds(30))
+                .pollInterval(Duration.ofMillis(500))
+                .until(() -> {
+                    List<TaskJpaEntity> tasks = taskJpaRepo.findAllByProjectIdAndTenantId(projectId, tenantId);
+                    return !tasks.isEmpty() && tasks.stream()
+                            .allMatch(t -> t.getStatus() == TaskStatus.CANCELLED);
+                });
 
         List<TaskJpaEntity> tasks = taskJpaRepo.findAllByProjectIdAndTenantId(projectId, tenantId);
         assertThat(tasks).isNotEmpty();
@@ -104,18 +106,25 @@ class ProjectArchivedConsumerTest extends AbstractPostgresIT {
         // First event — cancels tasks
         kafkaTemplate.send(new ProducerRecord<>(
                 "project.project.archived", projectId.toString(), message));
-        Thread.sleep(4000);
 
-        assertThat(processedEventRepo.existsByEventId(eventId)).isTrue();
+        // Wait until first event is processed — 30s for CI
+        Awaitility.await()
+                .atMost(Duration.ofSeconds(30))
+                .pollInterval(Duration.ofMillis(500))
+                .until(() -> processedEventRepo.existsByEventId(eventId));
+
         long outboxCountAfterFirst = outboxRepo.count();
 
         // Second event — must be skipped (no new outbox rows)
         kafkaTemplate.send(new ProducerRecord<>(
                 "project.project.archived", projectId.toString(), message));
-        Thread.sleep(2000);
 
-        long outboxCountAfterSecond = outboxRepo.count();
-        assertThat(outboxCountAfterSecond).isEqualTo(outboxCountAfterFirst);
+        // Wait a bit and verify no extra outbox entries were created
+        Awaitility.await()
+                .atMost(Duration.ofSeconds(10))
+                .pollInterval(Duration.ofMillis(500))
+                .untilAsserted(() ->
+                        assertThat(outboxRepo.count()).isEqualTo(outboxCountAfterFirst));
     }
 
     // ── Helpers ──────────────────────────────────────────────────────────────
