@@ -46,7 +46,7 @@ export const NotificationStore = signalStore(
     markAsRead: rxMethod<string>(
       pipe(
         switchMap((id) => {
-          // Optimistic update
+          // Optimistic update — apply before backend confirms
           const notifications = store.notifications().map((n) =>
             n.id === id ? { ...n, read: true } : n,
           );
@@ -55,11 +55,8 @@ export const NotificationStore = signalStore(
 
           return service.markAsRead(id).pipe(
             tapResponse({
-              next: (updated) => {
-                const refreshed = store.notifications().map((n) =>
-                  n.id === updated.id ? updated : n,
-                );
-                patchState(store, { notifications: refreshed });
+              next: () => {
+                // Backend returns 204 No Content — optimistic update already applied, nothing to do
               },
               error: () => {
                 // Rollback on failure

@@ -87,20 +87,15 @@ describe('NotificationService', () => {
     expect(count).toBe(3);
   });
 
-  it('markAsRead() calls PATCH /api/v1/notifications/{id}/read', () => {
-    const mockNotif: Notification = {
-      id: 'n1', type: 'TASK_ASSIGNED', referenceId: 't1', message: 'Assigned', read: true, createdAt: '2026-06-04T12:00:00Z'
-    };
-
-    let result: Notification | undefined;
-    service.markAsRead('n1').subscribe((r) => (result = r));
+  it('markAsRead() calls PATCH /api/v1/notifications/{id}/read and returns void (204)', () => {
+    let completed = false;
+    service.markAsRead('n1').subscribe({ complete: () => (completed = true) });
 
     const req = httpMock.expectOne('http://localhost:8080/api/v1/notifications/n1/read');
     expect(req.request.method).toBe('PATCH');
-    req.flush(mockNotif);
+    req.flush(null, { status: 204, statusText: 'No Content' });
 
-    expect(result!.read).toBe(true);
-    expect(result!.id).toBe('n1');
+    expect(completed).toBe(true);
   });
 
   it('markAllAsRead() calls POST /api/v1/notifications/mark-all-read', () => {
