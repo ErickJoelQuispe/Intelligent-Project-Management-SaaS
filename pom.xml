@@ -93,6 +93,18 @@
                 </plugins>
             </build>
         </profile>
+        <!--
+            E2E profile — activates the e2e-tests module.
+            Run with: ./mvnw verify -Pe2e
+            Requires Docker stack to be running for tests to pass.
+            The e2e-tests module is NOT included in the default build.
+        -->
+        <profile>
+            <id>e2e</id>
+            <modules>
+                <module>e2e-tests</module>
+            </modules>
+        </profile>
     </profiles>
 
     <build>
