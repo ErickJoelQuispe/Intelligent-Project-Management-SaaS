@@ -36,7 +36,7 @@ jobs:
         run: bun install --frozen-lockfile
 
       - name: Run unit tests
-        run: bun run ng test -- --watch=false
+        run: bun run test:coverage
 
   # ──────────────────────────────────────────────────────────────
   # Job 2: Production Build
