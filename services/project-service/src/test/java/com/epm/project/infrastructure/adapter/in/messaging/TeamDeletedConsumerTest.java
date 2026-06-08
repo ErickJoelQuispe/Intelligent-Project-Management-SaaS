@@ -6,6 +6,8 @@ import java.time.Duration;
 import java.time.Instant;
 import java.util.UUID;
 
+import org.awaitility.Awaitility;
+
 import com.epm.project.infrastructure.adapter.out.persistence.ProcessedEventJpaRepository;
 import com.epm.project.infrastructure.adapter.out.persistence.ProjectJpaRepository;
 import com.epm.project.infrastructure.adapter.out.persistence.ProjectMemberJpaRepository;
@@ -36,7 +38,8 @@ import org.springframework.test.context.TestPropertySource;
     "spring.cloud.config.enabled=false",
     "spring.cloud.config.import-check.enabled=false",
     "eureka.client.enabled=false",
-    "spring.security.oauth2.resourceserver.jwt.jwks-uri=https://example.com/.well-known/jwks.json"
+    "spring.security.oauth2.resourceserver.jwt.jwks-uri=https://example.com/.well-known/jwks.json",
+    "spring.kafka.consumer.auto-offset-reset=earliest"
 })
 class TeamDeletedConsumerTest extends AbstractPostgresIT {
 
@@ -116,21 +119,11 @@ class TeamDeletedConsumerTest extends AbstractPostgresIT {
 
         kafkaTemplate.send(new ProducerRecord<>("user.team.deleted", teamId.toString(), message));
 
-        // Poll until orphanedAt is set (consumer is async) — 30s for slow CI runners
-        long deadline = System.currentTimeMillis() + 30_000;
-        boolean processed = false;
-        while (System.currentTimeMillis() < deadline) {
-            var rows = teamRepo.findByTeamIdAndOrphanedAtIsNull(teamId);
-            if (rows.isEmpty()) {
-                processed = true;
-                break;
-            }
-            Thread.sleep(300);
-        }
-
-        assertThat(processed)
-                .as("Consumer did not process TeamDeleted event within 30s")
-                .isTrue();
+        // Wait until consumer processes the event (orphanedAt set) — 30s for CI
+        Awaitility.await()
+                .atMost(Duration.ofSeconds(30))
+                .pollInterval(Duration.ofMillis(500))
+                .until(() -> teamRepo.findByTeamIdAndOrphanedAtIsNull(teamId).isEmpty());
 
         var orphaned = teamRepo.findAll().stream()
                 .filter(t -> t.getTeamId().equals(teamId))
