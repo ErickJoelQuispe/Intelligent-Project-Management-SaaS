@@ -1,0 +1,46 @@
+# Build output
+target/
+**/target/
+
+# Frontend build artifacts
+node_modules/
+**/node_modules/
+.angular/
+**/.angular/
+dist/
+**/dist/
+
+# Version control
+.git/
+.gitignore
+
+# CI/CD config (not needed in build context)
+.github/
+
+# Infrastructure files (not part of any service image)
+infra/
+config-repo/
+
+# Test modules (not part of service images)
+e2e-tests/
+
+# SDD artifacts
+openspec/
+
+# Docs
+**/*.md
+**/*.txt
+docs/
+
+# Env files
+.env
+.env.*
+!.env.example
+
+# IDE
+.idea/
+*.iml
+.vscode/
+
+# Logs
+**/*.log

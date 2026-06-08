@@ -19,6 +19,12 @@ RUN ./mvnw package -pl services/auth-service -DskipTests -q
 
 FROM eclipse-temurin:21-jre-alpine
 WORKDIR /app
+
+RUN addgroup -S epm && adduser -S epm -G epm
+USER epm
+
 COPY --from=build /app/services/auth-service/target/*.jar app.jar
+
 EXPOSE 8081
+
 ENTRYPOINT ["java", "-jar", "app.jar"]

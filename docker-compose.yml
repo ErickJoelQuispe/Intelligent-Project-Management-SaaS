@@ -110,9 +110,7 @@ services:
   # Debe arrancar antes que Config y Gateway.
   # ─────────────────────────────────────────────────────────────────
   discovery-service:
-    build:
-      context: .
-      dockerfile: services/discovery-service/Dockerfile
+    image: ghcr.io/erickjoelquispe/epm-discovery:${TAG:-latest}
     container_name: epm-discovery
     ports:
       - "8761:8761"
@@ -131,9 +129,7 @@ services:
   # archivos YML se reflejen sin rebuild de la imagen.
   # ─────────────────────────────────────────────────────────────────
   config-service:
-    build:
-      context: .
-      dockerfile: services/config-service/Dockerfile
+    image: ghcr.io/erickjoelquispe/epm-config:${TAG:-latest}
     container_name: epm-config
     ports:
       - "8888:8888"
@@ -159,9 +155,7 @@ services:
   # Depende de Eureka, Config y Keycloak para arrancar correctamente.
   # ─────────────────────────────────────────────────────────────────
   api-gateway:
-    build:
-      context: .
-      dockerfile: services/api-gateway/Dockerfile
+    image: ghcr.io/erickjoelquispe/epm-gateway:${TAG:-latest}
     container_name: epm-gateway
     ports:
       - "8080:8080"
@@ -190,9 +184,7 @@ services:
   # Requires: discovery-service, config-service, keycloak, postgres
   # ─────────────────────────────────────────────────────────────────
   auth-service:
-    build:
-      context: .
-      dockerfile: services/auth-service/Dockerfile
+    image: ghcr.io/erickjoelquispe/epm-auth:${TAG:-latest}
     container_name: epm-auth
     ports:
       - "8081:8081"
@@ -227,9 +219,7 @@ services:
   # Requires: discovery-service, config-service, keycloak, postgres, kafka
   # ─────────────────────────────────────────────────────────────────
   user-service:
-    build:
-      context: .
-      dockerfile: services/user-service/Dockerfile
+    image: ghcr.io/erickjoelquispe/epm-user:${TAG:-latest}
     container_name: epm-user
     ports:
       - "8082:8082"
@@ -264,9 +254,7 @@ services:
   # Requires: discovery-service, config-service, keycloak, postgres, kafka
   # ─────────────────────────────────────────────────────────────────
   project-service:
-    build:
-      context: .
-      dockerfile: services/project-service/Dockerfile
+    image: ghcr.io/erickjoelquispe/epm-project:${TAG:-latest}
     container_name: epm-project-service
     ports:
       - "8083:8083"
@@ -302,9 +290,7 @@ services:
   # Requires: discovery-service, config-service, keycloak, postgres, kafka
   # ─────────────────────────────────────────────────────────────────
   task-service:
-    build:
-      context: .
-      dockerfile: services/task-service/Dockerfile
+    image: ghcr.io/erickjoelquispe/epm-task:${TAG:-latest}
     container_name: epm-task-service
     ports:
       - "8084:8084"
@@ -354,9 +340,7 @@ services:
   # Requires: discovery-service, config-service, keycloak, postgres, kafka
   # ─────────────────────────────────────────────────────────────────
   notification-service:
-    build:
-      context: .
-      dockerfile: services/notification-service/Dockerfile
+    image: ghcr.io/erickjoelquispe/epm-notification:${TAG:-latest}
     container_name: epm-notification-service
     ports:
       - "8085:8085"
@@ -399,9 +383,7 @@ services:
   #           kafka, redis
   # ─────────────────────────────────────────────────────────────────
   ai-service:
-    build:
-      context: .
-      dockerfile: services/ai-service/Dockerfile
+    image: ghcr.io/erickjoelquispe/epm-ai:${TAG:-latest}
     container_name: epm-ai-service
     ports:
       - "8086:8086"
@@ -435,6 +417,20 @@ services:
       timeout: 10s
       retries: 10
       start_period: 120s
+    restart: unless-stopped
+
+  # ─────────────────────────────────────────────────────────────────
+  # frontend — Angular SPA served by nginx
+  # Requires: api-gateway healthy
+  # ─────────────────────────────────────────────────────────────────
+  frontend:
+    image: ghcr.io/erickjoelquispe/epm-frontend:${TAG:-latest}
+    container_name: epm-frontend
+    ports:
+      - "4200:80"
+    depends_on:
+      api-gateway:
+        condition: service_healthy
     restart: unless-stopped
 
   # ─────────────────────────────────────────────────────────────────
