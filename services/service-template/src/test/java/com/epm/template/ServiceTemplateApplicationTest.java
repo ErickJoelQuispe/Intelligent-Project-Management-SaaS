@@ -15,7 +15,11 @@ import org.springframework.test.context.TestPropertySource;
  * from requiring a running Config Server during tests.
  */
 @SpringBootTest
-@TestPropertySource(properties = "spring.config.import=optional:configserver:")
+@TestPropertySource(properties = {
+    "spring.config.import=optional:configserver:",
+    "spring.flyway.enabled=false",
+    "spring.jpa.hibernate.ddl-auto=create-drop"
+})
 class ServiceTemplateApplicationTest {
 
     @Test
