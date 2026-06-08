@@ -168,6 +168,36 @@
                 </plugins>
             </build>
         </profile>
+        <!--
+            SonarCloud static analysis profile.
+            Run with: ./mvnw verify sonar:sonar -Psonar -DskipTests
+            Requires: SONAR_TOKEN env var (set as GitHub Actions secret)
+        -->
+        <profile>
+            <id>sonar</id>
+            <properties>
+                <sonar.host.url>https://sonarcloud.io</sonar.host.url>
+                <sonar.organization>erickjoelquispe</sonar.organization>
+                <sonar.projectKey>ErickJoelQuispe_Intelligent-Project-Management-SaaS</sonar.projectKey>
+                <sonar.java.source>21</sonar.java.source>
+                <sonar.coverage.exclusions>
+                    **/infrastructure/adapter/**,
+                    **/infrastructure/config/**,
+                    **/infrastructure/security/**,
+                    **/*Application.java,
+                    **/domain/event/**
+                </sonar.coverage.exclusions>
+            </properties>
+            <build>
+                <plugins>
+                    <plugin>
+                        <groupId>org.sonarsource.scanner.maven</groupId>
+                        <artifactId>sonar-maven-plugin</artifactId>
+                        <version>4.0.0.4121</version>
+                    </plugin>
+                </plugins>
+            </build>
+        </profile>
     </profiles>
 
     <build>
