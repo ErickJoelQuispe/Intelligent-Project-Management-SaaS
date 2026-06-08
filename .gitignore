@@ -17,7 +17,7 @@ replay_pid*
 *.iws
 *.iml
 *.ipr
-out/
+/out/
 
 # ─── IDE — VS Code ──────────────────────────────────────────────
 .vscode/
