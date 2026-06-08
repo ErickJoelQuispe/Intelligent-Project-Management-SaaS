@@ -1,0 +1,186 @@
+name: Release
+
+on:
+  push:
+    branches: [master]
+
+jobs:
+  # ──────────────────────────────────────────────────────────────
+  # Job 1: Release Please
+  # Creates/updates a release PR from conventional commits.
+  # When the release PR is merged, creates a GitHub Release + tag.
+  # ──────────────────────────────────────────────────────────────
+  release-please:
+    name: Release Please
+    runs-on: ubuntu-latest
+
+    permissions:
+      contents: write
+      pull-requests: write
+
+    outputs:
+      release_created: ${{ steps.release.outputs.release_created }}
+      tag_name: ${{ steps.release.outputs.tag_name }}
+
+    steps:
+      - name: Run Release Please
+        id: release
+        uses: googleapis/release-please-action@v4
+        with:
+          config-file: release-please-config.json
+          manifest-file: .release-please-manifest.json
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+  # ──────────────────────────────────────────────────────────────
+  # Job 2: Publish versioned Docker images
+  # Only runs when Release Please creates an actual release.
+  # Builds all 10 images (9 backend + 1 frontend) tagged with the
+  # release version (e.g. v1.2.3) AND updates :latest.
+  # ──────────────────────────────────────────────────────────────
+  publish-release-images:
+    name: Publish Release Images
+    runs-on: ubuntu-latest
+    needs: [release-please]
+    if: needs.release-please.outputs.release_created == 'true'
+
+    permissions:
+      contents: read
+      packages: write
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Java 21
+        uses: actions/setup-java@v4
+        with:
+          java-version: '21'
+          distribution: 'temurin'
+          cache: 'maven'
+
+      - name: Build all JARs
+        run: ./mvnw package -DskipTests --batch-mode
+
+      - name: Set up Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - name: Build frontend (production)
+        working-directory: frontend/epm-frontend
+        run: |
+          bun install --frozen-lockfile
+          bunx ng build --configuration=production
+
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Set version tag
+        id: vars
+        run: echo "version=${{ needs.release-please.outputs.tag_name }}" >> $GITHUB_OUTPUT
+
+      # ── Backend images ─────────────────────────────────────────
+      - name: Build & push discovery-service
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: services/discovery-service/Dockerfile
+          push: true
+          tags: |
+            ghcr.io/erickjoelquispe/epm-discovery:${{ steps.vars.outputs.version }}
+            ghcr.io/erickjoelquispe/epm-discovery:latest
+
+      - name: Build & push config-service
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: services/config-service/Dockerfile
+          push: true
+          tags: |
+            ghcr.io/erickjoelquispe/epm-config:${{ steps.vars.outputs.version }}
+            ghcr.io/erickjoelquispe/epm-config:latest
+
+      - name: Build & push api-gateway
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: services/api-gateway/Dockerfile
+          push: true
+          tags: |
+            ghcr.io/erickjoelquispe/epm-gateway:${{ steps.vars.outputs.version }}
+            ghcr.io/erickjoelquispe/epm-gateway:latest
+
+      - name: Build & push auth-service
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: services/auth-service/Dockerfile
+          push: true
+          tags: |
+            ghcr.io/erickjoelquispe/epm-auth:${{ steps.vars.outputs.version }}
+            ghcr.io/erickjoelquispe/epm-auth:latest
+
+      - name: Build & push user-service
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: services/user-service/Dockerfile
+          push: true
+          tags: |
+            ghcr.io/erickjoelquispe/epm-user:${{ steps.vars.outputs.version }}
+            ghcr.io/erickjoelquispe/epm-user:latest
+
+      - name: Build & push project-service
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: services/project-service/Dockerfile
+          push: true
+          tags: |
+            ghcr.io/erickjoelquispe/epm-project:${{ steps.vars.outputs.version }}
+            ghcr.io/erickjoelquispe/epm-project:latest
+
+      - name: Build & push task-service
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: services/task-service/Dockerfile
+          push: true
+          tags: |
+            ghcr.io/erickjoelquispe/epm-task:${{ steps.vars.outputs.version }}
+            ghcr.io/erickjoelquispe/epm-task:latest
+
+      - name: Build & push notification-service
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: services/notification-service/Dockerfile
+          push: true
+          tags: |
+            ghcr.io/erickjoelquispe/epm-notification:${{ steps.vars.outputs.version }}
+            ghcr.io/erickjoelquispe/epm-notification:latest
+
+      - name: Build & push ai-service
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: services/ai-service/Dockerfile
+          push: true
+          tags: |
+            ghcr.io/erickjoelquispe/epm-ai:${{ steps.vars.outputs.version }}
+            ghcr.io/erickjoelquispe/epm-ai:latest
+
+      # ── Frontend image ─────────────────────────────────────────
+      - name: Build & push frontend
+        uses: docker/build-push-action@v6
+        with:
+          context: frontend/epm-frontend
+          file: frontend/epm-frontend/Dockerfile
+          push: true
+          tags: |
+            ghcr.io/erickjoelquispe/epm-frontend:${{ steps.vars.outputs.version }}
+            ghcr.io/erickjoelquispe/epm-frontend:latest
