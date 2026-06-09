@@ -62,24 +62,30 @@ services:
 
   # ─────────────────────────────────────────────────────────────────
   # Keycloak 26 — Identity Provider
-  # Modo dev: usa H2 embebido (no necesita Postgres propio).
-  # El realm epm se importa automáticamente desde infra/keycloak/.
-  # Solo importa si el archivo existe; si no, arranca sin realm.
+  # Uses PostgreSQL backend (keycloak_db). Realm is imported
+  # automatically from infra/keycloak/ on first start.
+  # Requires: postgres service healthy before starting.
   # ─────────────────────────────────────────────────────────────────
   keycloak:
     image: quay.io/keycloak/keycloak:26.1.4
     container_name: epm-keycloak
-    command: start-dev --import-realm
+    command: start-dev --import-realm --db postgres
     environment:
       KEYCLOAK_ADMIN: admin
       KEYCLOAK_ADMIN_PASSWORD: ${KEYCLOAK_ADMIN_PASSWORD:-admin}
-      KC_DB: dev-mem
+      KC_DB: postgres
+      KC_DB_URL: jdbc:postgresql://epm-postgres:5432/keycloak_db
+      KC_DB_USERNAME: ${POSTGRES_USER:-epm_admin}
+      KC_DB_PASSWORD: ${POSTGRES_PASSWORD:-changeme}
       KC_HTTP_PORT: 8080
       KC_HEALTH_ENABLED: "true"
     ports:
       - "8180:8080"
     volumes:
       - ./infra/keycloak:/opt/keycloak/data/import
+    depends_on:
+      postgres:
+        condition: service_healthy
     healthcheck:
       test: ["CMD-SHELL", "exec 3<>/dev/tcp/localhost/9000 && echo -e 'GET /health/ready HTTP/1.0\\r\\nHost: localhost\\r\\n\\r\\n' >&3 && grep -q '\"status\": \"UP\"' <&3"]
       interval: 15s

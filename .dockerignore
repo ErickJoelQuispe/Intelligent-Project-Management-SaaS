@@ -44,3 +44,9 @@ docs/
 
 # Logs
 **/*.log
+
+# Phase 10 additions
+frontend/
+scripts/
+coverage/
+.atl/

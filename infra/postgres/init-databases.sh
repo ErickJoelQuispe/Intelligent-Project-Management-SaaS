@@ -27,6 +27,7 @@ psql -v ON_ERROR_STOP=1 --username "$POSTGRES_USER" --dbname "$POSTGRES_DB" <<-E
     CREATE DATABASE ai_test;
     CREATE DATABASE notification_db;
     CREATE DATABASE notification_test;
+    CREATE DATABASE keycloak_db;
 
     GRANT ALL PRIVILEGES ON DATABASE auth_db          TO epm_admin;
     GRANT ALL PRIVILEGES ON DATABASE auth_test        TO epm_admin;
@@ -40,7 +41,8 @@ psql -v ON_ERROR_STOP=1 --username "$POSTGRES_USER" --dbname "$POSTGRES_DB" <<-E
     GRANT ALL PRIVILEGES ON DATABASE ai_test          TO epm_admin;
     GRANT ALL PRIVILEGES ON DATABASE notification_db  TO epm_admin;
     GRANT ALL PRIVILEGES ON DATABASE notification_test TO epm_admin;
+    GRANT ALL PRIVILEGES ON DATABASE keycloak_db      TO epm_admin;
 
 EOSQL
 
-echo "✅ Databases created: auth_db, user_db, project_db, task_db, ai_db, notification_db"
+echo "✅ Databases created: auth_db, user_db, project_db, task_db, ai_db, notification_db, keycloak_db"

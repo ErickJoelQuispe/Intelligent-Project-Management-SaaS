@@ -1,0 +1,64 @@
+name: CI — E2E
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '0 2 * * *'
+
+jobs:
+  e2e:
+    name: End-to-End Tests
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Java 21
+        uses: actions/setup-java@v4
+        with:
+          java-version: '21'
+          distribution: 'temurin'
+          cache: 'maven'
+
+      - name: Start stack
+        run: docker compose up -d
+
+      - name: Wait for api-gateway
+        run: |
+          echo "Waiting for api-gateway to be healthy..."
+          timeout=60
+          elapsed=0
+          until curl -sf http://localhost:8080/actuator/health > /dev/null 2>&1; do
+            if [ $elapsed -ge $timeout ]; then
+              echo "api-gateway did not become healthy within ${timeout}s"
+              docker compose logs api-gateway
+              exit 1
+            fi
+            sleep 5
+            elapsed=$((elapsed + 5))
+          done
+          echo "api-gateway is healthy"
+
+      - name: Wait for auth-service
+        run: |
+          echo "Waiting for auth-service to be healthy..."
+          timeout=60
+          elapsed=0
+          until curl -sf http://localhost:8081/actuator/health > /dev/null 2>&1; do
+            if [ $elapsed -ge $timeout ]; then
+              echo "auth-service did not become healthy within ${timeout}s"
+              docker compose logs auth-service
+              exit 1
+            fi
+            sleep 5
+            elapsed=$((elapsed + 5))
+          done
+          echo "auth-service is healthy"
+
+      - name: Run E2E tests
+        run: ./mvnw verify -Pe2e --batch-mode
+
+      - name: Tear down stack
+        if: always()
+        run: docker compose down -v

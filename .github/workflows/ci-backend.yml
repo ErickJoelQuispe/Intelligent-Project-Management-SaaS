@@ -224,7 +224,7 @@ jobs:
 
     steps:
       - name: Scan epm-discovery
-        uses: aquasecurity/trivy-action@master
+        uses: aquasecurity/trivy-action@v0.36.0
         with:
           image-ref: ghcr.io/erickjoelquispe/epm-discovery:latest
           format: table
@@ -233,7 +233,7 @@ jobs:
           ignore-unfixed: true
 
       - name: Scan epm-config
-        uses: aquasecurity/trivy-action@master
+        uses: aquasecurity/trivy-action@v0.36.0
         with:
           image-ref: ghcr.io/erickjoelquispe/epm-config:latest
           format: table
@@ -242,7 +242,7 @@ jobs:
           ignore-unfixed: true
 
       - name: Scan epm-gateway
-        uses: aquasecurity/trivy-action@master
+        uses: aquasecurity/trivy-action@v0.36.0
         with:
           image-ref: ghcr.io/erickjoelquispe/epm-gateway:latest
           format: table
@@ -251,7 +251,7 @@ jobs:
           ignore-unfixed: true
 
       - name: Scan epm-auth
-        uses: aquasecurity/trivy-action@master
+        uses: aquasecurity/trivy-action@v0.36.0
         with:
           image-ref: ghcr.io/erickjoelquispe/epm-auth:latest
           format: table
@@ -260,7 +260,7 @@ jobs:
           ignore-unfixed: true
 
       - name: Scan epm-user
-        uses: aquasecurity/trivy-action@master
+        uses: aquasecurity/trivy-action@v0.36.0
         with:
           image-ref: ghcr.io/erickjoelquispe/epm-user:latest
           format: table
@@ -269,7 +269,7 @@ jobs:
           ignore-unfixed: true
 
       - name: Scan epm-project
-        uses: aquasecurity/trivy-action@master
+        uses: aquasecurity/trivy-action@v0.36.0
         with:
           image-ref: ghcr.io/erickjoelquispe/epm-project:latest
           format: table
@@ -278,7 +278,7 @@ jobs:
           ignore-unfixed: true
 
       - name: Scan epm-task
-        uses: aquasecurity/trivy-action@master
+        uses: aquasecurity/trivy-action@v0.36.0
         with:
           image-ref: ghcr.io/erickjoelquispe/epm-task:latest
           format: table
@@ -287,7 +287,7 @@ jobs:
           ignore-unfixed: true
 
       - name: Scan epm-notification
-        uses: aquasecurity/trivy-action@master
+        uses: aquasecurity/trivy-action@v0.36.0
         with:
           image-ref: ghcr.io/erickjoelquispe/epm-notification:latest
           format: table
@@ -296,7 +296,7 @@ jobs:
           ignore-unfixed: true
 
       - name: Scan epm-ai
-        uses: aquasecurity/trivy-action@master
+        uses: aquasecurity/trivy-action@v0.36.0
         with:
           image-ref: ghcr.io/erickjoelquispe/epm-ai:latest
           format: table
