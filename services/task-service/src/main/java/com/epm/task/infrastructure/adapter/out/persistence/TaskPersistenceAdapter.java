@@ -6,13 +6,14 @@ import java.util.Optional;
 import java.util.UUID;
 
 import com.epm.task.domain.model.ActivityLog;
+import com.epm.task.domain.model.PageResult;
 import com.epm.task.domain.model.Task;
 import com.epm.task.domain.model.TaskPriority;
 import com.epm.task.domain.model.TaskStatus;
 import com.epm.task.domain.port.out.ActivityLogRepository;
 import com.epm.task.domain.port.out.TaskRepository;
 import org.springframework.data.domain.Page;
-import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -47,9 +48,16 @@ public class TaskPersistenceAdapter implements TaskRepository, ActivityLogReposi
     }
 
     @Override
-    public Page<Task> findAllByProjectIdAndTenantId(UUID projectId, UUID tenantId, Pageable pageable) {
-        return taskJpaRepo.findAllByProjectIdAndTenantId(projectId, tenantId, pageable)
+    public PageResult<Task> findAllByProjectIdAndTenantId(UUID projectId, UUID tenantId, int page, int size) {
+        Page<Task> springPage = taskJpaRepo
+                .findAllByProjectIdAndTenantId(projectId, tenantId, PageRequest.of(page, size))
                 .map(this::toDomain);
+        return new PageResult<>(
+                springPage.getContent(),
+                springPage.getTotalElements(),
+                springPage.getTotalPages(),
+                springPage.getSize(),
+                springPage.getNumber());
     }
 
     @Override

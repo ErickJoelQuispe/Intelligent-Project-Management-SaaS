@@ -1,14 +1,15 @@
 package com.epm.task.application;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.when;
 
 import java.time.Instant;
+import java.util.List;
 import java.util.UUID;
 
 import com.epm.task.application.usecase.ListTasksByProjectUseCaseImpl;
+import com.epm.task.domain.model.PageResult;
 import com.epm.task.domain.model.Task;
 import com.epm.task.domain.model.TaskPriority;
 import com.epm.task.domain.model.TaskStatus;
@@ -19,11 +20,6 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.springframework.data.domain.Page;
-import org.springframework.data.domain.PageImpl;
-import org.springframework.data.domain.Pageable;
-
-import java.util.List;
 
 /**
  * Unit tests for ListTasksByProjectUseCaseImpl.
@@ -31,7 +27,8 @@ import java.util.List;
 @ExtendWith(MockitoExtension.class)
 class ListTasksByProjectUseCaseImplTest {
 
-    @Mock TaskRepository taskRepository;
+    @Mock
+    TaskRepository taskRepository;
 
     ListTasksByProjectUseCaseImpl useCase;
 
@@ -48,29 +45,30 @@ class ListTasksByProjectUseCaseImplTest {
                 UUID.randomUUID(), tenantId, projectId, null,
                 "Task A", null, TaskStatus.TODO, TaskPriority.MEDIUM,
                 null, null, Instant.now(), Instant.now());
-        Page<Task> taskPage = new PageImpl<>(List.of(task));
+        PageResult<Task> taskPage = new PageResult<>(List.of(task), 1L, 1, 10, 0);
 
-        when(taskRepository.findAllByProjectIdAndTenantId(eq(projectId), eq(tenantId), any(Pageable.class)))
+        when(taskRepository.findAllByProjectIdAndTenantId(eq(projectId), eq(tenantId), eq(0), eq(10)))
                 .thenReturn(taskPage);
 
-        Page<TaskResult> result = useCase.execute(projectId, tenantId, 0, 10);
+        PageResult<TaskResult> result = useCase.execute(projectId, tenantId, 0, 10);
 
-        assertThat(result.getContent()).hasSize(1);
-        assertThat(result.getContent().get(0).title()).isEqualTo("Task A");
-        assertThat(result.getContent().get(0).tenantId()).isEqualTo(tenantId);
+        assertThat(result.content()).hasSize(1);
+        assertThat(result.content().get(0).title()).isEqualTo("Task A");
+        assertThat(result.content().get(0).tenantId()).isEqualTo(tenantId);
     }
 
     @Test
     void execute_emptyProject_returnsEmptyPage() {
         UUID tenantId = UUID.randomUUID();
         UUID projectId = UUID.randomUUID();
+        PageResult<Task> emptyPage = new PageResult<>(List.of(), 0L, 0, 10, 0);
 
-        when(taskRepository.findAllByProjectIdAndTenantId(eq(projectId), eq(tenantId), any(Pageable.class)))
-                .thenReturn(Page.empty());
+        when(taskRepository.findAllByProjectIdAndTenantId(eq(projectId), eq(tenantId), eq(0), eq(10)))
+                .thenReturn(emptyPage);
 
-        Page<TaskResult> result = useCase.execute(projectId, tenantId, 0, 10);
+        PageResult<TaskResult> result = useCase.execute(projectId, tenantId, 0, 10);
 
-        assertThat(result.getContent()).isEmpty();
-        assertThat(result.getTotalElements()).isZero();
+        assertThat(result.content()).isEmpty();
+        assertThat(result.totalElements()).isZero();
     }
 }

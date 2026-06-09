@@ -4,9 +4,8 @@ import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
+import com.epm.task.domain.model.PageResult;
 import com.epm.task.domain.model.Task;
-import org.springframework.data.domain.Page;
-import org.springframework.data.domain.Pageable;
 
 /**
  * Driven port for task persistence.
@@ -17,7 +16,7 @@ public interface TaskRepository {
 
     Optional<Task> findByIdAndTenantId(UUID id, UUID tenantId);
 
-    Page<Task> findAllByProjectIdAndTenantId(UUID projectId, UUID tenantId, Pageable pageable);
+    PageResult<Task> findAllByProjectIdAndTenantId(UUID projectId, UUID tenantId, int page, int size);
 
     List<Task> findAllByProjectId(UUID projectId, UUID tenantId);
 

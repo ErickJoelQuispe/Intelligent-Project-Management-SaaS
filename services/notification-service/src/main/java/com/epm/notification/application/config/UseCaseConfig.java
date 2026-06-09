@@ -8,14 +8,12 @@ import com.epm.notification.domain.port.in.GetPreferencesUseCase;
 import com.epm.notification.domain.port.in.UpdatePreferenceUseCase;
 import com.epm.notification.domain.port.out.EmailPort;
 import com.epm.notification.domain.port.out.NotificationPreferenceRepository;
-import com.epm.notification.domain.port.out.NotificationPushPort;
+import com.epm.notification.domain.port.out.NotificationPreferenceRepository;
 import com.epm.notification.domain.port.out.NotificationRepository;
 import com.epm.notification.domain.port.out.UserEmailCacheRepository;
-import com.epm.notification.infrastructure.adapter.out.ws.StompNotificationPushAdapter;
 import io.micrometer.core.instrument.MeterRegistry;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.messaging.simp.SimpMessagingTemplate;
 
 /**
  * Spring configuration that wires use case implementations to their port interfaces.
@@ -36,11 +34,6 @@ public class UseCaseConfig {
         return new NotificationApplicationService(
                 notificationRepository, emailPort, userEmailCacheRepository,
                 notificationPreferenceRepository, meterRegistry);
-    }
-
-    @Bean
-    NotificationPushPort notificationPushPort(SimpMessagingTemplate messagingTemplate) {
-        return new StompNotificationPushAdapter(messagingTemplate);
     }
 
     @Bean
