@@ -1,0 +1,65 @@
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: epm-api-gateway
+  namespace: epm
+  labels:
+    app: epm-api-gateway
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: epm-api-gateway
+  template:
+    metadata:
+      labels:
+        app: epm-api-gateway
+    spec:
+      containers:
+        - name: api-gateway
+          image: ghcr.io/erickjoelquispe/epm-gateway:latest
+          ports:
+            - containerPort: 8080
+          envFrom:
+            - configMapRef:
+                name: epm-config
+            - secretRef:
+                name: epm-secrets
+          resources:
+            requests:
+              cpu: 256m
+              memory: 512Mi
+            limits:
+              cpu: 500m
+              memory: 1Gi
+          readinessProbe:
+            httpGet:
+              path: /actuator/health
+              port: 8080
+            initialDelaySeconds: 30
+            periodSeconds: 10
+            failureThreshold: 3
+          livenessProbe:
+            httpGet:
+              path: /actuator/health
+              port: 8080
+            initialDelaySeconds: 60
+            periodSeconds: 30
+            failureThreshold: 3
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: epm-api-gateway
+  namespace: epm
+  labels:
+    app: epm-api-gateway
+spec:
+  type: ClusterIP
+  selector:
+    app: epm-api-gateway
+  ports:
+    - name: http
+      port: 8080
+      targetPort: 8080

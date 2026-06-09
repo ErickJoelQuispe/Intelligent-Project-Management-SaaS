@@ -1,0 +1,65 @@
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: epm-notification
+  namespace: epm
+  labels:
+    app: epm-notification
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: epm-notification
+  template:
+    metadata:
+      labels:
+        app: epm-notification
+    spec:
+      containers:
+        - name: notification-service
+          image: ghcr.io/erickjoelquispe/epm-notification:latest
+          ports:
+            - containerPort: 8085
+          envFrom:
+            - configMapRef:
+                name: epm-config
+            - secretRef:
+                name: epm-secrets
+          resources:
+            requests:
+              cpu: 256m
+              memory: 512Mi
+            limits:
+              cpu: 500m
+              memory: 1Gi
+          readinessProbe:
+            httpGet:
+              path: /actuator/health
+              port: 8085
+            initialDelaySeconds: 30
+            periodSeconds: 10
+            failureThreshold: 3
+          livenessProbe:
+            httpGet:
+              path: /actuator/health
+              port: 8085
+            initialDelaySeconds: 60
+            periodSeconds: 30
+            failureThreshold: 3
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: epm-notification
+  namespace: epm
+  labels:
+    app: epm-notification
+spec:
+  type: ClusterIP
+  selector:
+    app: epm-notification
+  ports:
+    - name: http
+      port: 8085
+      targetPort: 8085
