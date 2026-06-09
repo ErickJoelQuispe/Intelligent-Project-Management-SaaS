@@ -232,8 +232,8 @@ KEYCLOAK_CLIENT_SECRET=<valor-copiado>
 | **6** | Notificaciones — WebSocket/STOMP, email Thymeleaf, preferencias | ✅ Completo |
 | **7** | Resiliencia y observabilidad — Prometheus, Grafana, Loki, Tempo, R4J | ✅ Completo |
 | **8** | Containerización y CI/CD — GHCR, SonarCloud, Trivy, release-please | ✅ Completo |
-| **9** | Frontend Angular — projects, Kanban, notificaciones tiempo real | 🚧 En progreso |
-| **10** | Kubernetes (opcional) | ⏳ Pendiente |
+| **9** | Frontend Angular — projects, Kanban, notificaciones tiempo real | ✅ Completo |
+| **10** | Kubernetes (opcional) | ✅ Completo |
 | **11** | Pulido y presentación | ⏳ Pendiente |
 
 ---
