@@ -91,5 +91,10 @@ class ArchitectureTest {
             .layer("Domain").definedBy("..domain..")
             .whereLayer("Infrastructure").mayNotBeAccessedByAnyLayer()
             .whereLayer("Application").mayOnlyBeAccessedByLayers("Infrastructure")
-            .whereLayer("Domain").mayOnlyBeAccessedByLayers("Application", "Infrastructure");
+            .whereLayer("Domain").mayOnlyBeAccessedByLayers("Application", "Infrastructure")
+            // AuthServiceApplication is the Spring Boot entry point (root package) — it legitimately
+            // references @ConfigurationProperties from infrastructure to wire the app context.
+            .ignoreDependency(
+                    com.epm.auth.AuthServiceApplication.class,
+                    com.epm.auth.infrastructure.config.KeycloakProperties.class);
 }
