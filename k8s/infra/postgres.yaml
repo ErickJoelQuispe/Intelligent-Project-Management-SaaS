@@ -1,0 +1,109 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: postgres-init-scripts
+  namespace: epm
+data:
+  init.sql: |
+    -- Each microservice has its own database.
+    -- Communication is via Kafka events, never cross-DB joins.
+
+    CREATE DATABASE auth_db;
+    CREATE DATABASE auth_test;
+    CREATE DATABASE user_db;
+    CREATE DATABASE user_test;
+    CREATE DATABASE project_db;
+    CREATE DATABASE project_test;
+    CREATE DATABASE task_db;
+    CREATE DATABASE task_test;
+    CREATE DATABASE ai_db;
+    CREATE DATABASE ai_test;
+    CREATE DATABASE notification_db;
+    CREATE DATABASE notification_test;
+    CREATE DATABASE keycloak_db;
+
+    GRANT ALL PRIVILEGES ON DATABASE auth_db          TO epm_admin;
+    GRANT ALL PRIVILEGES ON DATABASE auth_test        TO epm_admin;
+    GRANT ALL PRIVILEGES ON DATABASE user_db          TO epm_admin;
+    GRANT ALL PRIVILEGES ON DATABASE user_test        TO epm_admin;
+    GRANT ALL PRIVILEGES ON DATABASE project_db       TO epm_admin;
+    GRANT ALL PRIVILEGES ON DATABASE project_test     TO epm_admin;
+    GRANT ALL PRIVILEGES ON DATABASE task_db          TO epm_admin;
+    GRANT ALL PRIVILEGES ON DATABASE task_test        TO epm_admin;
+    GRANT ALL PRIVILEGES ON DATABASE ai_db            TO epm_admin;
+    GRANT ALL PRIVILEGES ON DATABASE ai_test          TO epm_admin;
+    GRANT ALL PRIVILEGES ON DATABASE notification_db  TO epm_admin;
+    GRANT ALL PRIVILEGES ON DATABASE notification_test TO epm_admin;
+    GRANT ALL PRIVILEGES ON DATABASE keycloak_db      TO epm_admin;
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: epm-postgres
+  namespace: epm
+spec:
+  serviceName: epm-postgres
+  replicas: 1
+  selector:
+    matchLabels:
+      app: epm-postgres
+  template:
+    metadata:
+      labels:
+        app: epm-postgres
+    spec:
+      containers:
+        - name: postgres
+          image: postgres:16-alpine
+          env:
+            - name: POSTGRES_USER
+              value: epm_admin
+            - name: POSTGRES_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: epm-secrets
+                  key: POSTGRES_PASSWORD
+            - name: POSTGRES_DB
+              value: postgres
+          ports:
+            - containerPort: 5432
+          readinessProbe:
+            exec:
+              command:
+                - pg_isready
+                - -U
+                - postgres
+            initialDelaySeconds: 10
+            periodSeconds: 5
+            failureThreshold: 6
+          volumeMounts:
+            - name: postgres-init-scripts
+              mountPath: /docker-entrypoint-initdb.d/
+            - name: postgres-data
+              mountPath: /var/lib/postgresql/data
+      volumes:
+        - name: postgres-init-scripts
+          configMap:
+            name: postgres-init-scripts
+  volumeClaimTemplates:
+    - metadata:
+        name: postgres-data
+      spec:
+        accessModes:
+          - ReadWriteOnce
+        resources:
+          requests:
+            storage: 5Gi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: epm-postgres
+  namespace: epm
+spec:
+  type: ClusterIP
+  selector:
+    app: epm-postgres
+  ports:
+    - port: 5432
+      targetPort: 5432
