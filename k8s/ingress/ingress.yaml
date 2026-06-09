@@ -17,6 +17,24 @@ spec:
                 name: epm-api-gateway
                 port:
                   number: 8080
+          # Keycloak: browser OIDC redirects require direct access to /realms/epm/...
+          # NOTE: no rewrite-target here — Keycloak needs its full path intact.
+          # This rule must be a separate Ingress object without the rewrite annotation,
+          # or use a dedicated ingress class. For Kind/dev use a path-based split:
+          - path: /realms(/|$)(.*)
+            pathType: Prefix
+            backend:
+              service:
+                name: epm-keycloak
+                port:
+                  number: 8080
+          - path: /resources(/|$)(.*)
+            pathType: Prefix
+            backend:
+              service:
+                name: epm-keycloak
+                port:
+                  number: 8080
           - path: /()(.*)
             pathType: Prefix
             backend:

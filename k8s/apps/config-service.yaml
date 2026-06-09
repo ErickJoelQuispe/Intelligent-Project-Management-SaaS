@@ -22,6 +22,10 @@ spec:
       labels:
         app: epm-config
     spec:
+      volumes:
+        - name: config-repo-volume
+          configMap:
+            name: config-repo
       containers:
         - name: config-service
           image: ghcr.io/erickjoelquispe/epm-config:latest
@@ -35,6 +39,14 @@ spec:
           env:
             - name: CONFIG_REPO_PATH
               value: /config-repo
+            - name: SPRING_CLOUD_CONFIG_SERVER_NATIVE_SEARCH_LOCATIONS
+              value: file:/config-repo
+            - name: SPRING_PROFILES_ACTIVE
+              value: native
+          volumeMounts:
+            - name: config-repo-volume
+              mountPath: /config-repo
+              readOnly: true
           resources:
             requests:
               cpu: 256m
