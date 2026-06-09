@@ -3,6 +3,7 @@ package com.epm.notification.architecture;
 import static com.tngtech.archunit.lang.syntax.ArchRuleDefinition.noClasses;
 import static com.tngtech.archunit.library.Architectures.layeredArchitecture;
 
+import com.tngtech.archunit.core.importer.ImportOption;
 import com.tngtech.archunit.junit.AnalyzeClasses;
 import com.tngtech.archunit.junit.ArchTest;
 import com.tngtech.archunit.lang.ArchRule;
@@ -12,7 +13,12 @@ import com.tngtech.archunit.lang.ArchRule;
  *
  * <p>Enforces the four invariants of hexagonal architecture (same rules as task-service).
  */
-@AnalyzeClasses(packages = "com.epm.notification")
+@AnalyzeClasses(
+        packages = "com.epm.notification",
+        importOptions = {
+            ImportOption.DoNotIncludeTests.class,
+            ImportOption.DoNotIncludeJars.class
+        })
 class ArchitectureTest {
 
     /**

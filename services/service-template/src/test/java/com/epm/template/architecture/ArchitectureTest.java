@@ -3,6 +3,7 @@ package com.epm.template.architecture;
 import static com.tngtech.archunit.lang.syntax.ArchRuleDefinition.noClasses;
 import static com.tngtech.archunit.library.Architectures.layeredArchitecture;
 
+import com.tngtech.archunit.core.importer.ImportOption;
 import com.tngtech.archunit.junit.AnalyzeClasses;
 import com.tngtech.archunit.junit.ArchTest;
 import com.tngtech.archunit.lang.ArchRule;
@@ -20,7 +21,12 @@ import com.tngtech.archunit.lang.ArchRule;
  *   <li>Layered dependency direction: domain ← application ← infrastructure (never reversed).
  * </ol>
  */
-@AnalyzeClasses(packages = "com.epm.template")
+@AnalyzeClasses(
+        packages = "com.epm.template",
+        importOptions = {
+            ImportOption.DoNotIncludeTests.class,
+            ImportOption.DoNotIncludeJars.class
+        })
 class ArchitectureTest {
 
     /**

@@ -3,6 +3,7 @@ package com.epm.project.architecture;
 import static com.tngtech.archunit.lang.syntax.ArchRuleDefinition.noClasses;
 import static com.tngtech.archunit.library.Architectures.layeredArchitecture;
 
+import com.tngtech.archunit.core.importer.ImportOption;
 import com.tngtech.archunit.junit.AnalyzeClasses;
 import com.tngtech.archunit.junit.ArchTest;
 import com.tngtech.archunit.lang.ArchRule;
@@ -12,7 +13,12 @@ import com.tngtech.archunit.lang.ArchRule;
  *
  * <p>Enforces the four invariants of hexagonal architecture.
  */
-@AnalyzeClasses(packages = "com.epm.project")
+@AnalyzeClasses(
+        packages = "com.epm.project",
+        importOptions = {
+            ImportOption.DoNotIncludeTests.class,
+            ImportOption.DoNotIncludeJars.class
+        })
 class ArchitectureTest {
 
     /**
