@@ -25,6 +25,8 @@
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <!-- Override Tomcat to patch CRITICAL CVEs: CVE-2026-41293, CVE-2026-43512, CVE-2026-43515 -->
         <tomcat.version>10.1.55</tomcat.version>
+        <!-- Override Spring Security to patch CVE-2026-22732 (Security bypass, CRITICAL) -->
+        <spring-security.version>6.5.9</spring-security.version>
 
     </properties>
 
