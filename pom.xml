@@ -25,6 +25,8 @@
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <!-- Override Tomcat: Spring Boot 3.5.14 ships 10.1.54 but CVE-2026-41293/43512/43515 require 10.1.55+ -->
         <tomcat.version>10.1.55</tomcat.version>
+        <!-- Override spring-cloud-config-server: 2025.0.2 BOM ships 4.3.2 which has CVE-2026-40982 (directory traversal) -->
+        <spring-cloud-config.version>4.3.3</spring-cloud-config.version>
     </properties>
 
     <dependencyManagement>
@@ -35,6 +37,17 @@
                 <version>${spring-cloud.version}</version>
                 <type>pom</type>
                 <scope>import</scope>
+            </dependency>
+            <!-- Patch CVE-2026-40982: directory traversal in config-server; override BOM version -->
+            <dependency>
+                <groupId>org.springframework.cloud</groupId>
+                <artifactId>spring-cloud-config-server</artifactId>
+                <version>${spring-cloud-config.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>org.springframework.cloud</groupId>
+                <artifactId>spring-cloud-config-client</artifactId>
+                <version>${spring-cloud-config.version}</version>
             </dependency>
             <dependency>
                 <groupId>org.springframework.ai</groupId>
