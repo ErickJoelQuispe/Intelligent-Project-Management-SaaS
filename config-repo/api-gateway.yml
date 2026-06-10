@@ -119,7 +119,7 @@ spring:
             #   with existing routes). Higher order value keeps it evaluated last,
             #   but since there is no overlap with other routes it has no practical
             #   effect. Using 100 as a positive sentinel to distinguish it visually.
-             - id: ai-service
+            - id: ai-service
               uri: lb://ai-service
               order: 100
               predicates:
