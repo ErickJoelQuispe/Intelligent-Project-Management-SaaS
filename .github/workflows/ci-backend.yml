@@ -39,6 +39,8 @@ jobs:
           cache: 'maven'
 
       - name: Run tests
+        env:
+          TESTCONTAINERS_RYUK_DISABLED: true
         run: ./mvnw test --batch-mode
 
       - name: Upload surefire reports on failure
