@@ -2,8 +2,6 @@ package com.epm.ai.infrastructure.adapter.in.rest;
 
 import java.util.Iterator;
 import java.util.List;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
 
 import com.epm.ai.domain.model.AiResponse;
 import com.epm.ai.domain.model.TaskDraft;
@@ -16,6 +14,8 @@ import com.epm.ai.infrastructure.adapter.in.rest.dto.GenerateTasksRequest;
 import com.epm.ai.infrastructure.adapter.in.rest.dto.GenerateTasksResponse;
 import com.epm.ai.infrastructure.adapter.in.rest.dto.SummaryResponse;
 import jakarta.validation.Valid;
+import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.core.task.TaskExecutor;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
@@ -38,13 +38,16 @@ public class AiController {
     private final GenerateTasksUseCase generateTasksUseCase;
     private final SummarizeProjectUseCase summarizeProjectUseCase;
     private final ChatWithProjectUseCase chatWithProjectUseCase;
+    private final TaskExecutor taskExecutor;
 
     public AiController(GenerateTasksUseCase generateTasksUseCase,
                         SummarizeProjectUseCase summarizeProjectUseCase,
-                        ChatWithProjectUseCase chatWithProjectUseCase) {
+                        ChatWithProjectUseCase chatWithProjectUseCase,
+                        @Qualifier("applicationTaskExecutor") TaskExecutor taskExecutor) {
         this.generateTasksUseCase = generateTasksUseCase;
         this.summarizeProjectUseCase = summarizeProjectUseCase;
         this.chatWithProjectUseCase = chatWithProjectUseCase;
+        this.taskExecutor = taskExecutor;
     }
 
     /**
@@ -119,15 +122,10 @@ public class AiController {
         String userId = jwt.getSubject();
         String tenantId = jwt.getClaimAsString("tenant_id");
 
-        ExecutorService executor = Executors.newSingleThreadExecutor();
         SseEmitter emitter = new SseEmitter(30000L);
 
-        // Ensure executor is always shut down when the SSE connection ends
-        emitter.onCompletion(executor::shutdown);
-        emitter.onTimeout(executor::shutdown);
-        emitter.onError(t -> executor.shutdown());
-
-        executor.execute(() -> {
+        // TaskExecutor is Spring-managed — no manual lifecycle needed
+        taskExecutor.execute(() -> {
             try {
                 Iterator<String> chunks = chatWithProjectUseCase.executeStream(
                         request.projectId(), userId, tenantId, request.message());
