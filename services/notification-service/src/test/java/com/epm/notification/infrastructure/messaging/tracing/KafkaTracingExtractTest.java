@@ -40,6 +40,10 @@ class KafkaTracingExtractTest {
 
     @BeforeEach
     void setUp() {
+        // Reset global state before each test to avoid conflicts when other tests
+        // in the same JVM process have already registered a GlobalOpenTelemetry instance.
+        io.opentelemetry.api.GlobalOpenTelemetry.resetForTest();
+
         SdkTracerProvider tracerProvider = SdkTracerProvider.builder()
                 .addSpanProcessor(SimpleSpanProcessor.create(SpanExporter.composite()))
                 .build();
