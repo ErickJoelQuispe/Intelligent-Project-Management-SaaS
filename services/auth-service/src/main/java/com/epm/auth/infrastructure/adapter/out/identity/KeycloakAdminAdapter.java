@@ -51,19 +51,20 @@ public class KeycloakAdminAdapter implements IdentityProviderPort {
             cred.setTemporary(false);
             user.setCredentials(List.of(cred));
 
-            // 3. Create user
-            Response response = keycloak.realm(props.realm()).users().create(user);
-            if (response.getStatus() != 201) {
-                throw new IdentityProviderException(
-                        "Keycloak user creation failed with status: " + response.getStatus(), 0);
+            // 3. Create user — Response implements Closeable; must be closed to release the HTTP connection
+            try (Response response = keycloak.realm(props.realm()).users().create(user)) {
+                if (response.getStatus() != 201) {
+                    throw new IdentityProviderException(
+                            "Keycloak user creation failed with status: " + response.getStatus(), 0);
+                }
+
+                // 4. Extract user ID from Location header
+                String location = response.getHeaderString("Location");
+                String userId = location.substring(location.lastIndexOf('/') + 1);
+
+                // 5. Set tenant_id attribute (already set above, but update to confirm)
+                return UUID.fromString(userId);
             }
-
-            // 4. Extract user ID from Location header
-            String location = response.getHeaderString("Location");
-            String userId = location.substring(location.lastIndexOf('/') + 1);
-
-            // 5. Set tenant_id attribute (already set above, but update to confirm)
-            return UUID.fromString(userId);
         }
     }
 

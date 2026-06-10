@@ -119,8 +119,13 @@ public class AiController {
         String userId = jwt.getSubject();
         String tenantId = jwt.getClaimAsString("tenant_id");
 
-        SseEmitter emitter = new SseEmitter(30000L);
         ExecutorService executor = Executors.newSingleThreadExecutor();
+        SseEmitter emitter = new SseEmitter(30000L);
+
+        // Ensure executor is always shut down when the SSE connection ends
+        emitter.onCompletion(executor::shutdown);
+        emitter.onTimeout(executor::shutdown);
+        emitter.onError(t -> executor.shutdown());
 
         executor.execute(() -> {
             try {
@@ -136,8 +141,6 @@ public class AiController {
                 emitter.complete();
             } catch (Exception e) {
                 emitter.completeWithError(e);
-            } finally {
-                executor.shutdown();
             }
         });
 
