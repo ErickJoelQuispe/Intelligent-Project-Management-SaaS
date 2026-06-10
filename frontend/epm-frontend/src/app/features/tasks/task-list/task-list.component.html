@@ -1,68 +1,111 @@
-<div class="task-list-container">
-  <div class="task-list-header">
-    <h1>Tasks</h1>
-    <div class="task-list-actions">
-      <a mat-stroked-button [routerLink]="['/projects', projectId, 'tasks', 'kanban']">
-        <mat-icon>view_kanban</mat-icon>
-        Kanban View
-      </a>
-      <a mat-raised-button color="primary" [routerLink]="['/projects', projectId, 'tasks', 'new']">
-        <mat-icon>add</mat-icon>
-        New Task
-      </a>
-    </div>
-  </div>
+<app-page-header
+  title="Tasks"
+  description="All tasks for this project"
+>
+  <app-button
+    page-action
+    variant="ghost"
+    size="sm"
+    [routerLink]="['/projects', projectId, 'tasks', 'kanban']"
+  >
+    <span class="material-symbols-rounded text-sm">view_kanban</span>
+    Kanban view
+  </app-button>
+</app-page-header>
+
+<div class="p-6">
 
   @if (loading()) {
-    <div class="task-list-loading">
-      <mat-spinner diameter="48" />
-    </div>
-  }
-
-  @if (error()) {
-    <div class="error-message">{{ error() }}</div>
-  }
-
-  @if (!loading() && !error()) {
-    <mat-table [dataSource]="tasks()" class="task-table">
-      <ng-container matColumnDef="title">
-        <mat-header-cell *matHeaderCellDef>Title</mat-header-cell>
-        <mat-cell *matCellDef="let task">{{ task.title }}</mat-cell>
-      </ng-container>
-
-      <ng-container matColumnDef="status">
-        <mat-header-cell *matHeaderCellDef>Status</mat-header-cell>
-        <mat-cell *matCellDef="let task">{{ task.status }}</mat-cell>
-      </ng-container>
-
-      <ng-container matColumnDef="priority">
-        <mat-header-cell *matHeaderCellDef>Priority</mat-header-cell>
-        <mat-cell *matCellDef="let task">{{ task.priority }}</mat-cell>
-      </ng-container>
-
-      <ng-container matColumnDef="deadline">
-        <mat-header-cell *matHeaderCellDef>Deadline</mat-header-cell>
-        <mat-cell *matCellDef="let task">{{ task.deadline | date: 'mediumDate' }}</mat-cell>
-      </ng-container>
-
-      <ng-container matColumnDef="actions">
-        <mat-header-cell *matHeaderCellDef>Actions</mat-header-cell>
-        <mat-cell *matCellDef="let task">
-          <button mat-icon-button [attr.aria-label]="'Edit task ' + task.title">
-            <mat-icon>edit</mat-icon>
-          </button>
-        </mat-cell>
-      </ng-container>
-
-      <mat-header-row *matHeaderRowDef="displayedColumns"></mat-header-row>
-      <mat-row *matRowDef="let row; columns: displayedColumns;"></mat-row>
-    </mat-table>
-
-    <mat-paginator
-      [length]="totalElements()"
-      [pageSize]="pageSize"
-      [pageSizeOptions]="[10, 25, 50]"
-      (page)="onPageChange($event)"
+    <app-spinner size="lg" [full]="true" label="Loading tasks..." />
+  } @else if (error()) {
+    <app-error-banner
+      [message]="error()!"
+      retryLabel="Try again"
+      (retry)="loadTasks()"
     />
+  } @else if (tasks().length === 0) {
+    <app-empty-state
+      icon="task"
+      title="No tasks yet"
+      description="Create the first task for this project."
+    >
+      <app-button action variant="primary"
+                  [routerLink]="['/projects', projectId, 'tasks', 'new']">
+        New task
+      </app-button>
+    </app-empty-state>
+  } @else {
+
+    <div class="rounded-xl overflow-hidden"
+         style="border: 1px solid oklch(0.22 0.020 268);
+                box-shadow: 0 4px 24px oklch(0 0 0 / 0.4);">
+
+      <!-- Header -->
+      <div class="grid grid-cols-[2fr_1fr_1fr_1fr_3rem] px-5 py-3"
+           style="background: oklch(0.13 0.025 268);
+                  border-bottom: 1px solid oklch(0.22 0.020 268);">
+        @for (col of tableHeaders; track $index) {
+          <span class="text-xs font-semibold uppercase tracking-widest"
+                style="color: oklch(0.42 0.012 268); font-family: 'JetBrains Mono', monospace;">
+            {{ col }}
+          </span>
+        }
+      </div>
+
+      <!-- Filas -->
+      @for (task of tasks(); track task.id; let i = $index) {
+        <div class="group grid grid-cols-[2fr_1fr_1fr_1fr_3rem]
+                    px-5 py-3.5 items-center
+                    transition-all duration-150 cursor-default animate-card-in"
+             [class]="'stagger-' + ((i % 6) + 1)"
+             style="border-bottom: 1px solid oklch(0.22 0.020 268 / 0.5);"
+             [style.background]="i % 2 === 0
+               ? 'oklch(0.09 0.02 268)'
+               : 'oklch(0.10 0.022 268)'"
+        >
+          <span class="text-sm font-medium truncate pr-4 group-hover:text-accent
+                       transition-colors duration-150"
+                style="color: oklch(0.92 0.008 268);">
+            {{ task.title }}
+          </span>
+          <app-task-status-badge [status]="task.status" />
+          <app-task-priority-badge [priority]="task.priority" />
+          <span class="text-xs font-mono"
+                style="color: oklch(0.42 0.012 268); font-family: 'JetBrains Mono', monospace;">
+            {{ task.deadline ? (task.deadline | date:'MMM d, yy') : '—' }}
+          </span>
+          <app-button variant="ghost" size="sm"
+                      [routerLink]="['/projects', projectId, 'tasks', task.id, 'edit']"
+                      title="Edit task">
+            <span class="material-symbols-rounded text-sm">edit</span>
+          </app-button>
+        </div>
+      }
+    </div>
+
+    <!-- Paginación -->
+    @if (totalPages > 1) {
+      <div class="flex items-center justify-between mt-5">
+        <span class="text-xs font-mono" style="color: oklch(0.42 0.012 268); font-family: 'JetBrains Mono', monospace;">
+          Page {{ pageIndex + 1 }} / {{ totalPages }}
+        </span>
+        <div class="flex gap-2">
+          <app-button variant="secondary" size="sm"
+                      [disabled]="pageIndex === 0"
+                      (click)="onPageChange(pageIndex - 1)">
+            <span class="material-symbols-rounded text-sm">arrow_back</span>
+            Prev
+          </app-button>
+          <app-button variant="secondary" size="sm"
+                      [disabled]="pageIndex + 1 >= totalPages"
+                      (click)="onPageChange(pageIndex + 1)">
+            Next
+            <span class="material-symbols-rounded text-sm">arrow_forward</span>
+          </app-button>
+        </div>
+      </div>
+    }
+
   }
+
 </div>

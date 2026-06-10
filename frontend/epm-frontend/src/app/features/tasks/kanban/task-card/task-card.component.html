@@ -1,28 +1,30 @@
-<mat-card class="task-card">
-  <mat-card-content>
-    <div class="task-card__header">
-      <span class="task-card__title">{{ task().title }}</span>
-      <mat-chip
-        class="task-card__priority"
-        [style.background-color]="priorityColor(task().priority)"
-        [attr.aria-label]="'Priority: ' + task().priority"
-      >
-        {{ task().priority }}
-      </mat-chip>
+<app-card padding="sm" class="block cursor-pointer animate-card-in
+           hover:border-glow transition-all duration-200">
+
+  <!-- Título + badge de prioridad -->
+  <div class="flex items-start justify-between gap-2 mb-3">
+    <span class="text-text-primary text-sm font-medium leading-snug line-clamp-2 flex-1">
+      {{ task().title }}
+    </span>
+    <app-task-priority-badge [priority]="task().priority" />
+  </div>
+
+  <!-- Deadline — solo si existe -->
+  @if (task().deadline) {
+    <div class="flex items-center gap-1.5 text-text-muted text-xs mb-2">
+      <span class="material-symbols-rounded text-sm">schedule</span>
+      <span>{{ task().deadline | date: 'MMM d' }}</span>
     </div>
+  }
 
-    @if (task().deadline) {
-      <div class="task-card__deadline">
-        <mat-icon class="task-card__deadline-icon">schedule</mat-icon>
-        <span>{{ task().deadline | date: 'mediumDate' }}</span>
-      </div>
-    }
+  <!-- Assignee — avatar con iniciales en lugar de UUID crudo -->
+  @if (task().assigneeId) {
+    <div class="flex items-center gap-2 mt-3 pt-3 border-t border-border">
+      <app-avatar size="xs" [name]="task().assigneeId ?? ''" />
+      <span class="text-text-muted text-xs truncate">
+        {{ task().assigneeId }}
+      </span>
+    </div>
+  }
 
-    @if (task().assigneeId) {
-      <div class="task-card__assignee">
-        <mat-icon class="task-card__assignee-icon">person</mat-icon>
-        <span class="task-card__assignee-id">{{ task().assigneeId }}</span>
-      </div>
-    }
-  </mat-card-content>
-</mat-card>
+</app-card>

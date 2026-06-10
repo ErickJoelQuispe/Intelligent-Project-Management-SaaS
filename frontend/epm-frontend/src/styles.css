@@ -1,0 +1,187 @@
+@import "tailwindcss";
+
+/* =============================================================================
+   DESIGN TOKENS — Deep Space Editorial
+   ============================================================================= */
+
+@theme {
+  /* --- Backgrounds --- */
+  --color-bg-base:      oklch(0.07 0.02 268);    /* #07070f — near black with blue undertone */
+  --color-bg-surface:   oklch(0.11 0.025 268);   /* cards */
+  --color-bg-elevated:  oklch(0.15 0.025 268);   /* inputs, hovers */
+  --color-bg-overlay:   oklch(0.20 0.022 268);   /* active rows */
+
+  /* --- Text --- */
+  --color-text-primary:   oklch(0.96 0.006 268);
+  --color-text-secondary: oklch(0.65 0.018 268);
+  --color-text-muted:     oklch(0.42 0.012 268);
+  --color-text-disabled:  oklch(0.28 0.008 268);
+
+  /* --- Accent: electric violet → cyan gradient brand --- */
+  --color-accent:         oklch(0.65 0.26 285);   /* electric violet */
+  --color-accent-hover:   oklch(0.72 0.24 285);
+  --color-accent-subtle:  oklch(0.65 0.26 285 / 0.12);
+  --color-accent-glow:    oklch(0.65 0.26 285 / 0.35);
+  --color-cyan:           oklch(0.78 0.18 200);   /* cyan — gradient endpoint */
+
+  /* --- Borders --- */
+  --color-border:         oklch(0.22 0.020 268);
+  --color-border-strong:  oklch(0.32 0.022 268);
+  --color-border-glow:    oklch(0.65 0.26 285 / 0.25);
+
+  /* --- Sidebar --- */
+  --color-sidebar-bg:     oklch(0.065 0.025 272);
+  --color-sidebar-active: oklch(0.65 0.26 285 / 0.15);
+  --color-sidebar-text:   oklch(0.72 0.015 268);
+
+  /* --- Status --- */
+  --color-success:        oklch(0.74 0.18 152);
+  --color-success-subtle: oklch(0.74 0.18 152 / 0.12);
+  --color-warning:        oklch(0.82 0.18 78);
+  --color-warning-subtle: oklch(0.82 0.18 78 / 0.12);
+  --color-danger:         oklch(0.65 0.24 22);
+  --color-danger-subtle:  oklch(0.65 0.24 22 / 0.12);
+  --color-info:           oklch(0.72 0.16 225);
+  --color-info-subtle:    oklch(0.72 0.16 225 / 0.12);
+
+  /* --- Typography --- */
+  --font-sans:    "Outfit", ui-sans-serif, system-ui, sans-serif;
+  --font-display: "Outfit", ui-sans-serif, system-ui, sans-serif;
+  --font-mono:    "JetBrains Mono", ui-monospace, monospace;
+
+  /* --- Radii --- */
+  --radius-sm:   0.375rem;
+  --radius-md:   0.625rem;
+  --radius-lg:   0.875rem;
+  --radius-xl:   1.25rem;
+  --radius-full: 9999px;
+
+  /* --- Shadows --- */
+  --shadow-sm:    0 1px 4px oklch(0 0 0 / 0.5);
+  --shadow-md:    0 4px 16px oklch(0 0 0 / 0.6);
+  --shadow-lg:    0 8px 32px oklch(0 0 0 / 0.7);
+  --shadow-glow:  0 0 24px oklch(0.65 0.26 285 / 0.3);
+  --shadow-cyan:  0 0 20px oklch(0.78 0.18 200 / 0.25);
+}
+
+/* =============================================================================
+   BASE
+   ============================================================================= */
+
+@layer base {
+  *, *::before, *::after { box-sizing: border-box; }
+
+  html {
+    font-family: var(--font-sans);
+    font-size: 16px;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  body {
+    background-color: var(--color-bg-base);
+    color: var(--color-text-primary);
+    margin: 0;
+    min-height: 100vh;
+    /* Noise texture overlay for depth */
+    background-image:
+      radial-gradient(ellipse 80% 50% at 50% -10%, oklch(0.65 0.26 285 / 0.08) 0%, transparent 60%),
+      url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.03'/%3E%3C/svg%3E");
+  }
+
+  /* Scrollbar */
+  * {
+    scrollbar-width: thin;
+    scrollbar-color: var(--color-border) transparent;
+  }
+  ::-webkit-scrollbar { width: 5px; height: 5px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb {
+    background: var(--color-border);
+    border-radius: var(--radius-full);
+  }
+  ::-webkit-scrollbar-thumb:hover { background: var(--color-border-strong); }
+}
+
+/* =============================================================================
+   ANIMATIONS
+   ============================================================================= */
+
+@layer utilities {
+
+  /* Card entrance — usado en grids de cards */
+  @keyframes card-in {
+    from {
+      opacity: 0;
+      transform: translateY(16px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  /* Fade up suave — para page headers */
+  @keyframes fade-up {
+    from { opacity: 0; transform: translateY(8px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+
+  /* Pulse glow — para el dot de accent en badges */
+  @keyframes glow-pulse {
+    0%, 100% { opacity: 1; }
+    50%       { opacity: 0.4; }
+  }
+
+  /* Shimmer — para skeleton loaders futuros */
+  @keyframes shimmer {
+    from { background-position: -200% 0; }
+    to   { background-position: 200% 0; }
+  }
+
+  .animate-card-in {
+    animation: card-in 0.4s cubic-bezier(0.2, 0, 0, 1) both;
+  }
+
+  .animate-fade-up {
+    animation: fade-up 0.35s cubic-bezier(0.2, 0, 0, 1) both;
+  }
+
+  .animate-glow-pulse {
+    animation: glow-pulse 2s ease-in-out infinite;
+  }
+
+  /* Stagger helpers — aplicar a children en un @for */
+  .stagger-1  { animation-delay: 0.05s; }
+  .stagger-2  { animation-delay: 0.10s; }
+  .stagger-3  { animation-delay: 0.15s; }
+  .stagger-4  { animation-delay: 0.20s; }
+  .stagger-5  { animation-delay: 0.25s; }
+  .stagger-6  { animation-delay: 0.30s; }
+
+  /* Glass card — glassmorphism sutil */
+  .glass {
+    background: oklch(0.11 0.025 268 / 0.7);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border: 1px solid oklch(0.65 0.26 285 / 0.12);
+  }
+
+  /* Gradient text — para títulos llamativos */
+  .gradient-text {
+    background: linear-gradient(
+      135deg,
+      oklch(0.65 0.26 285) 0%,
+      oklch(0.78 0.18 200) 100%
+    );
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+
+  /* Glow border — para cards destacadas */
+  .border-glow {
+    border-color: var(--color-border-glow) !important;
+    box-shadow: 0 0 20px var(--color-accent-glow), inset 0 1px 0 oklch(1 0 0 / 0.05);
+  }
+}

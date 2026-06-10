@@ -1,58 +1,74 @@
-<div class="project-list-container">
-  <div class="project-list-header">
-    <h1>Projects</h1>
-    <button mat-raised-button color="primary" (click)="navigateToCreate()">
-      <mat-icon>add</mat-icon>
-      New Project
-    </button>
-  </div>
+<app-page-header
+  title="Projects"
+  description="Manage your team's projects"
+>
+  <app-button page-action variant="primary" (click)="goToCreate()">
+    <span class="material-symbols-rounded text-sm">add</span>
+    New project
+  </app-button>
+</app-page-header>
+
+<div class="p-6 flex flex-col gap-6">
 
   @if (loading()) {
-    <div class="loading-container">
-      <mat-spinner diameter="48"></mat-spinner>
-    </div>
+    <app-spinner size="lg" [full]="true" label="Loading projects..." />
+
   } @else if (error()) {
-    <div class="error-message">{{ error() }}</div>
+    <app-error-banner
+      [message]="error()!"
+      retryLabel="Try again"
+      (retry)="loadProjects()"
+    />
+
   } @else if (projects().length === 0) {
-    <div class="empty-state" data-testid="empty-state">
-      <mat-icon>folder_open</mat-icon>
-      <p>No projects yet. Create your first one.</p>
-      <button mat-raised-button color="primary" (click)="navigateToCreate()">
-        Create Project
-      </button>
-    </div>
+    <app-empty-state
+      icon="folder"
+      title="No projects yet"
+      description="Create your first project and start managing your work."
+    >
+      <app-button action variant="primary" (click)="goToCreate()">
+        <span class="material-symbols-rounded text-sm">add</span>
+        New project
+      </app-button>
+    </app-empty-state>
+
   } @else {
-    <mat-table [dataSource]="projects()" class="projects-table">
-      <ng-container matColumnDef="name">
-        <mat-header-cell *matHeaderCellDef>Name</mat-header-cell>
-        <mat-cell *matCellDef="let project">{{ project.name }}</mat-cell>
-      </ng-container>
 
-      <ng-container matColumnDef="status">
-        <mat-header-cell *matHeaderCellDef>Status</mat-header-cell>
-        <mat-cell *matCellDef="let project">{{ project.status }}</mat-cell>
-      </ng-container>
+    <!-- Stats bar — da contexto rápido al usuario -->
+    <div class="flex items-center gap-6 px-1 animate-fade-up">
+      <div class="flex items-center gap-2">
+        <span class="text-2xl font-bold gradient-text"
+              style="font-family: 'Outfit', sans-serif;">
+          {{ projects().length }}
+        </span>
+        <span class="text-sm" style="color: oklch(0.55 0.015 268);">
+          {{ projects().length === 1 ? 'project' : 'projects' }}
+        </span>
+      </div>
 
-      <ng-container matColumnDef="createdAt">
-        <mat-header-cell *matHeaderCellDef>Created</mat-header-cell>
-        <mat-cell *matCellDef="let project">{{ project.createdAt | date:'mediumDate' }}</mat-cell>
-      </ng-container>
+      <div class="h-6 w-px" style="background: oklch(0.22 0.020 268);"></div>
 
-      <ng-container matColumnDef="actions">
-        <mat-header-cell *matHeaderCellDef>Actions</mat-header-cell>
-        <mat-cell *matCellDef="let project">
-          <a
-            mat-icon-button
-            [routerLink]="['/projects', project.id, 'tasks', 'kanban']"
-            [attr.aria-label]="'View Kanban for ' + project.name"
-          >
-            <mat-icon>view_kanban</mat-icon>
-          </a>
-        </mat-cell>
-      </ng-container>
+      <div class="flex items-center gap-1.5">
+        <span class="size-2 rounded-full animate-glow-pulse"
+              style="background: oklch(0.74 0.18 152);
+                     box-shadow: 0 0 6px oklch(0.74 0.18 152 / 0.6);">
+        </span>
+        <span class="text-sm" style="color: oklch(0.55 0.015 268);">
+          {{ activeCount() }} active
+        </span>
+      </div>
+    </div>
 
-      <mat-header-row *matHeaderRowDef="displayedColumns"></mat-header-row>
-      <mat-row *matRowDef="let row; columns: displayedColumns;"></mat-row>
-    </mat-table>
+    <!-- Grid de cards -->
+    <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+      @for (project of projects(); track project.id; let i = $index) {
+        <app-project-card
+          [project]="project"
+          [class]="'stagger-' + ((i % 6) + 1)"
+        />
+      }
+    </div>
+
   }
+
 </div>

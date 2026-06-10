@@ -34,6 +34,9 @@ import com.epm.ai.domain.service.CacheKeyGenerator;
  */
 public class GenerateTasksUseCaseImpl implements GenerateTasksUseCase {
 
+    private static final org.slf4j.Logger log =
+        org.slf4j.LoggerFactory.getLogger(GenerateTasksUseCaseImpl.class);
+
     private static final long CACHE_TTL_SECONDS = 3600L;
     private static final double COST_PER_1K_INPUT = 0.00014;
     private static final double COST_PER_1K_OUTPUT = 0.00028;
@@ -73,20 +76,30 @@ public class GenerateTasksUseCaseImpl implements GenerateTasksUseCase {
         AiRequest request = new AiRequest(prompt, projectId, userId, tenantId);
         AiResponse response = modelPort.generate(request);
 
+        log.info("AI raw content (500 chars): [{}]",
+            response.content() != null && response.content().length() > 500
+                ? response.content().substring(0, 500) : response.content());
+
         cachePort.put(cacheKey, response, CACHE_TTL_SECONDS);
         trackCost(response);
 
         List<TaskDraft> tasks = parseTaskDrafts(response.content());
+        log.info("Parsed {} tasks from AI response", tasks.size());
         publishEvent(projectId, tenantId, userId, tasks);
 
         return tasks;
     }
 
     private String buildPrompt(ProjectContext context, String description) {
-        return "Project: " + context.name() + "\n"
-                + "Description: " + context.description() + "\n"
-                + "Members: " + String.join(", ", context.memberNames()) + "\n"
-                + "User request: " + description;
+        String projectDesc = context.description().isBlank()
+                ? "No description provided"
+                : context.description();
+        return "Generate 3 to 8 project tasks as a JSON array.\n"
+                + "Return ONLY the JSON array, no other text.\n"
+                + "Format: [{\"title\":\"...\",\"description\":\"...\",\"priority\":\"HIGH|MEDIUM|LOW\"}]\n\n"
+                + "Project: " + context.name() + "\n"
+                + "Description: " + projectDesc + "\n"
+                + "Request: " + description;
     }
 
     private void trackCost(AiResponse response) {
@@ -106,7 +119,24 @@ public class GenerateTasksUseCaseImpl implements GenerateTasksUseCase {
      * <p>Expected format: {@code [{"title":"...","description":"...","priority":"HIGH|MEDIUM|LOW"},...]}
      * Uses lightweight manual parsing to avoid adding a JSON library dependency in the domain layer.
      */
-    private List<TaskDraft> parseTaskDrafts(String json) {
+    /**
+     * Strips markdown code fences that LLMs sometimes add despite being told not to.
+     * e.g. ```json\n[...]\n``` → [...]
+     */
+    private String stripMarkdown(String raw) {
+        if (raw == null) return "";
+        String s = raw.strip();
+        // Remove ```json ... ``` or ``` ... ```
+        if (s.startsWith("```")) {
+            int firstNewline = s.indexOf('\n');
+            if (firstNewline != -1) s = s.substring(firstNewline + 1);
+            if (s.endsWith("```")) s = s.substring(0, s.lastIndexOf("```"));
+        }
+        return s.strip();
+    }
+
+    private List<TaskDraft> parseTaskDrafts(String rawJson) {
+        String json = stripMarkdown(rawJson);
         List<TaskDraft> tasks = new ArrayList<>();
         int i = 0;
         while (i < json.length()) {

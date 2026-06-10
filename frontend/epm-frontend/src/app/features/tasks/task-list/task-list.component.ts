@@ -1,27 +1,38 @@
-import { Component, OnInit, inject, signal } from '@angular/core';
+import {
+  Component,
+  ChangeDetectionStrategy,
+  OnInit,
+  inject,
+  signal,
+} from '@angular/core';
 import { DatePipe } from '@angular/common';
 import { ActivatedRoute, RouterLink } from '@angular/router';
-import { MatTableModule } from '@angular/material/table';
-import { MatPaginatorModule, PageEvent } from '@angular/material/paginator';
-import { MatButtonModule } from '@angular/material/button';
-import { MatIconModule } from '@angular/material/icon';
-import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
-import { MatChipsModule } from '@angular/material/chips';
 import { TaskService } from '../task.service';
-import { TaskSummary } from '../../../core/models/task.models';
+import { Task } from '../../../core/models/task.models';
+import { PageHeaderComponent } from '../../../shared/components/page-header/page-header.component';
+import { ButtonComponent } from '../../../shared/components/button/button.component';
+import { SpinnerComponent } from '../../../shared/components/spinner/spinner.component';
+import { ErrorBannerComponent } from '../../../shared/components/error-banner/error-banner.component';
+import { EmptyStateComponent } from '../../../shared/components/empty-state/empty-state.component';
+import { BadgeComponent } from '../../../shared/components/badge/badge.component';
+import { TaskStatusBadgeComponent } from '../../../shared/components/task-status-badge/task-status-badge.component';
+import { TaskPriorityBadgeComponent } from '../../../shared/components/task-priority-badge/task-priority-badge.component';
 
 @Component({
   selector: 'app-task-list',
   standalone: true,
+  changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [
     DatePipe,
     RouterLink,
-    MatTableModule,
-    MatPaginatorModule,
-    MatButtonModule,
-    MatIconModule,
-    MatProgressSpinnerModule,
-    MatChipsModule,
+    PageHeaderComponent,
+    ButtonComponent,
+    SpinnerComponent,
+    ErrorBannerComponent,
+    EmptyStateComponent,
+    BadgeComponent,
+    TaskStatusBadgeComponent,
+    TaskPriorityBadgeComponent,
   ],
   templateUrl: './task-list.component.html',
   styleUrl: './task-list.component.scss',
@@ -30,15 +41,15 @@ export class TaskListComponent implements OnInit {
   private readonly taskService = inject(TaskService);
   private readonly route = inject(ActivatedRoute);
 
-  projectId = '';
-  tasks = signal<TaskSummary[]>([]);
-  loading = signal(false);
-  error = signal<string | null>(null);
-  totalElements = signal(0);
-  pageSize = 10;
-  pageIndex = 0;
+  readonly tableHeaders = ['Title', 'Status', 'Priority', 'Deadline', ''];
 
-  displayedColumns: string[] = ['title', 'status', 'priority', 'deadline', 'actions'];
+  projectId     = '';
+  tasks         = signal<Task[]>([]);
+  loading       = signal(false);
+  error         = signal<string | null>(null);
+  totalElements = signal(0);
+  pageSize      = 10;
+  pageIndex     = 0;
 
   ngOnInit(): void {
     this.projectId = this.route.snapshot.paramMap.get('projectId') ?? '';
@@ -49,21 +60,17 @@ export class TaskListComponent implements OnInit {
     this.loading.set(true);
     this.error.set(null);
     this.taskService.list(this.projectId, this.pageIndex, this.pageSize).subscribe({
-      next: (page) => {
-        this.tasks.set(page.content);
-        this.totalElements.set(page.totalElements);
-        this.loading.set(false);
-      },
-      error: () => {
-        this.error.set('Failed to load tasks. Please try again.');
-        this.loading.set(false);
-      },
+      next:  (page) => { this.tasks.set(page.content); this.totalElements.set(page.totalElements); this.loading.set(false); },
+      error: ()     => { this.error.set('Failed to load tasks.'); this.loading.set(false); },
     });
   }
 
-  onPageChange(event: PageEvent): void {
-    this.pageIndex = event.pageIndex;
-    this.pageSize = event.pageSize;
+  onPageChange(page: number): void {
+    this.pageIndex = page;
     this.loadTasks();
+  }
+
+  get totalPages(): number {
+    return Math.ceil(this.totalElements() / this.pageSize);
   }
 }

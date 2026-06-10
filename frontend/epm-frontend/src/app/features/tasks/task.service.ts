@@ -23,11 +23,11 @@ export class TaskService {
     );
   }
 
-  list(projectId: string, page: number, size: number): Observable<Page<TaskSummary>> {
+  list(projectId: string, page: number, size: number): Observable<Page<Task>> {
     const params = new HttpParams()
       .set('page', String(page))
       .set('size', String(size));
-    return this.http.get<Page<TaskSummary>>(
+    return this.http.get<Page<Task>>(
       `${this.baseUrl}/projects/${projectId}/tasks`,
       { params },
     );

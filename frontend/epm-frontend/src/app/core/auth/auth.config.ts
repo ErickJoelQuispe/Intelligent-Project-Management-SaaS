@@ -9,4 +9,7 @@ export const authConfig: AuthConfig = {
   scope: environment.keycloak.scope,
   showDebugInformation: !environment.production,
   clearHashAfterLogin: false,
+  // PKCE + refresh_token grant — sin iframe
+  useSilentRefresh: false,
+  timeoutFactor: 0.75,
 };

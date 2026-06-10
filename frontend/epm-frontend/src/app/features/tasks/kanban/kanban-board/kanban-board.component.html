@@ -1,40 +1,44 @@
-<div class="kanban-board">
-  <div class="kanban-board__toolbar">
-    <h1 class="kanban-board__title">Kanban Board</h1>
-    <div class="kanban-board__actions">
-      <a
-        mat-stroked-button
-        [routerLink]="['/projects', projectId, 'tasks']"
-        aria-label="View task list"
-      >
-        <mat-icon>list</mat-icon>
-        List View
-      </a>
-      <a
-        mat-raised-button
-        color="primary"
-        [routerLink]="['/projects', projectId, 'tasks', 'new']"
-        aria-label="Create new task"
-      >
-        <mat-icon>add</mat-icon>
-        New Task
-      </a>
-    </div>
-  </div>
+<app-page-header title="Kanban Board">
+  <app-button
+    page-action
+    variant="ghost"
+    size="sm"
+    [routerLink]="['/projects', projectId, 'tasks']"
+  >
+    <span class="material-symbols-rounded text-sm">list</span>
+    List view
+  </app-button>
+  <app-button
+    page-action
+    variant="primary"
+    size="sm"
+    [routerLink]="['/projects', projectId, 'tasks', 'new']"
+  >
+    <span class="material-symbols-rounded text-sm">add</span>
+    New task
+  </app-button>
+</app-page-header>
+
+<div class="p-6">
 
   @if (store.isLoading()) {
-    <div class="kanban-board__loading">
-      <mat-spinner diameter="48" />
+    <app-spinner size="lg" [full]="true" label="Loading board..." />
+  } @else if (store.error()) {
+    <app-error-banner
+      [message]="store.error()!"
+      retryLabel="Retry"
+      (retry)="store.loadKanban(projectId)"
+    />
+  } @else {
+    <!-- Columnas en scroll horizontal — cada columna tiene ancho fijo -->
+    <div class="flex gap-4 overflow-x-auto pb-4">
+      @for (col of store.kanbanColumns(); track col.status) {
+        <app-kanban-column
+          [status]="col.status"
+          [tasks]="col.tasks"
+        />
+      }
     </div>
   }
 
-  @if (store.error()) {
-    <div class="kanban-board__error">{{ store.error() }}</div>
-  }
-
-  <div class="kanban-board__columns">
-    @for (col of store.kanbanColumns(); track col.status) {
-      <app-kanban-column [status]="col.status" [tasks]="col.tasks" />
-    }
-  </div>
 </div>

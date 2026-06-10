@@ -39,10 +39,16 @@ public class SpringAiDeepSeekAdapter implements AiModelPort {
         this.meterRegistry = meterRegistry;
     }
 
+    private static final String SYSTEM_PROMPT =
+            "You are a JSON-only API. Respond exclusively with valid JSON. "
+            + "Never add markdown, code fences, or text outside the JSON. "
+            + "Output raw JSON only.";
+
     @Override
     public AiResponse generate(AiRequest request) {
         try {
             ChatResponse chatResponse = chatClient.prompt()
+                    .system(SYSTEM_PROMPT)
                     .user(request.prompt())
                     .call()
                     .chatResponse();
@@ -88,6 +94,8 @@ public class SpringAiDeepSeekAdapter implements AiModelPort {
 
     private AiResponse extractResponse(ChatResponse chatResponse, AiRequest request) {
         String content = chatResponse.getResult().getOutput().getText();
+        log.info("DeepSeek RAW response (first 500 chars): [{}]",
+                content != null && content.length() > 500 ? content.substring(0, 500) : content);
         Usage usage = chatResponse.getMetadata().getUsage();
         int inputTokens = (usage != null && usage.getPromptTokens() != null) ? usage.getPromptTokens() : 0;
         int outputTokens = (usage != null && usage.getCompletionTokens() != null) ? usage.getCompletionTokens() : 0;

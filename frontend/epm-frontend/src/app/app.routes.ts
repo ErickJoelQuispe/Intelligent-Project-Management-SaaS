@@ -8,12 +8,17 @@ export const routes: Routes = [
     pathMatch: 'full',
   },
   {
-    path: 'settings/notifications',
+    path: 'settings',
     loadComponent: () =>
-      import('./features/notifications/components/notification-preferences/notification-preferences.component').then(
-        (m) => m.NotificationPreferencesComponent,
+      import('./features/settings/settings.component').then(
+        (m) => m.SettingsComponent,
       ),
     canActivate: [authGuard],
+  },
+  {
+    // Keep old route working — redirect to new settings page
+    path: 'settings/notifications',
+    redirectTo: 'settings',
   },
   {
     path: 'projects',
@@ -49,6 +54,14 @@ export const routes: Routes = [
   },
   {
     path: 'projects/:projectId/tasks/new',
+    loadComponent: () =>
+      import('./features/tasks/task-form/task-form.component').then(
+        (m) => m.TaskFormComponent,
+      ),
+    canActivate: [authGuard],
+  },
+  {
+    path: 'projects/:projectId/tasks/:taskId/edit',
     loadComponent: () =>
       import('./features/tasks/task-form/task-form.component').then(
         (m) => m.TaskFormComponent,

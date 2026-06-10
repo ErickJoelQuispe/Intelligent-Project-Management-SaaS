@@ -1,100 +1,104 @@
-import { Component, inject, OnInit } from '@angular/core';
-import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
-import { MatCardModule } from '@angular/material/card';
+import {
+  Component,
+  ChangeDetectionStrategy,
+  inject,
+  OnInit,
+} from '@angular/core';
 import { MatSlideToggleModule, MatSlideToggleChange } from '@angular/material/slide-toggle';
-import { MatDividerModule } from '@angular/material/divider';
 import { NotificationPreferencesStore } from '../../store/notification-preferences.store';
 import { NotificationPreference, NotificationChannel, NotificationType } from '../../models/notification.model';
+import { PageHeaderComponent } from '../../../../shared/components/page-header/page-header.component';
+import { CardComponent } from '../../../../shared/components/card/card.component';
+import { BadgeComponent } from '../../../../shared/components/badge/badge.component';
+import { BadgeVariant } from '../../../../shared/components/badge/badge.component';
+import { SpinnerComponent } from '../../../../shared/components/spinner/spinner.component';
+import { EmptyStateComponent } from '../../../../shared/components/empty-state/empty-state.component';
+
+// Mapa de eventType → label legible
+const EVENT_LABELS: Record<string, string> = {
+  TASK_CREATED:             'Task created',
+  TASK_ASSIGNED:            'Task assigned to you',
+  TASK_STATUS_CHANGED:      'Task status changed',
+  TASK_DELETED:             'Task deleted',
+  PROJECT_CREATED:          'Project created',
+  PROJECT_ARCHIVED:         'Project archived',
+  TEAM_ASSIGNED_TO_PROJECT: 'Team assigned to project',
+  MEMBER_JOINED_TEAM:       'Member joined team',
+  MEMBER_LEFT_TEAM:         'Member left team',
+};
+
+const CHANNEL_VARIANT: Record<string, BadgeVariant> = {
+  IN_APP: 'info',
+  EMAIL:  'neutral',
+};
 
 @Component({
   selector: 'app-notification-preferences',
   standalone: true,
+  changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [
-    MatCardModule,
-    MatProgressSpinnerModule,
     MatSlideToggleModule,
-    MatDividerModule,
+    PageHeaderComponent,
+    CardComponent,
+    BadgeComponent,
+    SpinnerComponent,
+    EmptyStateComponent,
   ],
   template: `
-    <mat-card class="preferences-card">
-      <mat-card-header>
-        <mat-card-title>Notification Preferences</mat-card-title>
-        <mat-card-subtitle>Manage how you receive notifications</mat-card-subtitle>
-      </mat-card-header>
+    <app-page-header
+      title="Notification preferences"
+      description="Choose how and when you want to be notified"
+    />
 
-      <mat-card-content>
+    <div class="p-6 max-w-2xl">
+      <app-card [noPadding]="true">
+
         @if (store.loading()) {
-          <div class="loading-container" data-testid="loading-spinner">
-            <mat-spinner diameter="40" />
-          </div>
+          <app-spinner size="md" [full]="true" data-testid="loading-spinner" />
+
+        } @else if (store.preferences().length === 0) {
+          <app-empty-state
+            icon="notifications_off"
+            title="No preferences configured"
+            size="sm"
+            data-testid="no-preferences"
+          />
+
         } @else {
-          @for (pref of store.preferences(); track pref.eventType + pref.channel) {
+          @for (pref of store.preferences(); track pref.eventType + pref.channel; let last = $last) {
             <div
-              class="pref-row"
+              class="flex items-center justify-between px-6 py-4"
+              [class.border-b]="!last"
+              [class.border-border]="!last"
               [attr.data-testid]="'pref-row-' + pref.eventType + '-' + pref.channel"
             >
-              <div class="pref-info">
-                <span class="pref-event-type">{{ pref.eventType }}</span>
-                <span class="pref-channel">{{ pref.channel }}</span>
+              <!-- Event info -->
+              <div class="flex flex-col gap-1.5">
+                <span class="text-text-primary text-sm font-medium">
+                  {{ eventLabel(pref.eventType) }}
+                </span>
+                <app-badge
+                  [variant]="channelVariant(pref.channel)"
+                  size="sm"
+                >
+                  {{ pref.channel === 'IN_APP' ? 'In-app' : 'Email' }}
+                </app-badge>
               </div>
+
+              <!-- Toggle — mantenemos Material solo para este control -->
               <mat-slide-toggle
                 [checked]="pref.enabled"
                 [attr.data-testid]="'pref-toggle-' + pref.eventType + '-' + pref.channel"
-                (change)="onToggleChange(pref, $event)"
-                [attr.aria-label]="pref.eventType + ' ' + pref.channel"
+                [attr.aria-label]="eventLabel(pref.eventType) + ' via ' + pref.channel"
+                (change)="onToggle(pref, $event)"
               />
             </div>
-            <mat-divider />
-          }
-
-          @if (store.preferences().length === 0) {
-            <p class="empty-state" data-testid="no-preferences">No preferences configured.</p>
           }
         }
-      </mat-card-content>
-    </mat-card>
+
+      </app-card>
+    </div>
   `,
-  styles: [`
-    .preferences-card {
-      max-width: 600px;
-      margin: 24px auto;
-    }
-
-    .loading-container {
-      display: flex;
-      justify-content: center;
-      padding: 32px;
-    }
-
-    .pref-row {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      padding: 12px 0;
-    }
-
-    .pref-info {
-      display: flex;
-      flex-direction: column;
-      gap: 2px;
-    }
-
-    .pref-event-type {
-      font-weight: 500;
-      font-size: 0.9rem;
-    }
-
-    .pref-channel {
-      font-size: 0.75rem;
-      color: rgba(0,0,0,0.54);
-    }
-
-    .empty-state {
-      text-align: center;
-      color: rgba(0,0,0,0.54);
-      padding: 24px;
-    }
-  `],
 })
 export class NotificationPreferencesComponent implements OnInit {
   readonly store = inject(NotificationPreferencesStore);
@@ -103,10 +107,18 @@ export class NotificationPreferencesComponent implements OnInit {
     this.store.loadPreferences();
   }
 
-  onToggleChange(pref: NotificationPreference, event: MatSlideToggleChange): void {
+  eventLabel(eventType: string): string {
+    return EVENT_LABELS[eventType] ?? eventType.toLowerCase().replace(/_/g, ' ');
+  }
+
+  channelVariant(channel: string): BadgeVariant {
+    return CHANNEL_VARIANT[channel] ?? 'neutral';
+  }
+
+  onToggle(pref: NotificationPreference, event: MatSlideToggleChange): void {
     this.store.updatePreference(
       pref.eventType as NotificationType,
-      pref.channel as NotificationChannel,
+      pref.channel   as NotificationChannel,
       event.checked,
     );
   }

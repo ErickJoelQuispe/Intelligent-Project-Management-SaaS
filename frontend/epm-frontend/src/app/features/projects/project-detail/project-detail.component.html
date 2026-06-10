@@ -1,0 +1,133 @@
+<app-page-header
+  [title]="project()?.name ?? 'Project'"
+  description="Project details and AI assistant"
+>
+  <app-button page-action variant="ghost" size="sm" routerLink="/projects">
+    <span class="material-symbols-rounded text-sm">arrow_back</span>
+    Back
+  </app-button>
+</app-page-header>
+
+<div class="p-6 flex flex-col gap-6 max-w-3xl">
+
+  @if (loading()) {
+    <app-spinner size="lg" [full]="true" label="Loading project..." />
+  } @else if (error()) {
+    <app-error-banner [message]="error()!" />
+  } @else if (project(); as p) {
+
+    <!-- Project card — sin acciones (ya están en el header) -->
+    <app-project-card [project]="p" [showActions]="true" />
+
+    <!-- AI Assistant card -->
+    <app-card>
+
+      <div card-header
+           class="flex items-center gap-3 px-6 py-4 border-b border-border">
+        <span class="material-symbols-rounded text-accent">auto_awesome</span>
+        <span class="text-text-primary font-semibold text-sm">AI Assistant</span>
+      </div>
+
+      <div class="flex flex-col gap-6">
+
+        <!-- Generate tasks section -->
+        <div class="flex flex-col gap-4">
+          <div>
+            <h3 class="text-text-primary text-sm font-semibold mb-1">
+              Generate tasks
+            </h3>
+            <p class="text-text-muted text-xs leading-relaxed">
+              Let AI suggest tasks based on this project's description.
+            </p>
+          </div>
+
+          <app-button
+            variant="secondary"
+            size="sm"
+            [loading]="generating()"
+            (click)="generateTasks()"
+          >
+            <span class="material-symbols-rounded text-sm">auto_awesome</span>
+            {{ generating() ? 'Generating...' : 'Generate tasks with AI' }}
+          </app-button>
+
+          @if (draftTasks().length > 0) {
+            <div class="flex flex-col gap-3">
+
+              <!-- Header de drafts + botón save -->
+              <div class="flex items-center justify-between">
+                <span class="text-text-secondary text-xs font-medium uppercase tracking-wide">
+                  Suggested tasks ({{ draftTasks().length }})
+                </span>
+                <app-button
+                  variant="primary"
+                  size="sm"
+                  [loading]="savingTasks()"
+                  (click)="saveAllTasks()"
+                >
+                  <span class="material-symbols-rounded text-sm">save</span>
+                  {{ savingTasks() ? 'Saving...' : 'Save all tasks' }}
+                </app-button>
+              </div>
+
+              @if (saveSuccess()) {
+                <div class="flex items-center gap-2 px-3 py-2 rounded-lg
+                            bg-success-subtle border border-success/20 text-success text-xs">
+                  <span class="material-symbols-rounded text-sm">check_circle</span>
+                  {{ draftTasks().length }} tasks saved successfully.
+                </div>
+              }
+
+              @for (task of draftTasks(); track task.title) {
+                <app-ai-draft-task-item [task]="task" />
+              }
+
+            </div>
+          }
+        </div>
+
+        <!-- Divider -->
+        <div class="border-t border-border"></div>
+
+        <!-- Summarize section -->
+        <div class="flex flex-col gap-4">
+          <div>
+            <h3 class="text-text-primary text-sm font-semibold mb-1">
+              Project summary
+            </h3>
+            <p class="text-text-muted text-xs leading-relaxed">
+              Generate a concise summary of the project's current state.
+            </p>
+          </div>
+
+          <app-button
+            variant="secondary"
+            size="sm"
+            [loading]="summarizing()"
+            (click)="summarizeProject()"
+          >
+            <span class="material-symbols-rounded text-sm">summarize</span>
+            {{ summarizing() ? 'Summarizing...' : 'Summarize project' }}
+          </app-button>
+
+          @if (summary()) {
+            <div class="p-4 rounded-lg bg-bg-elevated border border-border">
+              <p class="text-text-secondary text-sm leading-relaxed">
+                {{ summary() }}
+              </p>
+            </div>
+          }
+        </div>
+
+        <!-- AI error -->
+        @if (aiError()) {
+          <app-error-banner [message]="aiError()!" variant="inline" />
+        }
+
+      </div>
+
+    </app-card>
+
+  }
+
+</div>

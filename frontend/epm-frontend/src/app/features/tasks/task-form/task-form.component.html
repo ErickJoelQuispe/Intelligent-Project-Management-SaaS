@@ -1,60 +1,114 @@
-<div class="task-form-container">
-  <h2>{{ taskId() ? 'Edit Task' : 'New Task' }}</h2>
+<app-page-header
+  [title]="taskId() ? 'Edit task' : 'New task'"
+  description="Fill in the details below"
+>
+  <app-button page-action variant="ghost" size="sm" (click)="onCancel()">
+    Cancel
+  </app-button>
+</app-page-header>
 
-  @if (error()) {
-    <div class="error-message">{{ error() }}</div>
+<div class="p-6 max-w-xl">
+
+  @if (loadingTask()) {
+    <app-spinner size="md" [full]="true" label="Loading task..." />
   }
 
-  <form [formGroup]="form" (ngSubmit)="onSubmit()" class="task-form" novalidate>
-    <mat-form-field appearance="outline" class="task-form__field">
-      <mat-label>Title</mat-label>
-      <input matInput formControlName="title" placeholder="Task title" />
-      @if (form.get('title')?.hasError('required') && form.get('title')?.touched) {
-        <mat-error>Title is required</mat-error>
-      }
-      @if (form.get('title')?.hasError('minlength') && form.get('title')?.touched) {
-        <mat-error>Title must not be empty</mat-error>
-      }
-    </mat-form-field>
-
-    <mat-form-field appearance="outline" class="task-form__field">
-      <mat-label>Description</mat-label>
-      <textarea matInput formControlName="description" rows="3" placeholder="Optional description"></textarea>
-    </mat-form-field>
-
-    <mat-form-field appearance="outline" class="task-form__field">
-      <mat-label>Priority</mat-label>
-      <mat-select formControlName="priority">
-        @for (p of priorities; track p) {
-          <mat-option [value]="p">{{ p }}</mat-option>
-        }
-      </mat-select>
-      @if (form.get('priority')?.hasError('required') && form.get('priority')?.touched) {
-        <mat-error>Priority is required</mat-error>
-      }
-    </mat-form-field>
-
-    <mat-form-field appearance="outline" class="task-form__field">
-      <mat-label>Deadline</mat-label>
-      <input matInput [matDatepicker]="picker" formControlName="deadline" />
-      <mat-datepicker-toggle matIconSuffix [for]="picker" />
-      <mat-datepicker #picker />
-    </mat-form-field>
-
-    <div class="task-form__actions">
-      <button mat-button type="button" (click)="onCancel()">Cancel</button>
-      <button
-        mat-raised-button
-        color="primary"
-        type="submit"
-        [disabled]="loading()"
-      >
-        @if (loading()) {
-          <mat-spinner diameter="20" />
-        } @else {
-          {{ taskId() ? 'Save Changes' : 'Create Task' }}
-        }
-      </button>
+  @if (error()) {
+    <div class="mb-6">
+      <app-error-banner [message]="error()!" variant="inline" />
     </div>
+  }
+
+  <form [formGroup]="form" (ngSubmit)="onSubmit()" novalidate
+        class="flex flex-col gap-5">
+
+    <!-- Title -->
+    <div class="flex flex-col gap-1.5">
+      <label class="text-text-primary text-sm font-medium" for="title">
+        Title <span class="text-danger">*</span>
+      </label>
+      <input
+        id="title"
+        type="text"
+        formControlName="title"
+        placeholder="What needs to be done?"
+        class="w-full px-3 py-2 rounded-lg text-sm
+               bg-bg-elevated border border-border
+               text-text-primary placeholder:text-text-muted
+               focus:outline-none focus:border-accent focus:ring-1 focus:ring-accent
+               transition-colors duration-150"
+      />
+      @if (form.controls.title.hasError('required') && form.controls.title.touched) {
+        <span class="text-danger text-xs">Title is required.</span>
+      }
+    </div>
+
+    <!-- Description -->
+    <div class="flex flex-col gap-1.5">
+      <label class="text-text-primary text-sm font-medium" for="description">
+        Description
+        <span class="text-text-muted font-normal">(optional)</span>
+      </label>
+      <textarea
+        id="description"
+        formControlName="description"
+        placeholder="Add more details..."
+        rows="3"
+        class="w-full px-3 py-2 rounded-lg text-sm resize-none
+               bg-bg-elevated border border-border
+               text-text-primary placeholder:text-text-muted
+               focus:outline-none focus:border-accent focus:ring-1 focus:ring-accent
+               transition-colors duration-150"
+      ></textarea>
+    </div>
+
+    <!-- Priority -->
+    <div class="flex flex-col gap-1.5">
+      <label class="text-text-primary text-sm font-medium" for="priority">
+        Priority
+      </label>
+      <select
+        id="priority"
+        formControlName="priority"
+        class="w-full px-3 py-2 rounded-lg text-sm
+               bg-bg-elevated border border-border
+               text-text-primary
+               focus:outline-none focus:border-accent focus:ring-1 focus:ring-accent
+               transition-colors duration-150"
+      >
+        @for (p of priorities; track p.value) {
+          <option [value]="p.value">{{ p.label }}</option>
+        }
+      </select>
+    </div>
+
+    <!-- Deadline -->
+    <div class="flex flex-col gap-1.5">
+      <label class="text-text-primary text-sm font-medium" for="deadline">
+        Deadline
+        <span class="text-text-muted font-normal">(optional)</span>
+      </label>
+      <input
+        id="deadline"
+        type="date"
+        formControlName="deadline"
+        class="w-full px-3 py-2 rounded-lg text-sm
+               bg-bg-elevated border border-border
+               text-text-primary
+               focus:outline-none focus:border-accent focus:ring-1 focus:ring-accent
+               transition-colors duration-150"
+      />
+    </div>
+
+    <!-- Actions -->
+    <div class="flex items-center justify-end gap-3 pt-2 border-t border-border">
+      <app-button type="button" variant="secondary" (click)="onCancel()">
+        Cancel
+      </app-button>
+      <app-button type="submit" variant="primary" [loading]="loading()">
+        {{ taskId() ? 'Save changes' : 'Create task' }}
+      </app-button>
+    </div>
+
   </form>
 </div>

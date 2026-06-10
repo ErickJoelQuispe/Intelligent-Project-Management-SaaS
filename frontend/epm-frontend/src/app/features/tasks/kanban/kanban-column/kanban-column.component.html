@@ -1,19 +1,32 @@
-<div class="kanban-column">
-  <div class="kanban-column__header">
-    <span class="kanban-column__status-label">{{ statusLabel }}</span>
-    <span class="kanban-column__count">{{ tasks().length }}</span>
+<!-- Columna con fondo levemente elevado, altura completa -->
+<div class="flex flex-col gap-3 h-full rounded-xl p-3 min-w-64 w-72"
+     style="background: oklch(0.11 0.025 268 / 0.6);
+            border: 1px solid oklch(0.22 0.020 268);
+            backdrop-filter: blur(8px)">
+
+  <!-- Header: label de estado + conteo -->
+  <div class="flex items-center justify-between px-1">
+    <span class="text-text-secondary text-sm font-semibold tracking-wide uppercase">
+      {{ statusLabel() }}
+    </span>
+    <app-badge variant="neutral" size="sm">
+      {{ taskCount() }}
+    </app-badge>
   </div>
 
-  <div class="kanban-column__cards">
-    @if (tasks().length === 0) {
-      <div class="kanban-column__empty">
-        <mat-icon class="kanban-column__empty-icon">inbox</mat-icon>
-        <span>No tasks</span>
-      </div>
+  <!-- Lista de cards o empty state -->
+  <div class="flex flex-col gap-2 flex-1 overflow-y-auto">
+    @if (taskCount() === 0) {
+      <app-empty-state
+        icon="inbox"
+        title="No tasks"
+        size="sm"
+      />
     } @else {
       @for (task of tasks(); track task.taskId) {
         <app-task-card [task]="task" />
       }
     }
   </div>
+
 </div>

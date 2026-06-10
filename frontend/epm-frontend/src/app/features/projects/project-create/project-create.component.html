@@ -1,66 +1,105 @@
-<div class="project-create-container">
-  <h1>Create Project</h1>
+<app-page-header
+  title="New project"
+  description="Fill in the details to create a new project"
+>
+  <app-button page-action variant="ghost" size="sm" (click)="onCancel()">
+    Cancel
+  </app-button>
+</app-page-header>
 
-  <form [formGroup]="form" (ngSubmit)="onSubmit()" class="project-form">
-    <mat-form-field appearance="outline">
-      <mat-label>Project Name</mat-label>
+<div class="p-6 max-w-xl animate-fade-up">
+
+  @if (error()) {
+    <div class="mb-6">
+      <app-error-banner [message]="error()!" variant="inline" />
+    </div>
+  }
+
+  <form [formGroup]="form" (ngSubmit)="onSubmit()" novalidate
+        class="flex flex-col gap-6">
+
+    <!-- Campo reutilizable — pattern de label + input + error -->
+    <div class="flex flex-col gap-2">
+      <label class="text-sm font-semibold" for="name"
+             style="color: oklch(0.72 0.015 268);">
+        Project name <span style="color: oklch(0.65 0.24 22);">*</span>
+      </label>
       <input
-        matInput
-        formControlName="name"
-        placeholder="Enter project name"
-        maxlength="100"
-        data-testid="name-input"
+        id="name" type="text" formControlName="name"
+        placeholder="e.g. Customer portal v2"
+        maxlength="100" data-testid="name-input"
+        class="w-full px-4 py-3 rounded-xl text-sm transition-all duration-200
+               focus:outline-none"
+        style="background: oklch(0.11 0.025 268);
+               border: 1px solid oklch(0.22 0.020 268);
+               color: oklch(0.96 0.006 268);
+               font-family: 'Outfit', sans-serif;"
+        onfocus="this.style.borderColor='oklch(0.65 0.26 285)';this.style.boxShadow='0 0 0 3px oklch(0.65 0.26 285 / 0.15), 0 0 16px oklch(0.65 0.26 285 / 0.1)'"
+        onblur="this.style.borderColor='oklch(0.22 0.020 268)';this.style.boxShadow='none'"
       />
       @if (form.controls.name.hasError('required') && form.controls.name.touched) {
-        <mat-error>Project name is required.</mat-error>
+        <span class="text-xs" style="color: oklch(0.65 0.24 22);">Project name is required.</span>
       }
-      @if (form.controls.name.hasError('maxlength')) {
-        <mat-error>Project name cannot exceed 100 characters.</mat-error>
-      }
-    </mat-form-field>
-
-    <mat-form-field appearance="outline">
-      <mat-label>Description</mat-label>
-      <textarea
-        matInput
-        formControlName="description"
-        placeholder="Describe your project (optional)"
-        rows="4"
-        data-testid="description-input"
-      ></textarea>
-    </mat-form-field>
-
-    <mat-form-field appearance="outline">
-      <mat-label>Visibility</mat-label>
-      <mat-select formControlName="visibility" data-testid="visibility-select">
-        @for (option of visibilityOptions; track option.value) {
-          <mat-option [value]="option.value">{{ option.label }}</mat-option>
-        }
-      </mat-select>
-    </mat-form-field>
-
-    <div class="form-actions">
-      <button
-        mat-button
-        type="button"
-        (click)="onCancel()"
-        data-testid="cancel-button"
-      >
-        Cancel
-      </button>
-      <button
-        mat-raised-button
-        color="primary"
-        type="submit"
-        [disabled]="submitting"
-        data-testid="submit-button"
-      >
-        @if (submitting) {
-          <mat-spinner diameter="20"></mat-spinner>
-        } @else {
-          Create Project
-        }
-      </button>
     </div>
+
+    <div class="flex flex-col gap-2">
+      <label class="text-sm font-semibold" for="description"
+             style="color: oklch(0.72 0.015 268);">
+        Description
+        <span class="font-normal text-xs ml-1" style="color: oklch(0.42 0.012 268);">optional</span>
+      </label>
+      <textarea
+        id="description" formControlName="description" rows="4"
+        placeholder="What is this project about?"
+        data-testid="description-input"
+        class="w-full px-4 py-3 rounded-xl text-sm resize-none transition-all duration-200
+               focus:outline-none"
+        style="background: oklch(0.11 0.025 268);
+               border: 1px solid oklch(0.22 0.020 268);
+               color: oklch(0.96 0.006 268);
+               font-family: 'Outfit', sans-serif;"
+        onfocus="this.style.borderColor='oklch(0.65 0.26 285)';this.style.boxShadow='0 0 0 3px oklch(0.65 0.26 285 / 0.15)'"
+        onblur="this.style.borderColor='oklch(0.22 0.020 268)';this.style.boxShadow='none'"
+      ></textarea>
+    </div>
+
+    <div class="flex flex-col gap-2">
+      <label class="text-sm font-semibold" for="visibility"
+             style="color: oklch(0.72 0.015 268);">
+        Visibility
+      </label>
+      <select
+        id="visibility" formControlName="visibility"
+        data-testid="visibility-select"
+        class="w-full px-4 py-3 rounded-xl text-sm transition-all duration-200
+               focus:outline-none appearance-none cursor-pointer"
+        style="background: oklch(0.11 0.025 268);
+               border: 1px solid oklch(0.22 0.020 268);
+               color: oklch(0.96 0.006 268);
+               font-family: 'Outfit', sans-serif;"
+        onfocus="this.style.borderColor='oklch(0.65 0.26 285)';this.style.boxShadow='0 0 0 3px oklch(0.65 0.26 285 / 0.15)'"
+        onblur="this.style.borderColor='oklch(0.22 0.020 268)';this.style.boxShadow='none'"
+      >
+        @for (opt of visibilityOptions; track opt.value) {
+          <option [value]="opt.value"
+                  style="background: oklch(0.13 0.025 268); color: oklch(0.96 0.006 268);">
+            {{ opt.label }}
+          </option>
+        }
+      </select>
+    </div>
+
+    <!-- Divider con gradiente -->
+    <div class="h-px" style="background: linear-gradient(90deg, oklch(0.65 0.26 285 / 0.3), oklch(0.22 0.020 268), transparent);"></div>
+
+    <div class="flex items-center justify-end gap-3">
+      <app-button type="button" variant="secondary" (click)="onCancel()">
+        Cancel
+      </app-button>
+      <app-button type="submit" variant="primary" [loading]="submitting()" data-testid="submit-button">
+        Create project
+      </app-button>
+    </div>
+
   </form>
 </div>

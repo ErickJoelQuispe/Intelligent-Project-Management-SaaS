@@ -37,7 +37,14 @@ public class TaskPersistenceAdapter implements TaskRepository, ActivityLogReposi
     @Override
     @Transactional
     public Task save(Task task) {
-        TaskJpaEntity entity = toJpa(task);
+        TaskJpaEntity entity;
+        if (task.getId() != null) {
+            // Update path: load existing entity to preserve @Version field
+            entity = taskJpaRepo.findById(task.getId()).orElseGet(TaskJpaEntity::new);
+            updateJpa(entity, task);
+        } else {
+            entity = toJpa(task);
+        }
         taskJpaRepo.save(entity);
         return toDomain(entity);
     }
@@ -109,6 +116,21 @@ public class TaskPersistenceAdapter implements TaskRepository, ActivityLogReposi
         entity.setCreatedAt(task.getCreatedAt() != null ? task.getCreatedAt() : Instant.now());
         entity.setUpdatedAt(task.getUpdatedAt() != null ? task.getUpdatedAt() : Instant.now());
         return entity;
+    }
+
+    /** Updates mutable fields on an existing JPA entity, preserving id/version/createdAt. */
+    private void updateJpa(TaskJpaEntity entity, Task task) {
+        entity.setTitle(task.getTitle());
+        entity.setDescription(task.getDescription());
+        entity.setStatus(task.getStatus());
+        entity.setPriority(task.getPriority());
+        entity.setDeadline(task.getDeadline());
+        entity.setAssigneeId(task.getAssigneeId());
+        entity.setUpdatedAt(Instant.now());
+        if (task.getParentTaskId() != null) {
+            TaskJpaEntity parentRef = taskJpaRepo.getReferenceById(task.getParentTaskId());
+            entity.setParentTask(parentRef);
+        }
     }
 
     private ActivityLogJpaEntity toJpa(ActivityLog log) {
