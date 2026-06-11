@@ -6,6 +6,21 @@
     <span class="material-symbols-rounded text-sm">arrow_back</span>
     Back
   </app-button>
+  @if (project()) {
+    <app-button page-action variant="secondary" size="sm"
+                [routerLink]="['/projects', project()?.id, 'edit']">
+      <span class="material-symbols-rounded text-sm">edit</span>
+      Edit
+    </app-button>
+  }
+  @if (project()) {
+    <app-button page-action variant="ghost" size="sm"
+                (click)="archiveProject()"
+                style="color: oklch(0.65 0.22 25);">
+      <span class="material-symbols-rounded text-sm" style="color: oklch(0.65 0.22 25);">archive</span>
+      Archive
+    </app-button>
+  }
 </app-page-header>
 
 <div class="p-6 flex flex-col gap-6 max-w-3xl">

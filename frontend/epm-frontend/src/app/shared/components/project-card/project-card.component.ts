@@ -91,6 +91,12 @@ import { Project } from '../../../core/models/project.model';
                       style="color: oklch(0.65 0.26 285);">auto_awesome</span>
                 AI
               </app-button>
+              <app-button variant="ghost" size="sm"
+                          (click)="onArchive($event)"
+                          title="Archive project">
+                <span class="material-symbols-rounded text-sm"
+                      style="color: oklch(0.65 0.22 25);">archive</span>
+              </app-button>
               <ng-content select="[card-actions]" />
             </div>
           }
@@ -101,8 +107,14 @@ import { Project } from '../../../core/models/project.model';
   `,
 })
 export class ProjectCardComponent {
-  project     = input.required<Project>();
-  showActions = input<boolean>(true);
-  viewTasks   = output<Project>();
-  viewKanban  = output<Project>();
+  project          = input.required<Project>();
+  showActions      = input<boolean>(true);
+  viewTasks        = output<Project>();
+  viewKanban       = output<Project>();
+  projectArchived  = output<Project>();
+
+  onArchive(event: MouseEvent): void {
+    event.stopPropagation();
+    this.projectArchived.emit(this.project());
+  }
 }

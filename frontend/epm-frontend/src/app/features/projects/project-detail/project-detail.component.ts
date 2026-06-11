@@ -4,7 +4,7 @@ import {
   inject,
   signal,
 } from '@angular/core';
-import { ActivatedRoute, RouterLink } from '@angular/router';
+import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { forkJoin } from 'rxjs';
 import { ProjectService } from '../project.service';
 import { AiService, TaskDraft } from '../../ai/ai.service';
@@ -38,6 +38,7 @@ import { AiChatComponent } from '../../ai/chat/ai-chat.component';
 })
 export class ProjectDetailComponent {
   private readonly route          = inject(ActivatedRoute);
+  private readonly router         = inject(Router);
   private readonly projectService = inject(ProjectService);
   private readonly aiService      = inject(AiService);
   private readonly taskService    = inject(TaskService);
@@ -132,6 +133,16 @@ export class ProjectDetailComponent {
     this.aiService.getProjectSummary(p.id).subscribe({
       next:  (res) => { this.summary.set(res.summary); this.summarizing.set(false); },
       error: ()    => { this.aiError.set('Failed to summarize project.'); this.summarizing.set(false); },
+    });
+  }
+
+  archiveProject(): void {
+    if (!confirm('Archive this project? It will be hidden from the project list.')) return;
+    const id = this.project()?.id;
+    if (!id) return;
+    this.projectService.archive(id).subscribe({
+      next:  () => this.router.navigate(['/projects']),
+      error: () => this.error.set('Failed to archive project. Please try again.'),
     });
   }
 }

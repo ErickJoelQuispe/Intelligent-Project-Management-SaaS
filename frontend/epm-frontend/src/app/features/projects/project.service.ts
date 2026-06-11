@@ -21,4 +21,12 @@ export class ProjectService {
   getById(id: string): Observable<Project> {
     return this.http.get<Project>(`${this.baseUrl}/${id}`);
   }
+
+  update(id: string, req: { name: string; description?: string; visibility: string }): Observable<Project> {
+    return this.http.patch<Project>(`${this.baseUrl}/${id}`, req);
+  }
+
+  archive(id: string): Observable<void> {
+    return this.http.delete<void>(`${this.baseUrl}/${id}`);
+  }
 }

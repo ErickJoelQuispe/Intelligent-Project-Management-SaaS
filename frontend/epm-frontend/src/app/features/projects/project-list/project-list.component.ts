@@ -60,4 +60,12 @@ export class ProjectListComponent implements OnInit {
   goToCreate(): void {
     this.router.navigate(['/projects/new']);
   }
+
+  onProjectArchived(project: Project): void {
+    if (!confirm(`Archive "${project.name}"? It will be hidden from the project list.`)) return;
+    this.projectService.archive(project.id).subscribe({
+      next:  () => this.loadProjects(),
+      error: () => this.error.set('Failed to archive project. Please try again.'),
+    });
+  }
 }

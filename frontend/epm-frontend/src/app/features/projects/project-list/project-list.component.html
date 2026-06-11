@@ -65,6 +65,7 @@
         <app-project-card
           [project]="project"
           [class]="'stagger-' + ((i % 6) + 1)"
+          (projectArchived)="onProjectArchived($event)"
         />
       }
     </div>
