@@ -7,6 +7,7 @@ import {
 import { ActivatedRoute, RouterLink } from '@angular/router';
 import { TaskStatus } from '../../../../core/models/task.models';
 import { TaskStore } from '../../task.store';
+import { TaskService } from '../../task.service';
 import { KanbanColumnComponent } from '../kanban-column/kanban-column.component';
 import { PageHeaderComponent } from '../../../../shared/components/page-header/page-header.component';
 import { ButtonComponent } from '../../../../shared/components/button/button.component';
@@ -30,7 +31,8 @@ import { ErrorBannerComponent } from '../../../../shared/components/error-banner
   providers: [TaskStore],
 })
 export class KanbanBoardComponent implements OnInit {
-  private readonly route = inject(ActivatedRoute);
+  private readonly route       = inject(ActivatedRoute);
+  private readonly taskService = inject(TaskService);
   readonly store = inject(TaskStore);
 
   projectId = '';
@@ -42,5 +44,12 @@ export class KanbanBoardComponent implements OnInit {
 
   onTaskDropped(event: { taskId: string; newStatus: TaskStatus }): void {
     this.store.changeStatus({ taskId: event.taskId, status: event.newStatus });
+  }
+
+  onTaskDeleted(taskId: string): void {
+    this.taskService.delete(taskId).subscribe({
+      next:  () => this.store.loadKanban(this.projectId),
+      error: () => {},
+    });
   }
 }

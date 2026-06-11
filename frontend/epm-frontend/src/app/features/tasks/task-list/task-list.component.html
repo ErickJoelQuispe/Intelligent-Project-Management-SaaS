@@ -41,7 +41,7 @@
                 box-shadow: 0 4px 24px oklch(0 0 0 / 0.4);">
 
       <!-- Header -->
-      <div class="grid grid-cols-[2fr_1fr_1fr_1fr_3rem] px-5 py-3"
+      <div class="grid grid-cols-[2fr_1fr_1fr_1fr_auto] px-5 py-3"
            style="background: oklch(0.13 0.025 268);
                   border-bottom: 1px solid oklch(0.22 0.020 268);">
         @for (col of tableHeaders; track $index) {
@@ -54,7 +54,7 @@
 
       <!-- Filas -->
       @for (task of tasks(); track task.id; let i = $index) {
-        <div class="group grid grid-cols-[2fr_1fr_1fr_1fr_3rem]
+        <div class="group grid grid-cols-[2fr_1fr_1fr_1fr_auto]
                     px-5 py-3.5 items-center
                     transition-all duration-150 cursor-default animate-card-in"
              [class]="'stagger-' + ((i % 6) + 1)"
@@ -74,11 +74,19 @@
                 style="color: oklch(0.42 0.012 268); font-family: 'JetBrains Mono', monospace;">
             {{ task.deadline ? (task.deadline | date:'MMM d, yy') : '—' }}
           </span>
-          <app-button variant="ghost" size="sm"
-                      [routerLink]="['/projects', projectId, 'tasks', task.id, 'edit']"
-                      title="Edit task">
-            <span class="material-symbols-rounded text-sm">edit</span>
-          </app-button>
+          <div class="flex items-center gap-1">
+            <app-button variant="ghost" size="sm"
+                        [routerLink]="['/projects', projectId, 'tasks', task.id, 'edit']"
+                        title="Edit task">
+              <span class="material-symbols-rounded text-sm">edit</span>
+            </app-button>
+            <app-button variant="ghost" size="sm"
+                        (click)="deleteTask(task.id, task.title)"
+                        title="Delete task">
+              <span class="material-symbols-rounded text-sm"
+                    style="color: oklch(0.65 0.22 25);">delete</span>
+            </app-button>
+          </div>
         </div>
       }
     </div>

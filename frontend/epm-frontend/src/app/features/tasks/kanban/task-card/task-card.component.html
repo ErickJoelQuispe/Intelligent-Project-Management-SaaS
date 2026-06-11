@@ -8,12 +8,19 @@
   <app-card padding="sm" class="block cursor-grab active:cursor-grabbing
              hover:border-glow transition-all duration-200 animate-card-in">
 
-    <!-- Título + badge de prioridad -->
+    <!-- Título + badge de prioridad + delete -->
     <div class="flex items-start justify-between gap-2 mb-3">
       <span class="text-text-primary text-sm font-medium leading-snug line-clamp-2 flex-1">
         {{ task().title }}
       </span>
-      <app-task-priority-badge [priority]="task().priority" />
+      <div class="flex items-center gap-1 shrink-0">
+        <app-task-priority-badge [priority]="task().priority" />
+        <app-button variant="ghost" size="sm" (click)="onDelete($event)" title="Delete task"
+                    class="opacity-0 group-hover:opacity-100 transition-opacity duration-150">
+          <span class="material-symbols-rounded text-sm"
+                style="color: oklch(0.65 0.22 25); font-size: 14px;">delete</span>
+        </app-button>
+      </div>
     </div>
 
     <!-- Deadline — solo si existe -->

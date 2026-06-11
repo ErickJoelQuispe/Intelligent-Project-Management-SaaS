@@ -36,6 +36,7 @@
           [status]="col.status"
           [tasks]="col.tasks"
           (taskDropped)="onTaskDropped($event)"
+          (taskDeleted)="onTaskDeleted($event)"
         />
       }
     </div>

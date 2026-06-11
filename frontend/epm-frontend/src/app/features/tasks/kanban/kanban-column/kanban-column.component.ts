@@ -26,7 +26,9 @@ export class KanbanColumnComponent {
   tasks  = input<TaskSummary[]>([]);
 
   /** Emits taskId when a card is dropped onto this column */
-  taskDropped = output<{ taskId: string; newStatus: TaskStatus }>();
+  taskDropped  = output<{ taskId: string; newStatus: TaskStatus }>();
+  /** Emits taskId when the user confirms deletion of a card */
+  taskDeleted  = output<string>();
 
   private readonly dragState = inject(DragStateService);
 

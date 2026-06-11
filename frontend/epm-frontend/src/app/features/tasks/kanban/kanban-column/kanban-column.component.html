@@ -38,7 +38,7 @@
       <app-empty-state icon="inbox" title="No tasks" size="sm" />
     } @else {
       @for (task of tasks(); track task.taskId) {
-        <app-task-card [task]="task" />
+        <app-task-card [task]="task" (deleteTask)="taskDeleted.emit($event)" />
       }
     }
   </div>

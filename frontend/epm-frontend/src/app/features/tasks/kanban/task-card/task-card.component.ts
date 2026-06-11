@@ -2,12 +2,14 @@ import {
   Component,
   ChangeDetectionStrategy,
   input,
+  output,
   inject,
 } from '@angular/core';
 import { DatePipe } from '@angular/common';
 import { CardComponent } from '../../../../shared/components/card/card.component';
 import { AvatarComponent } from '../../../../shared/components/avatar/avatar.component';
 import { TaskPriorityBadgeComponent } from '../../../../shared/components/task-priority-badge/task-priority-badge.component';
+import { ButtonComponent } from '../../../../shared/components/button/button.component';
 import { TaskSummary } from '../../../../core/models/task.models';
 import { DragStateService } from '../drag/drag-state.service';
 
@@ -15,12 +17,13 @@ import { DragStateService } from '../drag/drag-state.service';
   selector: 'app-task-card',
   standalone: true,
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [DatePipe, CardComponent, AvatarComponent, TaskPriorityBadgeComponent],
+  imports: [DatePipe, CardComponent, AvatarComponent, TaskPriorityBadgeComponent, ButtonComponent],
   templateUrl: './task-card.component.html',
   styleUrl: './task-card.component.scss',
 })
 export class TaskCardComponent {
-  task = input.required<TaskSummary>();
+  task       = input.required<TaskSummary>();
+  deleteTask = output<string>();
 
   private readonly dragState = inject(DragStateService);
 
@@ -38,5 +41,11 @@ export class TaskCardComponent {
   onDragEnd(event: DragEvent): void {
     this.dragState.clear();
     (event.currentTarget as HTMLElement).classList.remove('dragging');
+  }
+
+  onDelete(event: MouseEvent): void {
+    event.stopPropagation();
+    if (!confirm(`Delete "${this.task().title}"? This cannot be undone.`)) return;
+    this.deleteTask.emit(this.task().taskId);
   }
 }

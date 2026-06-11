@@ -14,7 +14,6 @@ import { ButtonComponent } from '../../../shared/components/button/button.compon
 import { SpinnerComponent } from '../../../shared/components/spinner/spinner.component';
 import { ErrorBannerComponent } from '../../../shared/components/error-banner/error-banner.component';
 import { EmptyStateComponent } from '../../../shared/components/empty-state/empty-state.component';
-import { BadgeComponent } from '../../../shared/components/badge/badge.component';
 import { TaskStatusBadgeComponent } from '../../../shared/components/task-status-badge/task-status-badge.component';
 import { TaskPriorityBadgeComponent } from '../../../shared/components/task-priority-badge/task-priority-badge.component';
 
@@ -30,7 +29,6 @@ import { TaskPriorityBadgeComponent } from '../../../shared/components/task-prio
     SpinnerComponent,
     ErrorBannerComponent,
     EmptyStateComponent,
-    BadgeComponent,
     TaskStatusBadgeComponent,
     TaskPriorityBadgeComponent,
   ],
@@ -62,6 +60,14 @@ export class TaskListComponent implements OnInit {
     this.taskService.list(this.projectId, this.pageIndex, this.pageSize).subscribe({
       next:  (page) => { this.tasks.set(page.content); this.totalElements.set(page.totalElements); this.loading.set(false); },
       error: ()     => { this.error.set('Failed to load tasks.'); this.loading.set(false); },
+    });
+  }
+
+  deleteTask(taskId: string, title: string): void {
+    if (!confirm(`Delete "${title}"? This cannot be undone.`)) return;
+    this.taskService.delete(taskId).subscribe({
+      next:  () => this.loadTasks(),
+      error: () => this.error.set('Failed to delete task.'),
     });
   }
 
