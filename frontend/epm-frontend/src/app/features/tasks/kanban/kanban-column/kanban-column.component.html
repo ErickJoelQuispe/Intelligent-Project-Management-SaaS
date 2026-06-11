@@ -1,10 +1,16 @@
-<!-- Columna con fondo levemente elevado, altura completa -->
-<div class="flex flex-col gap-3 h-full rounded-xl p-3 min-w-64 w-72"
-     style="background: oklch(0.11 0.025 268 / 0.6);
-            border: 1px solid oklch(0.22 0.020 268);
-            backdrop-filter: blur(8px)">
-
-  <!-- Header: label de estado + conteo -->
+<div
+  class="flex flex-col gap-3 h-full rounded-xl p-3 min-w-64 w-72
+         transition-all duration-200"
+  [class.drop-target]="isDragOver()"
+  (dragover)="onDragOver($event)"
+  (dragenter)="onDragEnter($event)"
+  (dragleave)="onDragLeave($event)"
+  (drop)="onDrop($event)"
+  style="background: oklch(0.11 0.025 268 / 0.6);
+         border: 1px solid oklch(0.22 0.020 268);
+         backdrop-filter: blur(8px)"
+>
+  <!-- Header: label + conteo -->
   <div class="flex items-center justify-between px-1">
     <span class="text-text-secondary text-sm font-semibold tracking-wide uppercase">
       {{ statusLabel() }}
@@ -14,14 +20,22 @@
     </app-badge>
   </div>
 
-  <!-- Lista de cards o empty state -->
+  <!-- Drop indicator — aparece cuando hay hover con drag -->
+  @if (isDragOver()) {
+    <div class="rounded-lg border-2 border-dashed flex items-center justify-center py-3
+                transition-all duration-150"
+         style="border-color: oklch(0.65 0.26 285 / 0.5);
+                background: oklch(0.65 0.26 285 / 0.05);">
+      <span class="text-xs font-medium" style="color: oklch(0.65 0.26 285 / 0.8);">
+        Drop here
+      </span>
+    </div>
+  }
+
+  <!-- Cards o empty state -->
   <div class="flex flex-col gap-2 flex-1 overflow-y-auto">
-    @if (taskCount() === 0) {
-      <app-empty-state
-        icon="inbox"
-        title="No tasks"
-        size="sm"
-      />
+    @if (taskCount() === 0 && !isDragOver()) {
+      <app-empty-state icon="inbox" title="No tasks" size="sm" />
     } @else {
       @for (task of tasks(); track task.taskId) {
         <app-task-card [task]="task" />

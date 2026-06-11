@@ -5,6 +5,7 @@ import {
   inject,
 } from '@angular/core';
 import { ActivatedRoute, RouterLink } from '@angular/router';
+import { TaskStatus } from '../../../../core/models/task.models';
 import { TaskStore } from '../../task.store';
 import { KanbanColumnComponent } from '../kanban-column/kanban-column.component';
 import { PageHeaderComponent } from '../../../../shared/components/page-header/page-header.component';
@@ -37,5 +38,9 @@ export class KanbanBoardComponent implements OnInit {
   ngOnInit(): void {
     this.projectId = this.route.snapshot.paramMap.get('projectId') ?? '';
     this.store.loadKanban(this.projectId);
+  }
+
+  onTaskDropped(event: { taskId: string; newStatus: TaskStatus }): void {
+    this.store.changeStatus({ taskId: event.taskId, status: event.newStatus });
   }
 }

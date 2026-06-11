@@ -151,6 +151,18 @@
     animation: glow-pulse 2s ease-in-out infinite;
   }
 
+  /* Drag and drop — Kanban */
+  .task-card-drag.dragging > * {
+    opacity: 0.4;
+    transform: scale(0.97) rotate(-1deg);
+    transition: all 0.15s ease;
+  }
+
+  .drop-target {
+    border-color: oklch(0.65 0.26 285 / 0.5) !important;
+    box-shadow: 0 0 20px oklch(0.65 0.26 285 / 0.2), inset 0 0 20px oklch(0.65 0.26 285 / 0.05) !important;
+  }
+
   /* Stagger helpers — aplicar a children en un @for */
   .stagger-1  { animation-delay: 0.05s; }
   .stagger-2  { animation-delay: 0.10s; }

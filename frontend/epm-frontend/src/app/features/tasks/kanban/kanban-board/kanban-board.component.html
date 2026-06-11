@@ -30,12 +30,12 @@
       (retry)="store.loadKanban(projectId)"
     />
   } @else {
-    <!-- Columnas en scroll horizontal — cada columna tiene ancho fijo -->
     <div class="flex gap-4 overflow-x-auto pb-4">
       @for (col of store.kanbanColumns(); track col.status) {
         <app-kanban-column
           [status]="col.status"
           [tasks]="col.tasks"
+          (taskDropped)="onTaskDropped($event)"
         />
       }
     </div>
