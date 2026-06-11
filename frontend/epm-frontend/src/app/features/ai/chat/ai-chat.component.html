@@ -1,0 +1,108 @@
+<!-- AI Chat section divider -->
+<div class="flex flex-col gap-4">
+
+  <div>
+    <h3 class="text-text-primary text-sm font-semibold mb-1">
+      AI Chat
+    </h3>
+    <p class="text-text-muted text-xs leading-relaxed">
+      Ask the AI questions about this project in real time.
+    </p>
+  </div>
+
+  <!-- Message list -->
+  <div class="flex flex-col gap-3 min-h-0">
+
+    @if (messages().length === 0) {
+      <!-- Empty state -->
+      <div data-testid="empty-state"
+           class="flex flex-col items-center justify-center py-8 gap-2 rounded-lg
+                  bg-bg-elevated/40 border border-border border-dashed">
+        <span class="material-symbols-rounded text-2xl"
+              style="color: oklch(0.65 0.26 285 / 0.5)">chat</span>
+        <p class="text-text-muted text-xs text-center leading-relaxed max-w-xs">
+          Ask the AI anything about this project
+        </p>
+      </div>
+    } @else {
+      <!-- Scrollable message thread -->
+      <div class="flex flex-col gap-2 max-h-72 overflow-y-auto pr-1">
+
+        @for (msg of messages(); track $index) {
+
+          @if (msg.role === 'user') {
+            <!-- User bubble — right-aligned -->
+            <div data-testid="message-user"
+                 class="self-end max-w-[80%] px-3 py-2 rounded-2xl rounded-tr-sm text-xs
+                        text-white"
+                 style="background: linear-gradient(135deg,
+                          oklch(0.62 0.28 290) 0%,
+                          oklch(0.50 0.24 255) 100%);
+                        box-shadow: 0 0 12px oklch(0.65 0.26 285 / 0.2);">
+              {{ msg.content }}
+            </div>
+
+          } @else if (msg.role === 'assistant') {
+            <!-- Assistant bubble — left-aligned -->
+            <div data-testid="message-assistant"
+                 class="self-start max-w-[85%] px-3 py-2 rounded-2xl rounded-tl-sm text-xs
+                        text-text-secondary"
+                 style="background: oklch(0.14 0.025 268 / 0.8);
+                        border: 1px solid oklch(0.28 0.022 268);
+                        backdrop-filter: blur(8px);">
+              {{ msg.content }}
+              @if (msg.streaming) {
+                <!-- Streaming indicator — blinking cursor -->
+                <span class="inline-block w-1.5 h-3 ml-0.5 align-middle animate-pulse rounded-sm"
+                      style="background: oklch(0.65 0.26 285 / 0.7);"
+                      aria-label="Streaming"></span>
+              }
+            </div>
+
+          } @else if (msg.role === 'error') {
+            <!-- Error message -->
+            <div class="self-start max-w-[85%] flex items-center gap-2 px-3 py-2 rounded-xl
+                        text-xs bg-error-subtle border border-error/20 text-error">
+              <span class="material-symbols-rounded text-sm">error_outline</span>
+              {{ msg.content }}
+            </div>
+          }
+
+        }
+      </div>
+    }
+
+  </div>
+
+  <!-- Input row -->
+  <div class="flex gap-2 items-end">
+    <textarea
+      class="flex-1 resize-none rounded-xl px-3 py-2 text-xs text-text-primary
+             bg-bg-elevated border border-border
+             placeholder:text-text-muted
+             focus:outline-none focus:border-accent/50
+             disabled:opacity-50 disabled:cursor-not-allowed
+             transition-colors"
+      rows="2"
+      placeholder="Ask something about this project..."
+      [value]="inputText()"
+      [disabled]="loading()"
+      (input)="inputText.set($any($event.target).value)"
+      (keydown.enter)="onEnterKey($any($event))"
+      aria-label="Chat message input"
+    ></textarea>
+
+    <app-button
+      data-testid="send-button"
+      variant="primary"
+      size="sm"
+      [disabled]="loading()"
+      [loading]="loading()"
+      (click)="send()"
+    >
+      <span class="material-symbols-rounded text-sm">send</span>
+      Send
+    </app-button>
+  </div>
+
+</div>

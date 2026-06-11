@@ -17,6 +17,7 @@ import { ErrorBannerComponent } from '../../../shared/components/error-banner/er
 import { ProjectCardComponent } from '../../../shared/components/project-card/project-card.component';
 import { CardComponent } from '../../../shared/components/card/card.component';
 import { AiDraftTaskItemComponent } from '../../../shared/components/ai-draft-task-item/ai-draft-task-item.component';
+import { AiChatComponent } from '../../ai/chat/ai-chat.component';
 
 @Component({
   selector: 'app-project-detail',
@@ -31,6 +32,7 @@ import { AiDraftTaskItemComponent } from '../../../shared/components/ai-draft-ta
     ProjectCardComponent,
     CardComponent,
     AiDraftTaskItemComponent,
+    AiChatComponent,
   ],
   templateUrl: './project-detail.component.html',
 })

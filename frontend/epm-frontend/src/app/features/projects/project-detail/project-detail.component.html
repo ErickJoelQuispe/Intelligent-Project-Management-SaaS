@@ -119,6 +119,12 @@
           }
         </div>
 
+        <!-- Divider -->
+        <div class="border-t border-border"></div>
+
+        <!-- AI Chat section -->
+        <app-ai-chat [projectId]="project()?.id" />
+
         <!-- AI error -->
         @if (aiError()) {
           <app-error-banner [message]="aiError()!" variant="inline" />
