@@ -4,10 +4,14 @@ import {
   OnInit,
   inject,
   signal,
+  effect,
 } from '@angular/core';
+import { FormBuilder, ReactiveFormsModule } from '@angular/forms';
 import { MatSlideToggleModule, MatSlideToggleChange } from '@angular/material/slide-toggle';
 import { OAuthService } from 'angular-oauth2-oidc';
 import { NotificationPreferencesStore } from '../notifications/store/notification-preferences.store';
+import { ProfileStore } from './store/profile.store';
+import { UpdateProfileRequest } from '../../core/models/user-profile.model';
 import { NotificationPreference, NotificationChannel, NotificationType } from '../notifications/models/notification.model';
 import { PageHeaderComponent } from '../../shared/components/page-header/page-header.component';
 import { CardComponent } from '../../shared/components/card/card.component';
@@ -15,6 +19,8 @@ import { BadgeComponent, BadgeVariant } from '../../shared/components/badge/badg
 import { SpinnerComponent } from '../../shared/components/spinner/spinner.component';
 import { EmptyStateComponent } from '../../shared/components/empty-state/empty-state.component';
 import { AvatarComponent } from '../../shared/components/avatar/avatar.component';
+import { ButtonComponent } from '../../shared/components/button/button.component';
+import { ErrorBannerComponent } from '../../shared/components/error-banner/error-banner.component';
 
 const EVENT_LABELS: Record<string, string> = {
   TASK_CREATED:             'Task created',
@@ -40,6 +46,7 @@ type SettingsSection = 'profile' | 'notifications' | 'appearance';
   standalone: true,
   changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [
+    ReactiveFormsModule,
     MatSlideToggleModule,
     PageHeaderComponent,
     CardComponent,
@@ -47,6 +54,8 @@ type SettingsSection = 'profile' | 'notifications' | 'appearance';
     SpinnerComponent,
     EmptyStateComponent,
     AvatarComponent,
+    ButtonComponent,
+    ErrorBannerComponent,
   ],
   template: `
     <app-page-header
@@ -94,21 +103,177 @@ type SettingsSection = 'profile' | 'notifications' | 'appearance';
               Profile
             </h2>
 
+            <!-- Profile info card -->
             <app-card>
-              <div class="flex items-center gap-4">
-                <app-avatar [name]="userName()" size="lg" />
-                <div class="flex flex-col gap-0.5">
-                  <span class="text-text-primary font-semibold text-sm">
-                    {{ userName() }}
-                  </span>
-                  <span class="text-text-muted text-xs">{{ userEmail() }}</span>
-                  <span class="text-text-disabled text-xs mt-1">
-                    Managed by Keycloak — edit your profile in the identity provider
-                  </span>
+              @if (profileStore.loading()) {
+                <app-spinner size="md" [full]="true" />
+              } @else if (!isEditing()) {
+                <!-- VIEW MODE -->
+                <div class="flex flex-col gap-4">
+                  <div class="flex items-center gap-4">
+                    <app-avatar
+                      [src]="profileStore.profile()?.avatarUrl"
+                      [name]="displayName()"
+                      size="lg"
+                    />
+                    <div class="flex flex-col gap-0.5">
+                      <span class="text-text-primary font-semibold text-sm">
+                        {{ displayName() }}
+                      </span>
+                      <span class="text-text-muted text-xs">
+                        {{ profileStore.profile()?.email ?? userEmail() }}
+                      </span>
+                    </div>
+                  </div>
+
+                  @if (profileStore.profile()?.bio) {
+                    <p class="text-text-muted text-sm leading-relaxed">
+                      {{ profileStore.profile()!.bio }}
+                    </p>
+                  } @else {
+                    <p class="text-text-disabled text-xs italic">No bio yet.</p>
+                  }
+
+                  @if (profileStore.profile()?.avatarUrl) {
+                    <a
+                      [href]="profileStore.profile()!.avatarUrl!"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      class="text-xs truncate"
+                      style="color: oklch(0.65 0.26 285);"
+                    >
+                      {{ profileStore.profile()!.avatarUrl }}
+                    </a>
+                  }
+
+                  @if (profileStore.error()) {
+                    <app-error-banner [message]="profileStore.error()!" variant="inline" />
+                  }
+
+                  <div class="flex justify-end pt-1">
+                    <app-button variant="secondary" size="sm" (click)="startEdit()">
+                      <span class="material-symbols-rounded text-sm">edit</span>
+                      Edit profile
+                    </app-button>
+                  </div>
                 </div>
-              </div>
+              } @else {
+                <!-- EDIT MODE -->
+                <form [formGroup]="editForm" (ngSubmit)="saveProfile()" novalidate
+                      class="flex flex-col gap-5">
+
+                  <div class="grid grid-cols-2 gap-4">
+                    <!-- First name -->
+                    <div class="flex flex-col gap-2">
+                      <label class="text-sm font-semibold" for="firstName"
+                             style="color: oklch(0.72 0.015 268);">
+                        First name
+                        <span class="font-normal text-xs ml-1" style="color: oklch(0.42 0.012 268);">optional</span>
+                      </label>
+                      <input
+                        id="firstName" type="text" formControlName="firstName"
+                        placeholder="Jane"
+                        class="w-full px-4 py-3 rounded-xl text-sm transition-all duration-200 focus:outline-none"
+                        style="background: oklch(0.11 0.025 268);
+                               border: 1px solid oklch(0.22 0.020 268);
+                               color: oklch(0.96 0.006 268);
+                               font-family: 'Outfit', sans-serif;"
+                        onfocus="this.style.borderColor='oklch(0.65 0.26 285)';this.style.boxShadow='0 0 0 3px oklch(0.65 0.26 285 / 0.15), 0 0 16px oklch(0.65 0.26 285 / 0.1)'"
+                        onblur="this.style.borderColor='oklch(0.22 0.020 268)';this.style.boxShadow='none'"
+                      />
+                    </div>
+
+                    <!-- Last name -->
+                    <div class="flex flex-col gap-2">
+                      <label class="text-sm font-semibold" for="lastName"
+                             style="color: oklch(0.72 0.015 268);">
+                        Last name
+                        <span class="font-normal text-xs ml-1" style="color: oklch(0.42 0.012 268);">optional</span>
+                      </label>
+                      <input
+                        id="lastName" type="text" formControlName="lastName"
+                        placeholder="Doe"
+                        class="w-full px-4 py-3 rounded-xl text-sm transition-all duration-200 focus:outline-none"
+                        style="background: oklch(0.11 0.025 268);
+                               border: 1px solid oklch(0.22 0.020 268);
+                               color: oklch(0.96 0.006 268);
+                               font-family: 'Outfit', sans-serif;"
+                        onfocus="this.style.borderColor='oklch(0.65 0.26 285)';this.style.boxShadow='0 0 0 3px oklch(0.65 0.26 285 / 0.15), 0 0 16px oklch(0.65 0.26 285 / 0.1)'"
+                        onblur="this.style.borderColor='oklch(0.22 0.020 268)';this.style.boxShadow='none'"
+                      />
+                    </div>
+                  </div>
+
+                  <!-- Bio -->
+                  <div class="flex flex-col gap-2">
+                    <label class="text-sm font-semibold" for="bio"
+                           style="color: oklch(0.72 0.015 268);">
+                      Bio
+                      <span class="font-normal text-xs ml-1" style="color: oklch(0.42 0.012 268);">optional</span>
+                    </label>
+                    <textarea
+                      id="bio" formControlName="bio" rows="3"
+                      placeholder="Tell us a bit about yourself..."
+                      maxlength="2000"
+                      class="w-full px-4 py-3 rounded-xl text-sm resize-none transition-all duration-200 focus:outline-none"
+                      style="background: oklch(0.11 0.025 268);
+                             border: 1px solid oklch(0.22 0.020 268);
+                             color: oklch(0.96 0.006 268);
+                             font-family: 'Outfit', sans-serif;"
+                      onfocus="this.style.borderColor='oklch(0.65 0.26 285)';this.style.boxShadow='0 0 0 3px oklch(0.65 0.26 285 / 0.15)'"
+                      onblur="this.style.borderColor='oklch(0.22 0.020 268)';this.style.boxShadow='none'"
+                    ></textarea>
+                  </div>
+
+                  <!-- Avatar URL -->
+                  <div class="flex flex-col gap-2">
+                    <label class="text-sm font-semibold" for="avatarUrl"
+                           style="color: oklch(0.72 0.015 268);">
+                      Avatar URL
+                      <span class="font-normal text-xs ml-1" style="color: oklch(0.42 0.012 268);">optional</span>
+                    </label>
+                    <input
+                      id="avatarUrl" type="url" formControlName="avatarUrl"
+                      placeholder="https://example.com/avatar.png"
+                      class="w-full px-4 py-3 rounded-xl text-sm transition-all duration-200 focus:outline-none"
+                      style="background: oklch(0.11 0.025 268);
+                             border: 1px solid oklch(0.22 0.020 268);
+                             color: oklch(0.96 0.006 268);
+                             font-family: 'Outfit', sans-serif;"
+                      onfocus="this.style.borderColor='oklch(0.65 0.26 285)';this.style.boxShadow='0 0 0 3px oklch(0.65 0.26 285 / 0.15), 0 0 16px oklch(0.65 0.26 285 / 0.1)'"
+                      onblur="this.style.borderColor='oklch(0.22 0.020 268)';this.style.boxShadow='none'"
+                    />
+                  </div>
+
+                  @if (profileStore.error()) {
+                    <app-error-banner [message]="profileStore.error()!" variant="inline" />
+                  }
+
+                  <!-- Actions -->
+                  <div class="flex items-center justify-end gap-3 pt-1">
+                    <app-button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      (click)="cancelEdit()"
+                    >
+                      Cancel
+                    </app-button>
+                    <app-button
+                      type="submit"
+                      variant="primary"
+                      size="sm"
+                      [loading]="profileStore.saving()"
+                      [disabled]="profileStore.saving()"
+                    >
+                      Save changes
+                    </app-button>
+                  </div>
+                </form>
+              }
             </app-card>
 
+            <!-- Session card -->
             <app-card>
               <div class="flex flex-col gap-4">
                 <h3 class="text-text-primary text-sm font-semibold">Session</h3>
@@ -270,9 +435,12 @@ type SettingsSection = 'profile' | 'notifications' | 'appearance';
 })
 export class SettingsComponent implements OnInit {
   private readonly oauth   = inject(OAuthService);
+  private readonly fb      = inject(FormBuilder);
   readonly prefStore       = inject(NotificationPreferencesStore);
+  readonly profileStore    = inject(ProfileStore);
 
   activeSection = signal<SettingsSection>('profile');
+  isEditing     = signal(false);
 
   readonly sections = [
     { id: 'profile'       as SettingsSection, label: 'Profile',       icon: 'person' },
@@ -280,14 +448,72 @@ export class SettingsComponent implements OnInit {
     { id: 'appearance'    as SettingsSection, label: 'Appearance',    icon: 'palette' },
   ];
 
-  ngOnInit(): void {
-    this.prefStore.loadPreferences();
-  }
+  editForm = this.fb.group({
+    firstName: [''],
+    lastName:  [''],
+    bio:       [''],
+    avatarUrl: [''],
+  });
 
-  userName = signal(this.getClaimValue('preferred_username') ?? this.getClaimValue('email') ?? 'User');
   userEmail = signal(this.getClaimValue('email') ?? '');
 
   tokenExpiresIn = signal(this.computeTokenExpiry());
+
+  constructor() {
+    // Auto-close edit form when save completes successfully
+    effect(() => {
+      if (this.profileStore.saveSuccess()) {
+        this.isEditing.set(false);
+      }
+    });
+  }
+
+  ngOnInit(): void {
+    this.prefStore.loadPreferences();
+    this.profileStore.loadProfile();
+  }
+
+  displayName(): string {
+    const p = this.profileStore.profile();
+    if (!p) return this.getClaimValue('preferred_username') ?? this.getClaimValue('email') ?? 'User';
+    const fullName = [p.firstName, p.lastName].filter(Boolean).join(' ');
+    return fullName || p.email;
+  }
+
+  startEdit(): void {
+    const p = this.profileStore.profile();
+    this.editForm.patchValue({
+      firstName: p?.firstName ?? '',
+      lastName:  p?.lastName  ?? '',
+      bio:       p?.bio       ?? '',
+      avatarUrl: p?.avatarUrl ?? '',
+    });
+    this.isEditing.set(true);
+  }
+
+  cancelEdit(): void {
+    this.isEditing.set(false);
+    this.editForm.reset();
+  }
+
+  saveProfile(): void {
+    if (this.editForm.invalid) return;
+
+    const { firstName, lastName, bio, avatarUrl } = this.editForm.getRawValue();
+    const profile = this.profileStore.profile();
+    if (!profile) return;
+
+    const req: UpdateProfileRequest = {
+      version: profile.version,
+    };
+
+    if (firstName !== null && firstName !== undefined && firstName !== '') req.firstName = firstName;
+    if (lastName  !== null && lastName  !== undefined && lastName  !== '') req.lastName  = lastName;
+    if (bio       !== null && bio       !== undefined && bio       !== '') req.bio       = bio;
+    if (avatarUrl !== null && avatarUrl !== undefined && avatarUrl !== '') req.avatarUrl = avatarUrl;
+
+    this.profileStore.saveProfile(req);
+  }
 
   private getClaimValue(key: string): string | null {
     const claims = this.oauth.getIdentityClaims() as Record<string, string> | null;
