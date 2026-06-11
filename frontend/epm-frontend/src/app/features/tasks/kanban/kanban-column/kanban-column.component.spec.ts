@@ -29,14 +29,17 @@ describe('KanbanColumnComponent', () => {
 
   it('renders the human-readable column title for the given status', () => {
     const compiled = fixture.nativeElement as HTMLElement;
-    const header = compiled.querySelector('.kanban-column__status-label');
-    expect(header?.textContent?.trim()).toBe('To Do');
+    // Status label rendered as an uppercase span inside the column header
+    const spans = Array.from(compiled.querySelectorAll('span'));
+    const header = spans.find(s => s.textContent?.trim().toUpperCase() === 'TO DO');
+    expect(header?.textContent?.trim().toUpperCase()).toBe('TO DO');
   });
 
   it('displays correct task count matching number of tasks provided', () => {
     const compiled = fixture.nativeElement as HTMLElement;
-    const count = compiled.querySelector('.kanban-column__count');
-    expect(count?.textContent?.trim()).toBe('2');
+    // Task count rendered inside app-badge
+    const badge = compiled.querySelector('app-badge');
+    expect(badge?.textContent?.trim()).toBe('2');
   });
 
   it('renders a task card for each task in the tasks input', () => {
@@ -50,7 +53,7 @@ describe('KanbanColumnComponent', () => {
     fixture.detectChanges();
 
     const compiled = fixture.nativeElement as HTMLElement;
-    const emptyState = compiled.querySelector('.kanban-column__empty');
+    const emptyState = compiled.querySelector('app-empty-state');
     expect(emptyState).toBeTruthy();
     expect(emptyState?.textContent?.trim()).toContain('No tasks');
   });

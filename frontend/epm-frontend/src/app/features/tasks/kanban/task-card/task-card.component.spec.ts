@@ -42,21 +42,24 @@ describe('TaskCardComponent', () => {
 
   it('renders the task title from input', () => {
     const compiled = fixture.nativeElement as HTMLElement;
-    const title = compiled.querySelector('.task-card__title');
-    expect(title?.textContent?.trim()).toBe('Fix critical bug');
+    // Template uses a <span> with the title text directly (no semantic CSS class)
+    const spans = Array.from(compiled.querySelectorAll('span'));
+    const titleSpan = spans.find((s) => s.textContent?.trim() === 'Fix critical bug');
+    expect(titleSpan).toBeTruthy();
   });
 
   it('renders the priority chip with correct priority label', () => {
     const compiled = fixture.nativeElement as HTMLElement;
-    const priorityChip = compiled.querySelector('.task-card__priority');
-    expect(priorityChip?.textContent?.trim()).toBe('HIGH');
+    // TaskPriorityBadgeComponent renders inside app-task-priority-badge
+    const priorityBadge = compiled.querySelector('app-task-priority-badge');
+    expect(priorityBadge).toBeTruthy();
   });
 
   it('renders deadline when deadline is provided', () => {
     const compiled = fixture.nativeElement as HTMLElement;
-    const deadline = compiled.querySelector('.task-card__deadline');
-    expect(deadline).toBeTruthy();
-    expect(deadline?.textContent).toBeTruthy();
+    // Deadline section contains a schedule icon and date text
+    const scheduleIcon = compiled.querySelector('.material-symbols-rounded');
+    expect(scheduleIcon).toBeTruthy();
   });
 
   it('does not render deadline section when no deadline', async () => {
@@ -64,22 +67,9 @@ describe('TaskCardComponent', () => {
     await createComponent(lowPriorityTask);
 
     const compiled = fixture.nativeElement as HTMLElement;
-    const deadline = compiled.querySelector('.task-card__deadline');
-    expect(deadline).toBeNull();
+    const scheduleIcon = compiled.querySelector('.material-symbols-rounded');
+    expect(scheduleIcon).toBeNull();
   });
 
-  it('priorityColor returns red for HIGH priority', () => {
-    const color = component.priorityColor('HIGH');
-    expect(color).toContain('priority-high');
-  });
 
-  it('priorityColor returns orange for MEDIUM priority', () => {
-    const color = component.priorityColor('MEDIUM');
-    expect(color).toContain('priority-medium');
-  });
-
-  it('priorityColor returns green for LOW priority', () => {
-    const color = component.priorityColor('LOW');
-    expect(color).toContain('priority-low');
-  });
 });

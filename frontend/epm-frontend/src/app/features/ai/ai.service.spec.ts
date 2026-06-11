@@ -1,11 +1,15 @@
 import { TestBed } from '@angular/core/testing';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { provideHttpClient } from '@angular/common/http';
+import { OAuthService } from 'angular-oauth2-oidc';
 import { AiService } from './ai.service';
 import { ChatResponse } from './models/chat.models';
-import { firstValueFrom } from 'rxjs';
 
 const BASE_URL = 'http://localhost:8080/api/v1/ai';
+
+const oauthServiceMock = {
+  getAccessToken: () => 'mock-token',
+};
 
 describe('AiService', () => {
   let service: AiService;
@@ -13,7 +17,12 @@ describe('AiService', () => {
 
   beforeEach(() => {
     TestBed.configureTestingModule({
-      providers: [AiService, provideHttpClient(), provideHttpClientTesting()],
+      providers: [
+        AiService,
+        provideHttpClient(),
+        provideHttpClientTesting(),
+        { provide: OAuthService, useValue: oauthServiceMock },
+      ],
     });
     service = TestBed.inject(AiService);
     httpMock = TestBed.inject(HttpTestingController);

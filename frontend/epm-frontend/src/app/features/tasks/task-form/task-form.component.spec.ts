@@ -9,12 +9,17 @@ import { TaskService } from '../task.service';
 describe('TaskFormComponent', () => {
   let component: TaskFormComponent;
   let fixture: ComponentFixture<TaskFormComponent>;
-  let taskServiceMock: { create: ReturnType<typeof vi.fn>; update: ReturnType<typeof vi.fn> };
+  let taskServiceMock: {
+    create: ReturnType<typeof vi.fn>;
+    update: ReturnType<typeof vi.fn>;
+    getById: ReturnType<typeof vi.fn>;
+  };
 
   beforeEach(async () => {
     taskServiceMock = {
       create: vi.fn().mockReturnValue(of({})),
       update: vi.fn().mockReturnValue(of({})),
+      getById: vi.fn().mockReturnValue(of({})),
     };
 
     await TestBed.configureTestingModule({
@@ -25,7 +30,8 @@ describe('TaskFormComponent', () => {
         {
           provide: ActivatedRoute,
           useValue: {
-            snapshot: { paramMap: { get: (_: string) => 'project-abc' } },
+            // projectId param returns 'project-abc', taskId returns null (create mode)
+            snapshot: { paramMap: { get: (key: string) => key === 'projectId' ? 'project-abc' : null } },
           },
         },
         { provide: TaskService, useValue: taskServiceMock },
@@ -42,7 +48,7 @@ describe('TaskFormComponent', () => {
     expect(component).toBeTruthy();
   });
 
-  it('submit with empty title → mat-error element visible in DOM', async () => {
+  it('submit with empty title → validation error visible in DOM', async () => {
     // Clear the title field and touch it
     component.form.get('title')!.setValue('');
     component.form.get('title')!.markAsTouched();
@@ -54,14 +60,16 @@ describe('TaskFormComponent', () => {
     await fixture.whenStable();
     fixture.detectChanges();
 
-    const matError = fixture.nativeElement.querySelector('mat-error');
-    expect(matError).not.toBeNull();
-    expect(matError.textContent).toContain('required');
+    // Template uses a <span> with error text (not mat-error) when title is touched + invalid
+    const errorSpan = fixture.nativeElement.querySelector('.text-danger.text-xs');
+    expect(errorSpan).not.toBeNull();
+    expect(errorSpan.textContent).toContain('required');
   });
 
   it('should render create mode heading when no taskId', () => {
     fixture.detectChanges();
-    const heading = fixture.nativeElement.querySelector('h2');
-    expect(heading.textContent).toContain('New Task');
+    // Title is rendered inside app-page-header as an h1 element
+    const heading = fixture.nativeElement.querySelector('h1');
+    expect(heading.textContent).toContain('New task');
   });
 });

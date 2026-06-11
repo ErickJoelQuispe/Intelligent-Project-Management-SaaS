@@ -68,17 +68,14 @@ describe('ProjectListComponent', () => {
     expect(component).toBeTruthy();
   });
 
-  it('should render 3-row table with mock data', async () => {
+  it('should render 3 project cards with mock data', async () => {
     projectServiceMock.list.mockReturnValue(of(mockProjects));
     fixture.detectChanges();
     await fixture.whenStable();
     fixture.detectChanges();
 
-    const rows = fixture.nativeElement.querySelectorAll('mat-row');
-    expect(rows.length).toBe(3);
-
-    const cells = fixture.nativeElement.querySelectorAll('mat-cell');
-    expect(cells[0].textContent).toContain('Alpha');
+    const cards = fixture.nativeElement.querySelectorAll('app-project-card');
+    expect(cards.length).toBe(3);
   });
 
   it('should show empty state when project list is empty', async () => {
@@ -87,13 +84,13 @@ describe('ProjectListComponent', () => {
     await fixture.whenStable();
     fixture.detectChanges();
 
-    const emptyState = fixture.nativeElement.querySelector('[data-testid="empty-state"]');
+    const emptyState = fixture.nativeElement.querySelector('app-empty-state');
     expect(emptyState).toBeTruthy();
-    expect(emptyState.textContent).toContain('No projects yet. Create your first one.');
+    expect(emptyState.textContent).toContain('No projects yet');
   });
 
   // W-05: error display assertion — DOM element must be visible, not just absence of navigation
-  it('should display .error-message element when API returns error (W-05)', async () => {
+  it('should display error banner when API returns error (W-05)', async () => {
     projectServiceMock.list.mockReturnValue(
       throwError(() => ({ status: 500, statusText: 'Internal Server Error' })),
     );
@@ -101,7 +98,7 @@ describe('ProjectListComponent', () => {
     await fixture.whenStable();
     fixture.detectChanges();
 
-    const errorEl = fixture.nativeElement.querySelector('.error-message');
+    const errorEl = fixture.nativeElement.querySelector('app-error-banner');
     expect(errorEl).not.toBeNull();
     expect(errorEl.textContent).toContain('Failed to load projects');
   });

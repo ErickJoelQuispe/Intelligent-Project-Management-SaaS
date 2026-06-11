@@ -61,8 +61,10 @@ describe('NotificationPanelComponent', () => {
     const { fixture } = setup([]);
     await fixture.whenStable();
     const el = fixture.nativeElement as HTMLElement;
-    expect(el.querySelector('[data-testid="empty-state"]')).toBeTruthy();
-    expect(el.querySelector('[data-testid="empty-state"]')!.textContent).toContain('No notifications');
+    const emptyState = el.querySelector('app-empty-state');
+    expect(emptyState).toBeTruthy();
+    // Template empty-state title is "You're all caught up", description contains "No new notifications."
+    expect(emptyState!.textContent).toContain('caught up');
   });
 
   it('renders notification items when notifications exist', async () => {
@@ -70,12 +72,13 @@ describe('NotificationPanelComponent', () => {
     const { fixture } = setup(notifs);
     await fixture.whenStable();
     const el = fixture.nativeElement as HTMLElement;
-    expect(el.querySelector('[data-testid="empty-state"]')).toBeFalsy();
-    expect(el.querySelector('[data-testid="notification-item-n1"]')).toBeTruthy();
-    expect(el.querySelector('[data-testid="notification-item-n2"]')).toBeTruthy();
+    expect(el.querySelector('app-empty-state')).toBeFalsy();
+    // notification items are rendered as app-notification-item elements
+    const items = el.querySelectorAll('app-notification-item');
+    expect(items.length).toBe(2);
   });
 
-  it('shows "Mark as read" button only for unread notifications', async () => {
+  it('shows "Mark read" button only for unread notifications', async () => {
     const notifs = [
       mockNotif({ id: 'n1', read: false }),
       mockNotif({ id: 'n2', read: true }),
@@ -83,8 +86,11 @@ describe('NotificationPanelComponent', () => {
     const { fixture } = setup(notifs);
     await fixture.whenStable();
     const el = fixture.nativeElement as HTMLElement;
-    expect(el.querySelector('[data-testid="mark-read-btn-n1"]')).toBeTruthy();
-    expect(el.querySelector('[data-testid="mark-read-btn-n2"]')).toBeFalsy();
+    const items = el.querySelectorAll('app-notification-item');
+    // First item (n1) is unread — should contain a "Mark read" button
+    expect(items[0].textContent).toContain('Mark read');
+    // Second item (n2) is read — should NOT contain a "Mark read" button
+    expect(items[1].textContent).not.toContain('Mark read');
   });
 
   it('calls store.markAsRead when "Mark read" button is clicked', async () => {
@@ -92,7 +98,9 @@ describe('NotificationPanelComponent', () => {
     const { fixture, storeMock } = setup(notifs);
     await fixture.whenStable();
     const el = fixture.nativeElement as HTMLElement;
-    const btn = el.querySelector('[data-testid="mark-read-btn-n1"]') as HTMLButtonElement;
+    // Find the "Mark read" button inside the first notification item
+    const notifItem = el.querySelector('app-notification-item');
+    const btn = notifItem?.querySelector('button') as HTMLButtonElement;
     btn.click();
     expect(storeMock.markAsRead).toHaveBeenCalledWith('n1');
   });

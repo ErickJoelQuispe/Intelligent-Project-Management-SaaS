@@ -78,7 +78,7 @@ describe('KanbanBoardComponent', () => {
     const storeMock = makeStoreMock(emptyColumns);
     await setup(storeMock);
 
-    const emptyPlaceholders = fixture.nativeElement.querySelectorAll('.kanban-column__empty');
+    const emptyPlaceholders = fixture.nativeElement.querySelectorAll('app-empty-state');
     expect(emptyPlaceholders.length).toBe(5);
     emptyPlaceholders.forEach((el: Element) => {
       expect(el.textContent).toContain('No tasks');

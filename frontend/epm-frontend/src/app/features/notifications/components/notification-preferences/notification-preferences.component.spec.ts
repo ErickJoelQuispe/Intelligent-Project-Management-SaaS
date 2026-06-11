@@ -88,8 +88,10 @@ describe('NotificationPreferencesComponent', () => {
     const { fixture } = setup([mockPreferences[0]]);
     await fixture.whenStable();
     const el = fixture.nativeElement as HTMLElement;
-    expect(el.textContent).toContain('TASK_CREATED');
-    expect(el.textContent).toContain('IN_APP');
+    // Template maps TASK_CREATED → 'Task created' via eventLabel()
+    expect(el.textContent).toContain('Task created');
+    // Template maps IN_APP channel → 'In-app' via badge display
+    expect(el.textContent).toContain('In-app');
   });
 
   it('onToggleChange() calls store.updatePreference with toggled value (enabled → false)', () => {
@@ -98,7 +100,7 @@ describe('NotificationPreferencesComponent', () => {
 
     // Simulate the (change) output from mat-slide-toggle
     const pref = mockPreferences[0]; // TASK_CREATED / IN_APP / enabled=true
-    component.onToggleChange(pref, { checked: false } as any);
+    component.onToggle(pref, { checked: false } as any);
 
     expect(storeMock.updatePreference).toHaveBeenCalledWith('TASK_CREATED', 'IN_APP', false);
   });
@@ -109,7 +111,7 @@ describe('NotificationPreferencesComponent', () => {
 
     // TASK_CREATED / EMAIL is enabled=false → toggle to true
     const pref = mockPreferences[1]; // TASK_CREATED / EMAIL / enabled=false
-    component.onToggleChange(pref, { checked: true } as any);
+    component.onToggle(pref, { checked: true } as any);
 
     expect(storeMock.updatePreference).toHaveBeenCalledWith('TASK_CREATED', 'EMAIL', true);
   });

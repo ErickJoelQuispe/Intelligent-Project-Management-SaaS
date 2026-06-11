@@ -4,6 +4,7 @@ import { provideRouter } from '@angular/router';
 import { provideHttpClient } from '@angular/common/http';
 import { provideHttpClientTesting } from '@angular/common/http/testing';
 import { NoopAnimationsModule } from '@angular/platform-browser/animations';
+import { OAuthService } from 'angular-oauth2-oidc';
 
 describe('ProjectDetailComponent', () => {
   let component: ProjectDetailComponent;
@@ -16,6 +17,13 @@ describe('ProjectDetailComponent', () => {
         provideRouter([]),
         provideHttpClient(),
         provideHttpClientTesting(),
+        {
+          provide: OAuthService,
+          useValue: {
+            getAccessToken: () => 'mock-token',
+            hasValidAccessToken: () => true,
+          },
+        },
       ],
     }).compileComponents();
 

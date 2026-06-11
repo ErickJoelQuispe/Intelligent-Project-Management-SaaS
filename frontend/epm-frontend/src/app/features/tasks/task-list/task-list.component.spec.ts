@@ -50,10 +50,9 @@ describe('TaskListComponent', () => {
 
   it('renders task titles from service response', () => {
     const compiled = fixture.nativeElement as HTMLElement;
-    const cells = compiled.querySelectorAll('mat-cell');
-    const titles = Array.from(cells).map((c) => c.textContent?.trim()).filter(Boolean);
-    expect(titles.some((t) => t?.includes('Fix login bug'))).toBe(true);
-    expect(titles.some((t) => t?.includes('Write unit tests'))).toBe(true);
+    // Template renders task titles in <span> elements inside custom grid rows
+    expect(compiled.textContent).toContain('Fix login bug');
+    expect(compiled.textContent).toContain('Write unit tests');
   });
 
   it('shows error message when task loading fails', async () => {
@@ -63,7 +62,8 @@ describe('TaskListComponent', () => {
     await fixture.whenStable();
 
     const compiled = fixture.nativeElement as HTMLElement;
-    const errorEl = compiled.querySelector('.error-message');
+    // Template uses app-error-banner (not .error-message CSS class)
+    const errorEl = compiled.querySelector('app-error-banner');
     expect(errorEl).toBeTruthy();
     expect(errorEl?.textContent?.trim()).toContain('Failed to load tasks');
   });
