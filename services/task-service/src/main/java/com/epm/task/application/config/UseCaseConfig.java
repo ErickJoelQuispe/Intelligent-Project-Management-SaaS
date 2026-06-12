@@ -5,6 +5,7 @@ import com.epm.task.application.usecase.ChangeTaskStatusUseCaseImpl;
 import com.epm.task.application.usecase.CreateSubtaskUseCaseImpl;
 import com.epm.task.application.usecase.CreateTaskUseCaseImpl;
 import com.epm.task.application.usecase.DeleteTaskUseCaseImpl;
+import com.epm.task.application.usecase.GetSubtasksUseCaseImpl;
 import com.epm.task.application.usecase.GetTaskKanbanUseCaseImpl;
 import com.epm.task.application.usecase.ListTasksByProjectUseCaseImpl;
 import com.epm.task.application.usecase.UpdateTaskUseCaseImpl;
@@ -69,6 +70,11 @@ public class UseCaseConfig {
             ActivityLogRepository activityLogRepository,
             DomainEventPublisher eventPublisher) {
         return new DeleteTaskUseCaseImpl(taskRepository, activityLogRepository, eventPublisher);
+    }
+
+    @Bean
+    GetSubtasksUseCaseImpl getSubtasksUseCase(TaskRepository taskRepository) {
+        return new GetSubtasksUseCaseImpl(taskRepository);
     }
 
     @Bean

@@ -16,6 +16,7 @@ import com.epm.task.domain.port.in.ChangeTaskStatusUseCase;
 import com.epm.task.domain.port.in.CreateSubtaskUseCase;
 import com.epm.task.domain.port.in.CreateTaskUseCase;
 import com.epm.task.domain.port.in.DeleteTaskUseCase;
+import com.epm.task.domain.port.in.GetSubtasksUseCase;
 import com.epm.task.domain.port.in.UpdateTaskUseCase;
 import com.epm.task.domain.port.out.TaskRepository;
 import com.epm.task.infrastructure.config.SecurityConfig;
@@ -58,6 +59,9 @@ class TaskControllerCbTest {
 
     @MockitoBean
     private CreateSubtaskUseCase createSubtaskUseCase;
+
+    @MockitoBean
+    private GetSubtasksUseCase getSubtasksUseCase;
 
     @MockitoBean
     private UpdateTaskUseCase updateTaskUseCase;

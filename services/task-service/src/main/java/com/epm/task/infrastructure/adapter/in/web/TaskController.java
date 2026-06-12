@@ -1,5 +1,6 @@
 package com.epm.task.infrastructure.adapter.in.web;
 
+import java.util.List;
 import java.util.UUID;
 
 import com.epm.task.domain.exception.InvalidStatusException;
@@ -12,6 +13,7 @@ import com.epm.task.domain.port.in.ChangeTaskStatusUseCase;
 import com.epm.task.domain.port.in.CreateSubtaskUseCase;
 import com.epm.task.domain.port.in.CreateTaskUseCase;
 import com.epm.task.domain.port.in.DeleteTaskUseCase;
+import com.epm.task.domain.port.in.GetSubtasksUseCase;
 import com.epm.task.domain.port.in.UpdateTaskUseCase;
 import com.epm.task.domain.port.in.command.AssignTaskCommand;
 import com.epm.task.domain.port.in.command.ChangeStatusCommand;
@@ -44,6 +46,7 @@ public class TaskController {
 
     private final CreateTaskUseCase createTaskUseCase;
     private final CreateSubtaskUseCase createSubtaskUseCase;
+    private final GetSubtasksUseCase getSubtasksUseCase;
     private final UpdateTaskUseCase updateTaskUseCase;
     private final ChangeTaskStatusUseCase changeTaskStatusUseCase;
     private final AssignTaskUseCase assignTaskUseCase;
@@ -53,6 +56,7 @@ public class TaskController {
 
     public TaskController(CreateTaskUseCase createTaskUseCase,
             CreateSubtaskUseCase createSubtaskUseCase,
+            GetSubtasksUseCase getSubtasksUseCase,
             UpdateTaskUseCase updateTaskUseCase,
             ChangeTaskStatusUseCase changeTaskStatusUseCase,
             AssignTaskUseCase assignTaskUseCase,
@@ -61,6 +65,7 @@ public class TaskController {
             JwtClaimsExtractor jwtClaimsExtractor) {
         this.createTaskUseCase = createTaskUseCase;
         this.createSubtaskUseCase = createSubtaskUseCase;
+        this.getSubtasksUseCase = getSubtasksUseCase;
         this.updateTaskUseCase = updateTaskUseCase;
         this.changeTaskStatusUseCase = changeTaskStatusUseCase;
         this.assignTaskUseCase = assignTaskUseCase;
@@ -122,6 +127,18 @@ public class TaskController {
         Task task = taskRepository.findByIdAndTenantId(id, tenantId)
                 .orElseThrow(() -> new TaskNotFoundException(id, tenantId));
         return TaskResponse.from(taskToResult(task));
+    }
+
+    /** GET /api/v1/tasks/{taskId}/subtasks → 200 */
+    @GetMapping("/{taskId}/subtasks")
+    @ResponseStatus(HttpStatus.OK)
+    public List<TaskResponse> getSubtasks(
+            @AuthenticationPrincipal Jwt jwt,
+            @PathVariable UUID taskId) {
+        UUID tenantId = jwtClaimsExtractor.getTenantId(jwt);
+        return getSubtasksUseCase.getSubtasks(taskId, tenantId).stream()
+                .map(task -> TaskResponse.from(taskToResult(task)))
+                .toList();
     }
 
     /** PUT /api/v1/tasks/{id} → 200 */
