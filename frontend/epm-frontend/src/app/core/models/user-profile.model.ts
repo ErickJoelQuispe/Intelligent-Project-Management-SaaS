@@ -9,6 +9,13 @@ export interface UserProfile {
   version: number;
 }
 
+export interface TenantUser {
+  id: string;
+  email: string;
+  firstName: string | null;
+  lastName: string | null;
+}
+
 export interface UpdateProfileRequest {
   firstName?: string;
   lastName?: string;

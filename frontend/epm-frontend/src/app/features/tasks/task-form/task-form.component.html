@@ -100,6 +100,30 @@
       />
     </div>
 
+    <!-- Assignee — optional -->
+    <div class="flex flex-col gap-1.5">
+      <label class="text-text-primary text-sm font-medium" for="assigneeId">
+        Assignee
+        <span class="text-text-muted font-normal">(optional)</span>
+      </label>
+      <select
+        id="assigneeId"
+        formControlName="assigneeId"
+        class="w-full px-3 py-2 rounded-lg text-sm
+               bg-bg-elevated border border-border
+               text-text-primary
+               focus:outline-none focus:border-accent focus:ring-1 focus:ring-accent
+               transition-colors duration-150"
+      >
+        <option value="">Unassigned</option>
+        @for (user of users(); track user.id) {
+          <option [value]="user.id">
+            {{ user.firstName && user.lastName ? user.firstName + ' ' + user.lastName : user.email }}
+          </option>
+        }
+      </select>
+    </div>
+
     <!-- Actions -->
     <div class="flex items-center justify-end gap-3 pt-2 border-t border-border">
       <app-button type="button" variant="secondary" (click)="onCancel()">

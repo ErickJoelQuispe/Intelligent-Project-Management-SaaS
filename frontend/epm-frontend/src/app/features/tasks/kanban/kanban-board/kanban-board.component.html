@@ -35,6 +35,7 @@
         <app-kanban-column
           [status]="col.status"
           [tasks]="col.tasks"
+          [users]="users()"
           (taskDropped)="onTaskDropped($event)"
           (taskDeleted)="onTaskDeleted($event)"
         />

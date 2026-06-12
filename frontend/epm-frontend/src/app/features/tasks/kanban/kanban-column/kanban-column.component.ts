@@ -8,6 +8,7 @@ import {
   signal,
 } from '@angular/core';
 import { TaskStatus, TaskSummary, TASK_STATUS_LABELS } from '../../../../core/models/task.models';
+import { TenantUser } from '../../../../core/models/user-profile.model';
 import { TaskCardComponent } from '../task-card/task-card.component';
 import { BadgeComponent } from '../../../../shared/components/badge/badge.component';
 import { EmptyStateComponent } from '../../../../shared/components/empty-state/empty-state.component';
@@ -24,6 +25,7 @@ import { DragStateService } from '../drag/drag-state.service';
 export class KanbanColumnComponent {
   status = input.required<TaskStatus>();
   tasks  = input<TaskSummary[]>([]);
+  users  = input<TenantUser[]>([]);
 
   /** Emits taskId when a card is dropped onto this column */
   taskDropped  = output<{ taskId: string; newStatus: TaskStatus }>();

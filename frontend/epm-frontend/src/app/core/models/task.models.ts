@@ -49,6 +49,7 @@ export interface UpdateTaskRequest {
   description?: string;
   priority?: TaskPriority;
   deadline?: string;
+  assigneeId?: string;
 }
 
 export interface Page<T> {

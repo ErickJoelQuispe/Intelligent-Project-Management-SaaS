@@ -34,9 +34,9 @@
     <!-- Assignee -->
     @if (task().assigneeId) {
       <div class="flex items-center gap-2 mt-3 pt-3 border-t border-border">
-        <app-avatar size="xs" [name]="task().assigneeId ?? ''" />
+        <app-avatar size="xs" [name]="assigneeName() ?? ''" />
         <span class="text-text-muted text-xs truncate">
-          {{ task().assigneeId }}
+          {{ assigneeName() }}
         </span>
       </div>
     }
