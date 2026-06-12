@@ -31,6 +31,12 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
  *   <li>A fallback that converts {@link CallNotPermittedException} to {@link IdentityProviderException}
  *       behaves correctly.</li>
  * </ol>
+ *
+ * <p><strong>TODO (Finding 9 — out of scope for this batch):</strong> Add a Spring-context
+ * integration test using WireMock to verify the full {@code @CircuitBreaker} AOP proxy
+ * around {@link KeycloakAdminAdapter}. This would stub Keycloak HTTP calls at the network
+ * level and assert that the {@code createUserFallback}/{@code deleteUserFallback} methods
+ * are invoked when the circuit opens under real Spring wiring.
  */
 class KeycloakCircuitBreakerTest {
 

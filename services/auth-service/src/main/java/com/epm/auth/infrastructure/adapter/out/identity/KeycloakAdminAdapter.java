@@ -13,17 +13,21 @@ import org.keycloak.admin.client.KeycloakBuilder;
 import org.keycloak.representations.idm.CredentialRepresentation;
 import org.keycloak.representations.idm.RoleRepresentation;
 import org.keycloak.representations.idm.UserRepresentation;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
 
 /**
  * Adapter implementing {@link IdentityProviderPort} using the Keycloak Admin Client.
  *
- * <p>Protected by Resilience4j circuit breaker and retry (both named "keycloak").
+ * <p>Protected by Resilience4j circuit breaker (named "keycloak").
  * If Keycloak is unavailable, the circuit breaker opens and {@link IdentityProviderException}
  * is thrown with retryAfterSeconds=30.
  */
 @Component
 public class KeycloakAdminAdapter implements IdentityProviderPort {
+
+    private static final Logger log = LoggerFactory.getLogger(KeycloakAdminAdapter.class);
 
     private final KeycloakProperties props;
 
@@ -61,8 +65,6 @@ public class KeycloakAdminAdapter implements IdentityProviderPort {
                 // 4. Extract user ID from Location header
                 String location = response.getHeaderString("Location");
                 String userId = location.substring(location.lastIndexOf('/') + 1);
-
-                // 5. Set tenant_id attribute (already set above, but update to confirm)
                 return UUID.fromString(userId);
             }
         }
@@ -102,13 +104,36 @@ public class KeycloakAdminAdapter implements IdentityProviderPort {
         throw new IdentityProviderException("Keycloak unavailable: " + ex.getMessage(), 30);
     }
 
+    /**
+     * {@inheritDoc}
+     *
+     * <p>Best-effort compensation: removes a Keycloak user created during a registration
+     * that subsequently failed. The circuit breaker fallback logs the failure and does NOT
+     * rethrow, so the original exception is never masked.
+     */
+    @Override
+    @CircuitBreaker(name = "keycloak", fallbackMethod = "deleteUserFallback")
+    public void deleteUser(UUID keycloakUserId) {
+        try (Keycloak keycloak = buildAdminClient()) {
+            keycloak.realm(props.realm()).users().get(keycloakUserId.toString()).remove();
+        }
+    }
+
+    /**
+     * Fallback for deleteUser — logs and swallows the error.
+     * The original registration failure will still be re-thrown by the use case.
+     */
+    public void deleteUserFallback(UUID keycloakUserId, Exception ex) {
+        log.warn("Best-effort Keycloak user deletion failed for user {}. "
+                + "Manual cleanup may be required. Cause: {}", keycloakUserId, ex.getMessage());
+    }
+
     // ── Helpers ──────────────────────────────────────────────────────────────
 
     private Keycloak buildAdminClient() {
         return KeycloakBuilder.builder()
                 .serverUrl(props.serverUrl())
-                .realm("master")
-                .clientId("admin-cli")
+                .realm(props.realm())
                 .grantType("client_credentials")
                 .clientId(props.clientId())
                 .clientSecret(props.clientSecret())

@@ -36,4 +36,16 @@ public interface IdentityProviderPort {
      * @param keycloakUserId the Keycloak user UUID
      */
     void invalidateSession(UUID keycloakUserId);
+
+    /**
+     * Deletes a user from the identity provider.
+     *
+     * <p>This is a <em>best-effort</em> compensating action used during saga rollback
+     * when account persistence fails after a Keycloak user was already created.
+     * If deletion fails the error must be swallowed and logged; the original exception
+     * must be re-thrown by the caller so the failure is not masked.
+     *
+     * @param keycloakUserId the Keycloak user UUID to delete
+     */
+    void deleteUser(UUID keycloakUserId);
 }

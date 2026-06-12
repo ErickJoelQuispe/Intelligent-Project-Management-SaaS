@@ -1,7 +1,6 @@
 package com.epm.auth.application.usecase;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -24,7 +23,6 @@ import org.mockito.junit.jupiter.MockitoExtension;
  * Unit tests for {@link LogoutAccountUseCaseImpl}.
  *
  * <p>Uses Mockito to stub driven ports. No Spring context needed.
- * Tests run RED first — LogoutAccountUseCaseImpl does not exist yet.
  */
 @ExtendWith(MockitoExtension.class)
 class LogoutAccountUseCaseTest {
@@ -51,8 +49,11 @@ class LogoutAccountUseCaseTest {
         UUID tenantId = UUID.randomUUID();
         UUID keycloakUserId = UUID.randomUUID();
 
-        Account account = Account.register("alice@example.com", "Alice", "Smith");
-        account.setKeycloakUserId(keycloakUserId);
+        // Use reconstitute (rehydration path — already has keycloakUserId from DB)
+        Account account = Account.reconstitute(
+                accountId, tenantId, keycloakUserId, "alice@example.com",
+                com.epm.auth.domain.model.AccountStatus.ACTIVE,
+                0, null, java.time.Instant.now(), java.time.Instant.now(), 0, null);
         when(accountRepository.findById(accountId)).thenReturn(Optional.of(account));
 
         useCase.logout(accountId, tenantId, "10.0.0.1", "Mozilla/5.0");
@@ -66,8 +67,10 @@ class LogoutAccountUseCaseTest {
         UUID tenantId = UUID.randomUUID();
         UUID keycloakUserId = UUID.randomUUID();
 
-        Account account = Account.register("alice@example.com", "Alice", "Smith");
-        account.setKeycloakUserId(keycloakUserId);
+        Account account = Account.reconstitute(
+                accountId, tenantId, keycloakUserId, "alice@example.com",
+                com.epm.auth.domain.model.AccountStatus.ACTIVE,
+                0, null, java.time.Instant.now(), java.time.Instant.now(), 0, null);
         when(accountRepository.findById(accountId)).thenReturn(Optional.of(account));
 
         useCase.logout(accountId, tenantId, "10.0.0.1", "Chrome/100");

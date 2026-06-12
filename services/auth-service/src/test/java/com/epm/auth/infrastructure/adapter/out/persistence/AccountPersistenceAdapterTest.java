@@ -52,9 +52,12 @@ class AccountPersistenceAdapterTest extends AbstractPostgresIT {
 
     @Test
     void saveAccountAndFindByIdReturnsAccount() {
-        // Arrange: register a new account
-        Account account = Account.register("save-adapter-test@example.com", "Alice", "Smith");
-        account.setKeycloakUserId(UUID.randomUUID());
+        // Arrange: register a new account with explicit tenantId
+        UUID tenantId = UUID.randomUUID();
+        Account account = Account.register(tenantId, "save-adapter-test@example.com", "Alice", "Smith");
+        account.linkKeycloakUser(UUID.randomUUID());
+        // Pull events so they don't interfere with persistence checks
+        account.pullDomainEvents();
 
         // Act: save and retrieve
         Account saved = accountAdapter.save(account);
@@ -71,8 +74,10 @@ class AccountPersistenceAdapterTest extends AbstractPostgresIT {
     void existsByEmailReturnsTrueForExistingEmail() {
         // Arrange: save an account with a unique email
         String uniqueEmail = "exists-adapter-" + UUID.randomUUID() + "@example.com";
-        Account account = Account.register(uniqueEmail, "Bob", "Jones");
-        account.setKeycloakUserId(UUID.randomUUID());
+        UUID tenantId = UUID.randomUUID();
+        Account account = Account.register(tenantId, uniqueEmail, "Bob", "Jones");
+        account.linkKeycloakUser(UUID.randomUUID());
+        account.pullDomainEvents();
         accountAdapter.save(account);
 
         // Act
@@ -85,7 +90,8 @@ class AccountPersistenceAdapterTest extends AbstractPostgresIT {
     @Test
     void existsByEmailReturnsFalseForNonExistingEmail() {
         // Act: check for email that was never saved
-        boolean exists = accountAdapter.existsByEmail(new Email("ghost-adapter-" + UUID.randomUUID() + "@example.com"));
+        boolean exists = accountAdapter.existsByEmail(
+                new Email("ghost-adapter-" + UUID.randomUUID() + "@example.com"));
 
         // Assert
         assertThat(exists).isFalse();
@@ -97,8 +103,10 @@ class AccountPersistenceAdapterTest extends AbstractPostgresIT {
     void saveSecurityEventPersistsSuccessfully() {
         // Arrange: create an account first
         String uniqueEmail = "logout-adapter-" + UUID.randomUUID() + "@example.com";
-        Account account = Account.register(uniqueEmail, "Charlie", "Brown");
-        account.setKeycloakUserId(UUID.randomUUID());
+        UUID tenantId = UUID.randomUUID();
+        Account account = Account.register(tenantId, uniqueEmail, "Charlie", "Brown");
+        account.linkKeycloakUser(UUID.randomUUID());
+        account.pullDomainEvents();
         Account saved = accountAdapter.save(account);
 
         // Create logout security event
