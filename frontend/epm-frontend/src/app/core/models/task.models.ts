@@ -52,6 +52,13 @@ export interface UpdateTaskRequest {
   assigneeId?: string;
 }
 
+export interface CreateSubtaskRequest {
+  parentTaskId: string;
+  title: string;
+  description?: string;
+  priority: TaskPriority;
+}
+
 export interface Page<T> {
   content: T[];
   totalElements: number;

@@ -1,4 +1,4 @@
-<!-- draggable="true" habilita el HTML5 DnD en este elemento -->
+<!-- draggable="true" enables HTML5 DnD on this element -->
 <div
   draggable="true"
   (dragstart)="onDragStart($event)"
@@ -8,13 +8,20 @@
   <app-card padding="sm" class="block cursor-grab active:cursor-grabbing
              hover:border-glow transition-all duration-200 animate-card-in">
 
-    <!-- Título + badge de prioridad + delete -->
-    <div class="flex items-start justify-between gap-2 mb-3">
+    <!-- Header: click area to toggle expand -->
+    <div class="flex items-start justify-between gap-2 mb-3 cursor-pointer"
+         (click)="toggleExpand()">
       <span class="text-text-primary text-sm font-medium leading-snug line-clamp-2 flex-1">
         {{ task().title }}
       </span>
       <div class="flex items-center gap-1 shrink-0">
         <app-task-priority-badge [priority]="task().priority" />
+        <!-- Chevron rotates when expanded -->
+        <span class="material-symbols-rounded text-sm transition-transform duration-200"
+              [style.transform]="expanded() ? 'rotate(180deg)' : 'rotate(0deg)'"
+              style="color: oklch(0.42 0.012 268);">
+          expand_more
+        </span>
         <app-button variant="ghost" size="sm" (click)="onDelete($event)" title="Delete task"
                     class="opacity-0 group-hover:opacity-100 transition-opacity duration-150">
           <span class="material-symbols-rounded text-sm"
@@ -23,7 +30,7 @@
       </div>
     </div>
 
-    <!-- Deadline — solo si existe -->
+    <!-- Deadline — only if set -->
     @if (task().deadline) {
       <div class="flex items-center gap-1.5 text-text-muted text-xs mb-2">
         <span class="material-symbols-rounded text-sm">schedule</span>
@@ -38,6 +45,50 @@
         <span class="text-text-muted text-xs truncate">
           {{ assigneeName() }}
         </span>
+      </div>
+    }
+
+    <!-- Expanded subtasks section -->
+    @if (expanded()) {
+      <div class="border-t border-border mt-3 pt-3 flex flex-col gap-2"
+           (click)="$event.stopPropagation()">
+
+        @if (loadingSubtasks()) {
+          <app-spinner size="sm" />
+        } @else if (subtasks().length === 0) {
+          <p class="text-xs text-text-muted">No subtasks yet</p>
+        } @else {
+          @for (sub of subtasks(); track sub.id) {
+            <div class="flex items-center gap-2">
+              <span class="material-symbols-rounded text-sm text-text-muted">subdirectory_arrow_right</span>
+              <span class="text-xs text-text-primary flex-1 truncate">{{ sub.title }}</span>
+              <app-task-priority-badge [priority]="sub.priority" />
+              <app-button variant="ghost" size="sm" (click)="deleteSubtask(sub.id, $event)">
+                <span class="material-symbols-rounded"
+                      style="color: oklch(0.65 0.22 25); font-size: 12px;">delete</span>
+              </app-button>
+            </div>
+          }
+        }
+
+        <!-- Add subtask input -->
+        <div class="flex gap-2 mt-1">
+          <input
+            type="text"
+            placeholder="Add subtask..."
+            [value]="newSubtaskTitle()"
+            (input)="newSubtaskTitle.set($any($event.target).value)"
+            (keydown.enter)="addSubtask()"
+            class="flex-1 text-xs rounded px-2 py-1 bg-surface-2 border border-border focus:outline-none focus:border-glow"
+            style="color: oklch(0.92 0.008 268);"
+          />
+          <app-button variant="secondary" size="sm"
+                      [disabled]="addingSubtask() || !newSubtaskTitle().trim()"
+                      (click)="addSubtask()">
+            <span class="material-symbols-rounded text-sm">add</span>
+          </app-button>
+        </div>
+
       </div>
     }
 

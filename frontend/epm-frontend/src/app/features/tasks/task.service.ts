@@ -8,6 +8,7 @@ import {
   TaskSummary,
   KanbanResponse,
   CreateTaskRequest,
+  CreateSubtaskRequest,
   UpdateTaskRequest,
   Page,
 } from '../../core/models/task.models';
@@ -55,5 +56,13 @@ export class TaskService {
 
   delete(taskId: string): Observable<void> {
     return this.http.delete<void>(`${this.baseUrl}/tasks/${taskId}`);
+  }
+
+  getSubtasks(taskId: string): Observable<Task[]> {
+    return this.http.get<Task[]>(`${this.baseUrl}/tasks/${taskId}/subtasks`);
+  }
+
+  createSubtask(req: CreateSubtaskRequest): Observable<Task> {
+    return this.http.post<Task>(`${this.baseUrl}/tasks/subtasks`, req);
   }
 }
