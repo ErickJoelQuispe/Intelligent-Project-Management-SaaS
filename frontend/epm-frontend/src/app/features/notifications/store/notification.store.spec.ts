@@ -138,6 +138,7 @@ describe('NotificationStore', () => {
 
   it('connectWebSocket() calls service.connect with userId and token', () => {
     const messageSubject = new Subject();
+    serviceMock.getUnreadCount.mockReturnValue(of({ count: 0 }));
     serviceMock.getNotificationStream.mockReturnValue(messageSubject.asObservable());
 
     TestBed.runInInjectionContext(() => {
@@ -150,6 +151,7 @@ describe('NotificationStore', () => {
 
   it('connectWebSocket() sets wsConnected to true', () => {
     const messageSubject = new Subject();
+    serviceMock.getUnreadCount.mockReturnValue(of({ count: 0 }));
     serviceMock.getNotificationStream.mockReturnValue(messageSubject.asObservable());
 
     TestBed.runInInjectionContext(() => {
@@ -161,6 +163,7 @@ describe('NotificationStore', () => {
 
   it('incoming STOMP message prepends notification and increments unreadCount', () => {
     const messageSubject = new Subject<{ body: string }>();
+    serviceMock.getUnreadCount.mockReturnValue(of({ count: 0 }));
     serviceMock.getNotificationStream.mockReturnValue(messageSubject.asObservable());
 
     TestBed.runInInjectionContext(() => {
@@ -200,6 +203,7 @@ describe('NotificationStore', () => {
   it('calling connectWebSocket again with new token disconnects and reconnects', () => {
     const subject1 = new Subject<{ body: string }>();
     const subject2 = new Subject<{ body: string }>();
+    serviceMock.getUnreadCount.mockReturnValue(of({ count: 0 }));
     serviceMock.getNotificationStream
       .mockReturnValueOnce(subject1.asObservable())
       .mockReturnValueOnce(subject2.asObservable());

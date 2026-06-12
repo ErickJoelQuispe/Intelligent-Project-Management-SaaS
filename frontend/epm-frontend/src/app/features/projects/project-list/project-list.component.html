@@ -2,6 +2,12 @@
   title="Projects"
   description="Manage your team's projects"
 >
+  <app-button page-action variant="ghost" (click)="toggleArchived()">
+    <span class="material-symbols-rounded text-sm">
+      {{ showArchived() ? 'visibility_off' : 'inventory_2' }}
+    </span>
+    {{ showArchived() ? 'Hide archived' : 'Show archived' }}
+  </app-button>
   <app-button page-action variant="primary" (click)="goToCreate()">
     <span class="material-symbols-rounded text-sm">add</span>
     New project
@@ -57,6 +63,16 @@
           {{ activeCount() }} active
         </span>
       </div>
+
+      @if (showArchived() && archivedCount() > 0) {
+        <div class="h-6 w-px" style="background: oklch(0.22 0.020 268);"></div>
+        <div class="flex items-center gap-1.5">
+          <span class="material-symbols-rounded text-sm" style="color: oklch(0.55 0.015 268);">inventory_2</span>
+          <span class="text-sm" style="color: oklch(0.55 0.015 268);">
+            {{ archivedCount() }} archived
+          </span>
+        </div>
+      }
     </div>
 
     <!-- Grid de cards -->

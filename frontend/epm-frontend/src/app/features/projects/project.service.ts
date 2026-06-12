@@ -10,8 +10,9 @@ export class ProjectService {
   private readonly http = inject(HttpClient);
   private readonly baseUrl = `${environment.apiBaseUrl}/projects`;
 
-  list(): Observable<Project[]> {
-    return this.http.get<Project[]>(this.baseUrl);
+  list(includeArchived = false): Observable<Project[]> {
+    const params = includeArchived ? { params: { includeArchived: 'true' } } : {};
+    return this.http.get<Project[]>(this.baseUrl, params);
   }
 
   create(req: CreateProjectRequest): Observable<Project> {

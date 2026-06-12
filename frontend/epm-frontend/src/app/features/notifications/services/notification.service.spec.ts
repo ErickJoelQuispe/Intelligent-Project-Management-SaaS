@@ -76,15 +76,15 @@ describe('NotificationService', () => {
     expect(result![0].id).toBe('n1');
   });
 
-  it('getUnreadCount() calls GET /api/v1/notifications/unread-count and returns number', () => {
-    let count: number | undefined;
-    service.getUnreadCount().subscribe((c) => (count = c));
+  it('getUnreadCount() calls GET /api/v1/notifications/unread-count and returns { count }', () => {
+    let result: { count: number } | undefined;
+    service.getUnreadCount().subscribe((c) => (result = c));
 
     const req = httpMock.expectOne('http://localhost:8080/api/v1/notifications/unread-count');
     expect(req.request.method).toBe('GET');
-    req.flush(3);
+    req.flush({ count: 3 });
 
-    expect(count).toBe(3);
+    expect(result?.count).toBe(3);
   });
 
   it('markAsRead() calls PATCH /api/v1/notifications/{id}/read and returns void (204)', () => {

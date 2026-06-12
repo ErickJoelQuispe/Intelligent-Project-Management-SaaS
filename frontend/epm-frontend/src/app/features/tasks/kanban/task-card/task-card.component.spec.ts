@@ -57,8 +57,9 @@ describe('TaskCardComponent', () => {
 
   it('renders deadline when deadline is provided', () => {
     const compiled = fixture.nativeElement as HTMLElement;
-    // Deadline section contains a schedule icon and date text
-    const scheduleIcon = compiled.querySelector('.material-symbols-rounded');
+    // Deadline section has a span with text 'schedule'
+    const icons = Array.from(compiled.querySelectorAll('.material-symbols-rounded'));
+    const scheduleIcon = icons.find((el) => el.textContent?.trim() === 'schedule');
     expect(scheduleIcon).toBeTruthy();
   });
 
@@ -67,8 +68,9 @@ describe('TaskCardComponent', () => {
     await createComponent(lowPriorityTask);
 
     const compiled = fixture.nativeElement as HTMLElement;
-    const scheduleIcon = compiled.querySelector('.material-symbols-rounded');
-    expect(scheduleIcon).toBeNull();
+    const icons = Array.from(compiled.querySelectorAll('.material-symbols-rounded'));
+    const scheduleIcon = icons.find((el) => el.textContent?.trim() === 'schedule');
+    expect(scheduleIcon).toBeUndefined();
   });
 
 

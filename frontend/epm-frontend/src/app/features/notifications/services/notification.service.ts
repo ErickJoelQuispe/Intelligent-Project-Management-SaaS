@@ -22,8 +22,8 @@ export class NotificationService {
     return this.http.get<Notification[]>(this.baseUrl);
   }
 
-  getUnreadCount(): Observable<number> {
-    return this.http.get<number>(`${this.baseUrl}/unread-count`);
+  getUnreadCount(): Observable<{ count: number }> {
+    return this.http.get<{ count: number }>(`${this.baseUrl}/unread-count`);
   }
 
   markAsRead(id: string): Observable<void> {

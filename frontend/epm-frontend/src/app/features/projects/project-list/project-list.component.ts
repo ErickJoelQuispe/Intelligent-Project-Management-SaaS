@@ -36,12 +36,16 @@ export class ProjectListComponent implements OnInit {
   private readonly projectService = inject(ProjectService);
   private readonly router = inject(Router);
 
-  projects = signal<Project[]>([]);
-  loading  = signal(false);
-  error    = signal<string | null>(null);
+  projects        = signal<Project[]>([]);
+  loading         = signal(false);
+  error           = signal<string | null>(null);
+  showArchived    = signal(false);
 
   activeCount = computed(() =>
     this.projects().filter(p => p.status === ProjectStatus.ACTIVE).length
+  );
+  archivedCount = computed(() =>
+    this.projects().filter(p => p.status === ProjectStatus.ARCHIVED).length
   );
 
   ngOnInit(): void {
@@ -51,10 +55,15 @@ export class ProjectListComponent implements OnInit {
   loadProjects(): void {
     this.loading.set(true);
     this.error.set(null);
-    this.projectService.list().subscribe({
+    this.projectService.list(this.showArchived()).subscribe({
       next:  (p) => { this.projects.set(p); this.loading.set(false); },
       error: ()  => { this.error.set('Failed to load projects.'); this.loading.set(false); },
     });
+  }
+
+  toggleArchived(): void {
+    this.showArchived.update(v => !v);
+    this.loadProjects();
   }
 
   goToCreate(): void {

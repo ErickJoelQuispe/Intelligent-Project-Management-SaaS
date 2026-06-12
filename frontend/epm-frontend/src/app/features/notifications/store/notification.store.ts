@@ -6,6 +6,8 @@ import { tapResponse } from '@ngrx/operators';
 import { Notification } from '../models/notification.model';
 import { NotificationService } from '../services/notification.service';
 
+interface UnreadCountResponse { count: number; }
+
 interface NotificationState {
   notifications: Notification[];
   unreadCount: number;
@@ -103,6 +105,11 @@ export const NotificationStore = signalStore(
 
       service.connect(userId, token);
       patchState(store, { wsConnected: true });
+
+      // Sync unread count from server immediately — avoids stale 0 on app load
+      service.getUnreadCount().subscribe({
+        next: ({ count }) => patchState(store, { unreadCount: count }),
+      });
 
       service.getNotificationStream(userId).subscribe({
         next: (message) => {
