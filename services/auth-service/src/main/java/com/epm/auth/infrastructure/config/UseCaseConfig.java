@@ -4,8 +4,8 @@ import com.epm.auth.application.usecase.LogoutAccountUseCaseImpl;
 import com.epm.auth.application.usecase.RegisterAccountUseCaseImpl;
 import com.epm.auth.domain.port.in.LogoutAccountUseCase;
 import com.epm.auth.domain.port.in.RegisterAccountUseCase;
+import com.epm.auth.domain.port.out.AccountRegistrationTransaction;
 import com.epm.auth.domain.port.out.AccountRepository;
-import com.epm.auth.domain.port.out.DomainEventPublisher;
 import com.epm.auth.domain.port.out.IdentityProviderPort;
 import com.epm.auth.domain.port.out.SecurityEventRepository;
 import org.springframework.context.annotation.Bean;
@@ -26,8 +26,8 @@ class UseCaseConfig {
     RegisterAccountUseCase registerAccountUseCase(
             AccountRepository accountRepository,
             IdentityProviderPort identityProvider,
-            DomainEventPublisher eventPublisher) {
-        return new RegisterAccountUseCaseImpl(accountRepository, identityProvider, eventPublisher);
+            AccountRegistrationTransaction registrationTransaction) {
+        return new RegisterAccountUseCaseImpl(accountRepository, identityProvider, registrationTransaction);
     }
 
     @Bean
