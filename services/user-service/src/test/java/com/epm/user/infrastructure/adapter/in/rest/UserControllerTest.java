@@ -13,6 +13,7 @@ import java.util.UUID;
 
 import com.epm.user.domain.exception.OptimisticLockException;
 import com.epm.user.domain.port.in.GetOwnProfileUseCase;
+import com.epm.user.domain.port.in.ListTenantUsersUseCase;
 import com.epm.user.domain.port.in.UpdateOwnProfileUseCase;
 import com.epm.user.domain.port.in.result.UserProfileResult;
 import com.epm.user.infrastructure.config.SecurityConfig;
@@ -48,6 +49,9 @@ class UserControllerTest {
 
     @MockitoBean
     private UpdateOwnProfileUseCase updateOwnProfileUseCase;
+
+    @MockitoBean
+    private ListTenantUsersUseCase listTenantUsersUseCase;
 
     @MockitoBean
     private JwtDecoder jwtDecoder;

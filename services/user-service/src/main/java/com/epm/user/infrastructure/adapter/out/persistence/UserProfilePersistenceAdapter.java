@@ -1,6 +1,7 @@
 package com.epm.user.infrastructure.adapter.out.persistence;
 
 import java.time.Instant;
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -26,6 +27,14 @@ public class UserProfilePersistenceAdapter implements UserProfileRepository {
     public Optional<UserProfile> findByIdAndTenantId(UUID id, UUID tenantId) {
         return jpaRepository.findByIdAndTenantIdAndDeletedAtIsNull(id, tenantId)
                 .map(this::toDomain);
+    }
+
+    @Override
+    public List<UserProfile> findAllByTenantId(UUID tenantId) {
+        return jpaRepository.findAllByTenantIdAndDeletedAtIsNull(tenantId)
+                .stream()
+                .map(this::toDomain)
+                .toList();
     }
 
     @Override

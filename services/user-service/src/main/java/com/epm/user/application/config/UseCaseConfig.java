@@ -6,6 +6,7 @@ import com.epm.user.application.usecase.DeleteTeamUseCaseImpl;
 import com.epm.user.application.usecase.GetOwnProfileUseCaseImpl;
 import com.epm.user.application.usecase.GetTeamUseCaseImpl;
 import com.epm.user.application.usecase.ListTeamsUseCaseImpl;
+import com.epm.user.application.usecase.ListTenantUsersUseCaseImpl;
 import com.epm.user.application.usecase.RemoveTeamMemberUseCaseImpl;
 import com.epm.user.application.usecase.UpdateOwnProfileUseCaseImpl;
 import com.epm.user.domain.port.out.DomainEventPublisher;
@@ -26,6 +27,11 @@ public class UseCaseConfig {
     @Bean
     GetOwnProfileUseCaseImpl getOwnProfileUseCase(UserProfileRepository profileRepository) {
         return new GetOwnProfileUseCaseImpl(profileRepository);
+    }
+
+    @Bean
+    ListTenantUsersUseCaseImpl listTenantUsersUseCase(UserProfileRepository profileRepository) {
+        return new ListTenantUsersUseCaseImpl(profileRepository);
     }
 
     @Bean
