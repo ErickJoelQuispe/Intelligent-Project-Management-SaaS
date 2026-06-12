@@ -6,7 +6,7 @@ spring:
   datasource:
     url: jdbc:postgresql://localhost:5432/auth_db
     username: epm_admin
-    password: changeme
+    password: ${DB_PASSWORD}
     driver-class-name: org.postgresql.Driver
   jpa:
     hibernate:
@@ -30,7 +30,7 @@ keycloak:
   server-url: http://localhost:8180
   realm: epm
   client-id: epm-backend
-  client-secret: ${KEYCLOAK_CLIENT_SECRET:changeme}
+  client-secret: ${KEYCLOAK_CLIENT_SECRET}
 
 server:
   port: 8081
