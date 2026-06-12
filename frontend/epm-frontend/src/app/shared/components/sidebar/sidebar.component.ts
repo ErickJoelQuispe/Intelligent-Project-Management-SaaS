@@ -171,6 +171,7 @@ export class SidebarComponent {
 
   readonly navItems: NavItem[] = [
     { label: 'Projects', icon: 'folder',   route: '/projects' },
+    { label: 'Teams',    icon: 'group',    route: '/teams' },
     { label: 'Settings', icon: 'settings', route: '/settings' },
   ];
 

@@ -1,0 +1,196 @@
+<app-page-header
+  [title]="team()?.name ?? 'Team'"
+  description="Team details and member management"
+>
+  <app-button page-action variant="ghost" size="sm" routerLink="/teams">
+    <span class="material-symbols-rounded text-sm">arrow_back</span>
+    Back
+  </app-button>
+  @if (isOwner()) {
+    <app-button page-action variant="ghost" size="sm"
+                [loading]="deleting()"
+                (click)="onDeleteTeam()"
+                style="color: oklch(0.65 0.22 25);">
+      <span class="material-symbols-rounded text-sm" style="color: oklch(0.65 0.22 25);">delete</span>
+      Delete team
+    </app-button>
+  }
+</app-page-header>
+
+<div class="p-6 flex flex-col gap-6 max-w-3xl">
+
+  @if (loading()) {
+    <app-spinner size="lg" [full]="true" label="Loading team..." />
+  } @else if (error()) {
+    <app-error-banner [message]="error()!" />
+  } @else if (team(); as t) {
+
+    <!-- Team info card -->
+    <div class="flex flex-col gap-2 p-5 rounded-2xl border animate-fade-up"
+         style="background: oklch(0.10 0.025 268 / 0.7);
+                border-color: oklch(0.22 0.020 268);
+                backdrop-filter: blur(12px);">
+      <div class="flex items-center gap-3">
+        <div class="size-10 rounded-xl shrink-0 flex items-center justify-center"
+             style="background: linear-gradient(135deg, oklch(0.65 0.26 285 / 0.2), oklch(0.78 0.18 200 / 0.2));
+                    border: 1px solid oklch(0.65 0.26 285 / 0.3);">
+          <span class="material-symbols-rounded"
+                style="color: oklch(0.78 0.18 200);">group</span>
+        </div>
+        <div class="flex flex-col gap-0.5 min-w-0">
+          <h2 class="text-base font-semibold truncate"
+              style="color: oklch(0.96 0.006 268); font-family: 'Outfit', sans-serif;">
+            {{ t.name }}
+          </h2>
+          <span class="text-xs" style="color: oklch(0.55 0.015 268);">
+            {{ t.members.length }} {{ t.members.length === 1 ? 'member' : 'members' }}
+          </span>
+        </div>
+      </div>
+      @if (t.description) {
+        <p class="text-sm leading-relaxed mt-1" style="color: oklch(0.65 0.015 268);">
+          {{ t.description }}
+        </p>
+      }
+    </div>
+
+    <!-- Members card -->
+    <app-card>
+      <div card-header
+           class="flex items-center gap-3 px-6 py-4 border-b border-border">
+        <span class="material-symbols-rounded text-accent">people</span>
+        <span class="text-text-primary font-semibold text-sm">Members</span>
+        <span class="ml-auto inline-flex items-center px-2 py-0.5 rounded-full text-[0.65rem] font-semibold"
+              style="background: oklch(0.65 0.26 285 / 0.12);
+                     color: oklch(0.72 0.18 285);
+                     border: 1px solid oklch(0.65 0.26 285 / 0.2);">
+          {{ t.members.length }}
+        </span>
+      </div>
+
+      <div class="flex flex-col gap-4">
+
+        <!-- Member error -->
+        @if (memberError()) {
+          <app-error-banner [message]="memberError()!" variant="inline" />
+        }
+
+        <!-- Member list -->
+        @if (t.members.length === 0) {
+          <p class="text-text-muted text-sm text-center py-4">No members yet.</p>
+        } @else {
+          <div class="flex flex-col divide-y"
+               style="border-color: oklch(0.18 0.018 268 / 0.6);">
+            @for (member of t.members; track member.userId) {
+              <div class="flex items-center justify-between gap-3 py-3">
+                <!-- Avatar + info -->
+                <div class="flex items-center gap-3 min-w-0">
+                  <div class="size-8 rounded-full shrink-0 flex items-center justify-center"
+                       style="background: linear-gradient(135deg, oklch(0.65 0.26 285 / 0.2), oklch(0.78 0.18 200 / 0.2));
+                              border: 1px solid oklch(0.65 0.26 285 / 0.25);">
+                    <span class="material-symbols-rounded text-sm"
+                          style="color: oklch(0.72 0.18 285);">person</span>
+                  </div>
+                  <div class="flex flex-col gap-0.5 min-w-0">
+                    <span class="text-sm font-medium truncate"
+                          style="color: oklch(0.88 0.012 268);">
+                      {{ member.userId }}
+                    </span>
+                    <span class="text-xs" style="color: oklch(0.45 0.010 268);">
+                      Joined {{ member.joinedAt | slice:0:10 }}
+                    </span>
+                  </div>
+                </div>
+
+                <!-- Role badge + remove button -->
+                <div class="flex items-center gap-2 shrink-0">
+                  <app-team-role-badge [role]="member.role" />
+                  @if (isOwner()) {
+                    <button
+                      (click)="onRemoveMember(member.userId)"
+                      [disabled]="removingMember() === member.userId"
+                      class="flex items-center justify-center size-6 rounded transition-colors duration-150
+                             disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer"
+                      style="color: oklch(0.55 0.015 268);"
+                      title="Remove member"
+                    >
+                      <span class="material-symbols-rounded text-sm">person_remove</span>
+                    </button>
+                  }
+                </div>
+              </div>
+            }
+          </div>
+        }
+
+        <!-- Divider -->
+        @if (isOwner()) {
+          <div class="border-t border-border"></div>
+
+          <!-- Add member form -->
+          <div class="flex flex-col gap-3">
+            <h3 class="text-text-primary text-sm font-semibold">Add member</h3>
+            <form [formGroup]="addMemberForm" (ngSubmit)="onAddMember()" novalidate
+                  class="flex flex-col gap-3 sm:flex-row sm:items-end">
+
+              <div class="flex flex-col gap-1.5 flex-1 min-w-0">
+                <label class="text-xs font-medium" style="color: oklch(0.55 0.015 268);">
+                  User ID
+                </label>
+                <input
+                  type="text" formControlName="userId"
+                  placeholder="Enter user ID"
+                  data-testid="userId-input"
+                  class="w-full px-3 py-2 rounded-lg text-sm transition-all duration-200 focus:outline-none"
+                  style="background: oklch(0.11 0.025 268);
+                         border: 1px solid oklch(0.22 0.020 268);
+                         color: oklch(0.96 0.006 268);"
+                  onfocus="this.style.borderColor='oklch(0.65 0.26 285)';this.style.boxShadow='0 0 0 2px oklch(0.65 0.26 285 / 0.15)'"
+                  onblur="this.style.borderColor='oklch(0.22 0.020 268)';this.style.boxShadow='none'"
+                />
+              </div>
+
+              <div class="flex flex-col gap-1.5 w-36 shrink-0">
+                <label class="text-xs font-medium" style="color: oklch(0.55 0.015 268);">
+                  Role
+                </label>
+                <select
+                  formControlName="role"
+                  data-testid="role-select"
+                  class="w-full px-3 py-2 rounded-lg text-sm transition-all duration-200
+                         focus:outline-none appearance-none cursor-pointer"
+                  style="background: oklch(0.11 0.025 268);
+                         border: 1px solid oklch(0.22 0.020 268);
+                         color: oklch(0.96 0.006 268);"
+                  onfocus="this.style.borderColor='oklch(0.65 0.26 285)';this.style.boxShadow='0 0 0 2px oklch(0.65 0.26 285 / 0.15)'"
+                  onblur="this.style.borderColor='oklch(0.22 0.020 268)';this.style.boxShadow='none'"
+                >
+                  @for (r of roleOptions; track r) {
+                    <option [value]="r"
+                            style="background: oklch(0.13 0.025 268); color: oklch(0.96 0.006 268);">
+                      {{ r }}
+                    </option>
+                  }
+                </select>
+              </div>
+
+              <app-button type="submit" variant="primary" size="sm"
+                          [loading]="addingMember()"
+                          data-testid="add-member-button">
+                <span class="material-symbols-rounded text-sm">person_add</span>
+                Add
+              </app-button>
+
+            </form>
+            @if (addMemberForm.controls.userId.hasError('required') && addMemberForm.controls.userId.touched) {
+              <span class="text-xs" style="color: oklch(0.65 0.24 22);">User ID is required.</span>
+            }
+          </div>
+        }
+
+      </div>
+    </app-card>
+
+  }
+
+</div>

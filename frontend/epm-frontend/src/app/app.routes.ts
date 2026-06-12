@@ -84,4 +84,28 @@ export const routes: Routes = [
       ),
     canActivate: [authGuard],
   },
+  {
+    path: 'teams',
+    loadComponent: () =>
+      import('./features/teams/team-list/team-list.component').then(
+        (m) => m.TeamListComponent,
+      ),
+    canActivate: [authGuard],
+  },
+  {
+    path: 'teams/new',
+    loadComponent: () =>
+      import('./features/teams/team-create/team-create.component').then(
+        (m) => m.TeamCreateComponent,
+      ),
+    canActivate: [authGuard],
+  },
+  {
+    path: 'teams/:teamId',
+    loadComponent: () =>
+      import('./features/teams/team-detail/team-detail.component').then(
+        (m) => m.TeamDetailComponent,
+      ),
+    canActivate: [authGuard],
+  },
 ];
