@@ -34,6 +34,78 @@
     <!-- Project card — sin acciones (ya están en el header) -->
     <app-project-card [project]="p" [showActions]="true" />
 
+    <!-- Teams card -->
+    <app-card>
+      <div card-header
+           class="flex items-center gap-3 px-6 py-4 border-b border-border">
+        <span class="material-symbols-rounded text-accent">group</span>
+        <span class="text-text-primary font-semibold text-sm">Teams</span>
+      </div>
+
+      <div class="flex flex-col gap-4">
+        <div>
+          <p class="text-text-muted text-xs leading-relaxed">
+            Assign a team to this project to give members access.
+          </p>
+        </div>
+
+        @if (assignTeamSuccess()) {
+          <div class="flex items-center gap-2 px-3 py-2 rounded-lg
+                      bg-success-subtle border border-success/20 text-success text-xs">
+            <span class="material-symbols-rounded text-sm">check_circle</span>
+            Team assigned successfully.
+          </div>
+        }
+
+        @if (assignTeamError()) {
+          <app-error-banner [message]="assignTeamError()!" variant="inline" />
+        }
+
+        @if (teams().length === 0) {
+          <p class="text-text-muted text-sm py-2">
+            No teams available. <a routerLink="/teams/new" class="underline" style="color: oklch(0.65 0.26 285);">Create a team</a> first.
+          </p>
+        } @else {
+          <div class="flex items-center gap-3">
+            <select
+              [ngModel]="selectedTeamId()"
+              (ngModelChange)="selectedTeamId.set($event)"
+              data-testid="team-select"
+              class="flex-1 px-3 py-2 rounded-lg text-sm transition-all duration-200
+                     focus:outline-none appearance-none cursor-pointer"
+              style="background: oklch(0.11 0.025 268);
+                     border: 1px solid oklch(0.22 0.020 268);
+                     color: oklch(0.96 0.006 268);"
+              onfocus="this.style.borderColor='oklch(0.65 0.26 285)';this.style.boxShadow='0 0 0 2px oklch(0.65 0.26 285 / 0.15)'"
+              onblur="this.style.borderColor='oklch(0.22 0.020 268)';this.style.boxShadow='none'"
+            >
+              <option value="" style="background: oklch(0.13 0.025 268); color: oklch(0.55 0.015 268);">
+                Select a team...
+              </option>
+              @for (team of teams(); track team.id) {
+                <option [value]="team.id"
+                        style="background: oklch(0.13 0.025 268); color: oklch(0.96 0.006 268);">
+                  {{ team.name }}
+                </option>
+              }
+            </select>
+
+            <app-button
+              variant="primary"
+              size="sm"
+              [loading]="assigningTeam()"
+              [disabled]="!selectedTeamId()"
+              (click)="assignTeam()"
+              data-testid="assign-team-button"
+            >
+              <span class="material-symbols-rounded text-sm">add</span>
+              Assign
+            </app-button>
+          </div>
+        }
+      </div>
+    </app-card>
+
     <!-- AI Assistant card -->
     <app-card>
 

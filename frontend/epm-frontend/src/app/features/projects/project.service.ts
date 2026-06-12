@@ -29,4 +29,8 @@ export class ProjectService {
   archive(id: string): Observable<void> {
     return this.http.delete<void>(`${this.baseUrl}/${id}`);
   }
+
+  assignTeam(projectId: string, teamId: string): Observable<void> {
+    return this.http.post<void>(`${this.baseUrl}/${projectId}/teams`, { teamId });
+  }
 }

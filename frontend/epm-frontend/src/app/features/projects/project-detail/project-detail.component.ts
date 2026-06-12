@@ -9,7 +9,9 @@ import { forkJoin } from 'rxjs';
 import { ProjectService } from '../project.service';
 import { AiService, TaskDraft } from '../../ai/ai.service';
 import { TaskService } from '../../tasks/task.service';
+import { TeamService } from '../../teams/team.service';
 import { Project } from '../../../core/models/project.model';
+import { Team } from '../../../core/models/team.model';
 import { PageHeaderComponent } from '../../../shared/components/page-header/page-header.component';
 import { ButtonComponent } from '../../../shared/components/button/button.component';
 import { SpinnerComponent } from '../../../shared/components/spinner/spinner.component';
@@ -18,6 +20,7 @@ import { ProjectCardComponent } from '../../../shared/components/project-card/pr
 import { CardComponent } from '../../../shared/components/card/card.component';
 import { AiDraftTaskItemComponent } from '../../../shared/components/ai-draft-task-item/ai-draft-task-item.component';
 import { AiChatComponent } from '../../ai/chat/ai-chat.component';
+import { FormsModule } from '@angular/forms';
 
 @Component({
   selector: 'app-project-detail',
@@ -25,6 +28,7 @@ import { AiChatComponent } from '../../ai/chat/ai-chat.component';
   changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [
     RouterLink,
+    FormsModule,
     PageHeaderComponent,
     ButtonComponent,
     SpinnerComponent,
@@ -42,17 +46,23 @@ export class ProjectDetailComponent {
   private readonly projectService = inject(ProjectService);
   private readonly aiService      = inject(AiService);
   private readonly taskService    = inject(TaskService);
+  private readonly teamService    = inject(TeamService);
 
-  readonly project     = signal<Project | null>(null);
-  readonly loading     = signal(true);
-  readonly error       = signal<string | null>(null);
-  readonly generating  = signal(false);
-  readonly summarizing = signal(false);
-  readonly savingTasks = signal(false);
-  readonly saveSuccess = signal(false);
-  readonly draftTasks  = signal<TaskDraft[]>([]);
-  readonly summary     = signal<string | null>(null);
-  readonly aiError     = signal<string | null>(null);
+  readonly project          = signal<Project | null>(null);
+  readonly loading          = signal(true);
+  readonly error            = signal<string | null>(null);
+  readonly generating       = signal(false);
+  readonly summarizing      = signal(false);
+  readonly savingTasks      = signal(false);
+  readonly saveSuccess      = signal(false);
+  readonly draftTasks       = signal<TaskDraft[]>([]);
+  readonly summary          = signal<string | null>(null);
+  readonly aiError          = signal<string | null>(null);
+  readonly teams            = signal<Team[]>([]);
+  readonly selectedTeamId   = signal<string>('');
+  readonly assigningTeam    = signal(false);
+  readonly assignTeamSuccess = signal(false);
+  readonly assignTeamError  = signal<string | null>(null);
 
   constructor() {
     const projectId = this.route.snapshot.paramMap.get('projectId');
@@ -62,12 +72,43 @@ export class ProjectDetailComponent {
       return;
     }
     this.loadProject(projectId);
+    this.loadTeams();
   }
 
   private loadProject(id: string): void {
     this.projectService.getById(id).subscribe({
       next:  (p) => { this.project.set(p); this.loading.set(false); },
       error: ()  => { this.error.set('Failed to load project.'); this.loading.set(false); },
+    });
+  }
+
+  private loadTeams(): void {
+    this.teamService.getAll().subscribe({
+      next:  (t) => this.teams.set(t),
+      error: ()  => { /* non-critical — teams section shows empty state */ },
+    });
+  }
+
+  assignTeam(): void {
+    const teamId = this.selectedTeamId();
+    const projectId = this.project()?.id;
+    if (!teamId || !projectId) return;
+
+    this.assigningTeam.set(true);
+    this.assignTeamError.set(null);
+    this.assignTeamSuccess.set(false);
+
+    this.projectService.assignTeam(projectId, teamId).subscribe({
+      next: () => {
+        this.assigningTeam.set(false);
+        this.assignTeamSuccess.set(true);
+        this.selectedTeamId.set('');
+        setTimeout(() => this.assignTeamSuccess.set(false), 3000);
+      },
+      error: () => {
+        this.assignTeamError.set('Failed to assign team. Please try again.');
+        this.assigningTeam.set(false);
+      },
     });
   }
 
