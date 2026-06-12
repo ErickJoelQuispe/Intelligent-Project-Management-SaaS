@@ -1,19 +1,13 @@
 package com.epm.auth.infrastructure.adapter.out.messaging;
 
-import java.time.Instant;
-import java.time.temporal.ChronoUnit;
-import java.util.List;
-import java.util.stream.Stream;
-
-import com.epm.auth.infrastructure.adapter.out.persistence.OutboxEventJpaEntity;
-import com.epm.auth.infrastructure.adapter.out.persistence.OutboxEventJpaRepository;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.event.TransactionPhase;
 import org.springframework.transaction.event.TransactionalEventListener;
 
 /**
- * Relays pending outbox events to Kafka.
+ * Triggers outbox relay cycles via two paths and delegates the actual work to
+ * {@link OutboxRelayExecutor}.
  *
  * <p>Two triggers:
  * <ol>
@@ -21,58 +15,41 @@ import org.springframework.transaction.event.TransactionalEventListener;
  *   <li>{@link Scheduled} fires every 5 seconds as a safety net (catches missed events).</li>
  * </ol>
  *
- * <p>Failed events are retried after a 5-minute cooldown.
+ * <h2>Why a separate executor bean</h2>
+ * <p>Spring {@code @Transactional} is proxy-based. If the transactional relay logic lived on
+ * this same bean and were invoked via a {@code this.} self-call (as happened previously on the
+ * post-commit path), the proxy would be bypassed and the transaction would NOT start — releasing
+ * the {@code FOR UPDATE SKIP LOCKED} locks immediately and reintroducing the double-publish race.
+ * Both triggers here call {@link OutboxRelayExecutor#relayBatch()}, a CROSS-BEAN call through the
+ * proxy, so {@code @Transactional} is honored on BOTH paths.
  */
 @Service
 public class OutboxRelayService {
 
-    private static final long RETRY_COOLDOWN_MINUTES = 5;
+    private final OutboxRelayExecutor executor;
 
-    private final OutboxEventJpaRepository outboxRepo;
-    private final KafkaOutboxPublisher publisher;
-
-    public OutboxRelayService(OutboxEventJpaRepository outboxRepo, KafkaOutboxPublisher publisher) {
-        this.outboxRepo = outboxRepo;
-        this.publisher = publisher;
+    public OutboxRelayService(OutboxRelayExecutor executor) {
+        this.executor = executor;
     }
 
     /**
      * Triggered after an outbox row is saved (post-commit).
      * Provides near-real-time relay without scheduler delay.
+     *
+     * <p>Delegates to {@link OutboxRelayExecutor#relayBatch()} so the transactional advice applies.
      */
     @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
     public void onOutboxEventSaved(OutboxEventSavedEvent event) {
-        relayPendingEvents();
+        executor.relayBatch();
     }
 
     /**
      * Scheduled safety-net relay — catches any events missed by the event listener.
+     *
+     * <p>Delegates to {@link OutboxRelayExecutor#relayBatch()} so the transactional advice applies.
      */
     @Scheduled(fixedDelay = 5000)
-    public void relayPendingEvents() {
-        Instant cooldownThreshold = Instant.now().minus(RETRY_COOLDOWN_MINUTES, ChronoUnit.MINUTES);
-
-        List<OutboxEventJpaEntity> pending =
-                outboxRepo.findTop10ByPublishedAtIsNullAndFailedAtIsNullOrderByCreatedAtAsc();
-        List<OutboxEventJpaEntity> retry =
-                outboxRepo.findTop10ByPublishedAtIsNullAndFailedAtBeforeOrderByCreatedAtAsc(cooldownThreshold);
-
-        Stream.concat(pending.stream(), retry.stream())
-                .distinct()
-                .forEach(this::publish);
-    }
-
-    // ── Private ──────────────────────────────────────────────────────────────
-
-    private void publish(OutboxEventJpaEntity event) {
-        try {
-            publisher.publish(event.getTopic(), event.getAggregateId().toString(), event.getPayload());
-            event.setPublishedAt(Instant.now());
-            outboxRepo.save(event);
-        } catch (Exception ex) {
-            event.setFailedAt(Instant.now());
-            event.setError(ex.getMessage());
-            outboxRepo.save(event);
-        }
+    public void scheduledRelay() {
+        executor.relayBatch();
     }
 }
