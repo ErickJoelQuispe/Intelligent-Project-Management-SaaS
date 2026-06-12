@@ -14,10 +14,15 @@ import com.epm.auth.domain.model.Email;
 public interface AccountRepository {
 
     /**
-     * Returns true if a non-deleted account exists for the given email within any tenant.
+     * Returns true if a non-deleted account already uses this email.
+     *
+     * <p>In the self-service signup model each email maps to exactly one account
+     * (one tenant per registration), so uniqueness is enforced globally, by design.
+     * There is no per-tenant scope: a given email can only ever belong to one account
+     * across the entire system.
      *
      * @param email normalized email value object
-     * @return true if duplicate exists
+     * @return {@code true} if an active account with this email already exists
      */
     boolean existsByEmail(Email email);
 

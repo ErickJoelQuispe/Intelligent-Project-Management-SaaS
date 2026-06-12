@@ -83,6 +83,8 @@ public abstract class ContractVerifierBase extends AbstractPostgresIT {
             envelope.put("aggregateId", accountId.toString());
             envelope.put("aggregateType", "Account");
             envelope.put("tenantId", tenantId.toString());
+            // Intentionally synthetic traceId — this is contract test scaffolding, not production.
+            // The real publisher resolves traceId from the active Micrometer span at runtime.
             envelope.put("traceId", UUID.randomUUID().toString());
 
             ObjectNode payload = objectMapper.createObjectNode();

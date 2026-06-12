@@ -12,6 +12,8 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.github.f4b6a3.uuid.UuidCreator;
+import io.micrometer.tracing.Tracer;
+import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Component;
 
@@ -21,6 +23,12 @@ import org.springframework.stereotype.Component;
  * <p>Saves each domain event as an {@link OutboxEventJpaEntity} row in the same
  * transaction as the aggregate. After the transaction commits, fires
  * {@link OutboxEventSavedEvent} to trigger near-real-time relay to Kafka.
+ *
+ * <p>The outbox envelope includes the distributed {@code traceId} resolved from the
+ * active Micrometer span, enabling end-to-end trace correlation between the HTTP
+ * request and the Kafka event. When no active span is present (e.g. background jobs
+ * or test slices without tracing auto-configuration), a random UUID is used as a
+ * defensive fallback so the publisher never fails due to an absent tracer.
  */
 @Component
 public class OutboxDomainEventPublisher implements DomainEventPublisher {
@@ -30,14 +38,17 @@ public class OutboxDomainEventPublisher implements DomainEventPublisher {
     private final OutboxEventJpaRepository outboxRepo;
     private final ApplicationEventPublisher appEventPublisher;
     private final ObjectMapper objectMapper;
+    private final ObjectProvider<Tracer> tracerProvider;
 
     public OutboxDomainEventPublisher(
             OutboxEventJpaRepository outboxRepo,
             ApplicationEventPublisher appEventPublisher,
-            ObjectMapper objectMapper) {
+            ObjectMapper objectMapper,
+            ObjectProvider<Tracer> tracerProvider) {
         this.outboxRepo = outboxRepo;
         this.appEventPublisher = appEventPublisher;
         this.objectMapper = objectMapper;
+        this.tracerProvider = tracerProvider;
     }
 
     @Override
@@ -67,6 +78,21 @@ public class OutboxDomainEventPublisher implements DomainEventPublisher {
         return entity;
     }
 
+    /**
+     * Resolves the current distributed trace ID from the active Micrometer span.
+     *
+     * <p>Returns the trace ID of the active span when one is present. Falls back to
+     * a random UUID when tracing is disabled, the span is absent, or the Tracer bean
+     * is not available in the application context (e.g. lightweight test slices).
+     */
+    private String resolveTraceId() {
+        Tracer tracer = tracerProvider.getIfAvailable();
+        if (tracer != null && tracer.currentSpan() != null) {
+            return tracer.currentSpan().context().traceId();
+        }
+        return UUID.randomUUID().toString();
+    }
+
     private String buildEnvelopeJson(AccountRegisteredEvent event) {
         try {
             ObjectNode envelope = objectMapper.createObjectNode();
@@ -77,7 +103,7 @@ public class OutboxDomainEventPublisher implements DomainEventPublisher {
             envelope.put("aggregateId", event.accountId().toString());
             envelope.put("aggregateType", "Account");
             envelope.put("tenantId", event.tenantId().toString());
-            envelope.put("traceId", UUID.randomUUID().toString());
+            envelope.put("traceId", resolveTraceId());
 
             ObjectNode payloadNode = objectMapper.createObjectNode();
             payloadNode.put("accountId", event.accountId().toString());
