@@ -11,9 +11,9 @@ import java.time.Instant;
 import java.util.UUID;
 
 import com.epm.user.domain.model.UserProfile;
-import com.epm.user.domain.port.out.UserProfileRepository;
 import com.epm.user.infrastructure.adapter.out.persistence.ProcessedEventJpaEntity;
 import com.epm.user.infrastructure.adapter.out.persistence.ProcessedEventJpaRepository;
+import com.epm.user.infrastructure.adapter.out.persistence.UserProfilePersistenceAdapter;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -21,15 +21,19 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.dao.DataIntegrityViolationException;
 
 /**
  * Unit tests for {@link AccountRegisteredConsumer}.
+ *
+ * <p>Covers the TOCTOU-safe idempotency logic: fast-path existsByEventId for the
+ * common case, and DataIntegrityViolationException catch for the concurrent race.
  */
 @ExtendWith(MockitoExtension.class)
 class AccountRegisteredConsumerTest {
 
     @Mock
-    private UserProfileRepository profileRepository;
+    private UserProfilePersistenceAdapter profileRepository;
 
     @Mock
     private ProcessedEventJpaRepository processedEventRepository;
@@ -51,24 +55,24 @@ class AccountRegisteredConsumerTest {
         String message = buildMessage(eventId, accountId, tenantId, "alice@example.com", "Alice", "Smith");
 
         when(processedEventRepository.existsByEventId(eventId.toString())).thenReturn(false);
-        when(profileRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
-        when(processedEventRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
+        when(processedEventRepository.saveAndFlush(any())).thenAnswer(inv -> inv.getArgument(0));
+        when(profileRepository.saveAndFlush(any())).thenAnswer(inv -> inv.getArgument(0));
 
         consumer.consume(message);
 
         ArgumentCaptor<UserProfile> profileCaptor = ArgumentCaptor.forClass(UserProfile.class);
-        verify(profileRepository).save(profileCaptor.capture());
+        verify(profileRepository).saveAndFlush(profileCaptor.capture());
         assertThat(profileCaptor.getValue().getId()).isEqualTo(accountId);
         assertThat(profileCaptor.getValue().getEmail()).isEqualTo("alice@example.com");
 
         ArgumentCaptor<ProcessedEventJpaEntity> processedCaptor =
                 ArgumentCaptor.forClass(ProcessedEventJpaEntity.class);
-        verify(processedEventRepository).save(processedCaptor.capture());
+        verify(processedEventRepository).saveAndFlush(processedCaptor.capture());
         assertThat(processedCaptor.getValue().getEventId()).isEqualTo(eventId.toString());
     }
 
     @Test
-    void duplicateEventIsSkippedSilently() {
+    void duplicateEventIsSkippedSilentlyViaFastPath() {
         UUID eventId = UUID.randomUUID();
         UUID accountId = UUID.randomUUID();
         UUID tenantId = UUID.randomUUID();
@@ -78,27 +82,46 @@ class AccountRegisteredConsumerTest {
 
         consumer.consume(message);
 
-        verify(profileRepository, never()).save(any());
-        verify(processedEventRepository, never()).save(any());
+        verify(profileRepository, never()).saveAndFlush(any());
+        verify(processedEventRepository, never()).saveAndFlush(any());
     }
 
     @Test
-    void processedEventRepoIsCheckedBeforeCreatingProfile() {
+    void concurrentDuplicateIsSkippedWhenSaveAndFlushThrowsDataIntegrityViolation() {
+        // Simulates the race: fast-path check passes (returns false) for BOTH threads,
+        // but the second thread hits the PK constraint on saveAndFlush.
+        UUID eventId = UUID.randomUUID();
+        UUID accountId = UUID.randomUUID();
+        UUID tenantId = UUID.randomUUID();
+        String message = buildMessage(eventId, accountId, tenantId, "race@example.com", "Race", "Test");
+
+        when(processedEventRepository.existsByEventId(eventId.toString())).thenReturn(false);
+        when(processedEventRepository.saveAndFlush(any()))
+                .thenThrow(new DataIntegrityViolationException("duplicate key value violates unique constraint"));
+
+        // Must NOT throw — the message should be silently acked (no DLT)
+        consumer.consume(message);
+
+        // Profile must NOT be created (we returned before reaching profileRepository.saveAndFlush)
+        verify(profileRepository, never()).saveAndFlush(any());
+    }
+
+    @Test
+    void processedEventSavedBeforeProfile() {
         UUID eventId = UUID.randomUUID();
         UUID accountId = UUID.randomUUID();
         UUID tenantId = UUID.randomUUID();
         String message = buildMessage(eventId, accountId, tenantId, "bob@example.com", "Bob", "Jones");
 
         when(processedEventRepository.existsByEventId(eventId.toString())).thenReturn(false);
-        when(profileRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
-        when(processedEventRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
+        when(processedEventRepository.saveAndFlush(any())).thenAnswer(inv -> inv.getArgument(0));
+        when(profileRepository.saveAndFlush(any())).thenAnswer(inv -> inv.getArgument(0));
 
         consumer.consume(message);
 
-        // existsByEventId called once, then profile saved, then processedEvent saved
-        verify(processedEventRepository, times(1)).existsByEventId(eventId.toString());
-        verify(profileRepository, times(1)).save(any());
-        verify(processedEventRepository, times(1)).save(any());
+        // Both must be called exactly once
+        verify(processedEventRepository, times(1)).saveAndFlush(any());
+        verify(profileRepository, times(1)).saveAndFlush(any());
     }
 
     // ── helpers ──────────────────────────────────────────────────────────────

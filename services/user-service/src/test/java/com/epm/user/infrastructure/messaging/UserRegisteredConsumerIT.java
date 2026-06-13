@@ -2,14 +2,27 @@ package com.epm.user.infrastructure.messaging;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+
 import java.time.Duration;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.UUID;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import com.epm.user.infrastructure.AbstractPostgresIT;
+import com.epm.user.infrastructure.adapter.in.messaging.AccountRegisteredConsumer;
+import com.epm.user.infrastructure.adapter.out.persistence.ProcessedEventJpaRepository;
 import com.epm.user.infrastructure.adapter.out.persistence.UserProfileJpaRepository;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import org.apache.kafka.clients.producer.ProducerRecord;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -18,7 +31,7 @@ import org.springframework.kafka.test.context.EmbeddedKafka;
 import org.springframework.test.context.TestPropertySource;
 
 /**
- * Integration test for {@link AccountRegisteredConsumer}.
+ * Integration test for {@code AccountRegisteredConsumer}.
  *
  * <p>Verifies that a message matching the auth.account.registered contract schema
  * is correctly consumed and creates a {@link com.epm.user.domain.model.UserProfile}.
@@ -49,7 +62,20 @@ class UserRegisteredConsumerIT extends AbstractPostgresIT {
     private UserProfileJpaRepository profileJpaRepository;
 
     @Autowired
+    private ProcessedEventJpaRepository processedEventRepository;
+
+    @Autowired
     private ObjectMapper objectMapper;
+
+    @Autowired
+    private AccountRegisteredConsumer consumer;
+
+    @AfterEach
+    void cleanup() {
+        // Isolate tests: both tables must be empty before the next test counts rows.
+        profileJpaRepository.deleteAll();
+        processedEventRepository.deleteAll();
+    }
 
     @Test
     void consumeAccountRegisteredEvent_createsUserProfile() throws Exception {
@@ -100,6 +126,128 @@ class UserRegisteredConsumerIT extends AbstractPostgresIT {
 
         // Assert — still exactly one profile
         assertThat(profileJpaRepository.findById(accountId)).isPresent();
+        assertThat(processedEventRepository.existsByEventId(eventId.toString())).isTrue();
+    }
+
+    /**
+     * Regression guard for FIX A (TOCTOU race backstop).
+     *
+     * <p>Two threads invoke {@link AccountRegisteredConsumer#consume(String)}
+     * DIRECTLY with the SAME eventId, released together via a start-gate so they
+     * race as concurrently as possible. We call the injected bean (not {@code this})
+     * so the {@code @Transactional} proxy opens an independent transaction per call —
+     * which is exactly the concurrent flow that exercises the processed_events PK
+     * backstop. Kafka's single-thread sequential delivery cannot reproduce this, so
+     * the original "send twice" approach proved nothing.
+     *
+     * <p>Asserts:
+     * <ol>
+     *   <li>At most one task threw — the race loser must be caught as a benign
+     *       duplicate and return normally (ideally zero throw).</li>
+     *   <li>Exactly ONE {@code user_profiles} row exists for the account.</li>
+     *   <li>Exactly ONE {@code processed_events} row exists for the eventId
+     *       (counted, not {@code existsByEventId} which is true for 1 OR N).</li>
+     * </ol>
+     *
+     * <p>Requires Docker (Testcontainers). If Docker is unavailable the test will
+     * fail to start — do NOT weaken it to make it pass.
+     */
+    @Test
+    void consumeAccountRegisteredEvent_concurrentSameEventId_oneProfileOneProcessedEvent() throws Exception {
+        UUID accountId = UUID.randomUUID();
+        UUID tenantId = UUID.randomUUID();
+        UUID eventId = UUID.randomUUID();
+        String email = "concurrent-race@example.com";
+        String message = buildContractMessage(eventId, accountId, tenantId, email, "Concurrent", "Race");
+
+        CountDownLatch startGate = new CountDownLatch(1);
+        ExecutorService pool = Executors.newFixedThreadPool(2);
+        List<Future<?>> futures = new ArrayList<>();
+        AtomicInteger threwCount = new AtomicInteger(0);
+
+        try {
+            for (int i = 0; i < 2; i++) {
+                futures.add(pool.submit(() -> {
+                    startGate.await();
+                    try {
+                        consumer.consume(message);
+                    } catch (Exception e) {
+                        threwCount.incrementAndGet();
+                    }
+                    return null;
+                }));
+            }
+
+            // Release both threads as simultaneously as the scheduler allows.
+            startGate.countDown();
+            for (Future<?> f : futures) {
+                f.get(30, TimeUnit.SECONDS);
+            }
+        } finally {
+            pool.shutdownNow();
+        }
+
+        // At most one task threw; the race loser is a benign duplicate.
+        assertThat(threwCount.get())
+                .as("At most one concurrent task may throw (benign duplicate)")
+                .isLessThanOrEqualTo(1);
+
+        // Exactly ONE profile row for the account.
+        long profileCount = profileJpaRepository.findAll().stream()
+                .filter(p -> accountId.equals(p.getId()))
+                .count();
+        assertThat(profileCount)
+                .as("Expected exactly 1 UserProfile row for accountId %s", accountId)
+                .isEqualTo(1);
+
+        // Exactly ONE processed_events row for the eventId (count, not exists).
+        long processedCount = processedEventRepository.findAll().stream()
+                .filter(p -> eventId.toString().equals(p.getEventId()))
+                .count();
+        assertThat(processedCount)
+                .as("Expected exactly 1 processed_events row for eventId %s", eventId)
+                .isEqualTo(1);
+    }
+
+    /**
+     * Regression guard for FIX A (genuine conflict must NOT be swallowed).
+     *
+     * <p>Two messages with DIFFERENT eventIds but the SAME tenant+email. The first
+     * creates the profile; the second hits the {@code uix_user_profiles_tenant_email}
+     * unique constraint. This is a real data conflict, NOT an idempotency duplicate,
+     * so the second {@code consume()} MUST throw (propagating to the DLT) rather than
+     * silently acking. Exactly one profile must remain.
+     */
+    @Test
+    void consumeAccountRegisteredEvent_sameTenantEmailDifferentEventId_secondThrows() throws Exception {
+        UUID tenantId = UUID.randomUUID();
+        String email = "genuine-conflict@example.com";
+
+        UUID firstAccountId = UUID.randomUUID();
+        UUID firstEventId = UUID.randomUUID();
+        String firstMessage =
+                buildContractMessage(firstEventId, firstAccountId, tenantId, email, "First", "User");
+
+        UUID secondAccountId = UUID.randomUUID();
+        UUID secondEventId = UUID.randomUUID();
+        String secondMessage =
+                buildContractMessage(secondEventId, secondAccountId, tenantId, email, "Second", "User");
+
+        // First succeeds.
+        consumer.consume(firstMessage);
+
+        // Second is a genuine unique-constraint conflict — it MUST propagate.
+        assertThatThrownBy(() -> consumer.consume(secondMessage))
+                .as("A different eventId with the same tenant+email is a real conflict and must propagate")
+                .isInstanceOf(RuntimeException.class);
+
+        // Exactly one profile exists (the first); the conflicting insert rolled back.
+        long profileCount = profileJpaRepository.findAll().stream()
+                .filter(p -> tenantId.equals(p.getTenantId()) && email.equals(p.getEmail()))
+                .count();
+        assertThat(profileCount)
+                .as("Only the first profile must exist for tenant %s / email %s", tenantId, email)
+                .isEqualTo(1);
     }
 
     // ── Helpers ──────────────────────────────────────────────────────────────

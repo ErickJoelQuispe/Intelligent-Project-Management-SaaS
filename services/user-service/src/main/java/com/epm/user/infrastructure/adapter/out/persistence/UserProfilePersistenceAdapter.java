@@ -7,6 +7,7 @@ import java.util.UUID;
 
 import com.epm.user.domain.model.UserProfile;
 import com.epm.user.domain.port.out.UserProfileRepository;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Component;
 
 /**
@@ -37,10 +38,41 @@ public class UserProfilePersistenceAdapter implements UserProfileRepository {
                 .toList();
     }
 
+    /**
+     * Delegates LIMIT/OFFSET to the database via a {@link PageRequest} — no in-memory truncation.
+     */
+    @Override
+    public List<UserProfile> findPageByTenantId(UUID tenantId, int page, int size) {
+        return jpaRepository
+                .findAllByTenantIdAndDeletedAtIsNull(tenantId, PageRequest.of(page, size))
+                .stream()
+                .map(this::toDomain)
+                .toList();
+    }
+
     @Override
     public UserProfile save(UserProfile profile) {
         UserProfileJpaEntity entity = toEntity(profile);
         UserProfileJpaEntity saved = jpaRepository.save(entity);
+        return toDomain(saved);
+    }
+
+    /**
+     * Saves the profile and immediately flushes the persistence context.
+     *
+     * <p>Infrastructure-only helper (NOT part of the {@link UserProfileRepository}
+     * domain port — the port stays JPA-free). Forcing the flush makes any genuine
+     * {@code user_profiles} unique-constraint violation (e.g.
+     * {@code uix_user_profiles_tenant_email}) surface synchronously inside the
+     * caller's method instead of escaping later at transaction commit, where it
+     * could not be distinguished from a benign idempotency duplicate.
+     *
+     * @param profile the profile to persist
+     * @return the persisted profile mapped back to the domain model
+     */
+    public UserProfile saveAndFlush(UserProfile profile) {
+        UserProfileJpaEntity entity = toEntity(profile);
+        UserProfileJpaEntity saved = jpaRepository.saveAndFlush(entity);
         return toDomain(saved);
     }
 
