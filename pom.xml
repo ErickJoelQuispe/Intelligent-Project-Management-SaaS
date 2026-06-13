@@ -287,6 +287,32 @@
                     </execution>
                 </executions>
             </plugin>
+
+            <!--
+                Failsafe runs integration tests (**/*IT.java) in the integration-test phase.
+                Without this, *IT tests (Testcontainers-backed: outbox atomicity, consumer
+                idempotency races, persistence adapters) are silently skipped by Surefire,
+                which only runs *Test. CI must invoke `mvn verify` to execute these.
+                Inherited by all modules from this parent.
+            -->
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-failsafe-plugin</artifactId>
+                <executions>
+                    <!--
+                        id "default" overrides the implicit execution Spring Boot's parent
+                        already binds, so the integration-test + verify goals run exactly
+                        once (not twice).
+                    -->
+                    <execution>
+                        <id>default</id>
+                        <goals>
+                            <goal>integration-test</goal>
+                            <goal>verify</goal>
+                        </goals>
+                    </execution>
+                </executions>
+            </plugin>
         </plugins>
     </build>
 </project>

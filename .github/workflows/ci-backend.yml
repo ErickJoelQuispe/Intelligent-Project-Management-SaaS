@@ -38,17 +38,22 @@ jobs:
           distribution: 'temurin'
           cache: 'maven'
 
-      - name: Run tests
+      - name: Run unit and integration tests
         env:
           TESTCONTAINERS_RYUK_DISABLED: true
-        run: ./mvnw test --batch-mode
+        # `verify` runs both Surefire (*Test) and Failsafe (*IT). The *IT tests are
+        # Testcontainers-backed integration tests (outbox atomicity, consumer idempotency
+        # races, persistence adapters); Docker is available on ubuntu-latest.
+        run: ./mvnw verify --batch-mode
 
-      - name: Upload surefire reports on failure
+      - name: Upload test reports on failure
         if: failure()
         uses: actions/upload-artifact@v4
         with:
-          name: surefire-reports
-          path: '**/target/surefire-reports/'
+          name: test-reports
+          path: |
+            **/target/surefire-reports/
+            **/target/failsafe-reports/
           retention-days: 7
 
   # ──────────────────────────────────────────────────────────────
