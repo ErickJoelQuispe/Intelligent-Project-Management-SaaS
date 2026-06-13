@@ -23,12 +23,15 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 /**
- * Unit tests for {@link OutboxRelayService}.
+ * Unit tests for {@link OutboxRelayExecutor}.
  *
  * <p>Tests the same 3 scenarios as auth-service:
  * - Pending event is published → publishedAt set
  * - Recently failed event (2 min ago) is NOT retried
  * - Old failed event (6 min ago) IS retried
+ *
+ * <p>Also verifies that {@link OutboxRelayService} delegates cross-bean to the executor
+ * (no self-invocation).
  */
 @ExtendWith(MockitoExtension.class)
 class OutboxRelayServiceTest {
@@ -39,23 +42,25 @@ class OutboxRelayServiceTest {
     @Mock
     private KafkaOutboxPublisher publisher;
 
+    private OutboxRelayExecutor executor;
     private OutboxRelayService service;
 
     @BeforeEach
     void setUp() {
-        service = new OutboxRelayService(outboxRepo, publisher);
+        executor = new OutboxRelayExecutor(outboxRepo, publisher);
+        service = new OutboxRelayService(executor);
     }
+
+    // ── OutboxRelayExecutor scenarios ─────────────────────────────────────────
 
     @Test
     void pendingEventIsPublishedAndPublishedAtIsSet() {
         OutboxEventJpaEntity pending = buildPending();
-        when(outboxRepo.findTop10ByPublishedAtIsNullAndFailedAtIsNullOrderByCreatedAtAsc())
-                .thenReturn(List.of(pending));
-        when(outboxRepo.findTop10ByPublishedAtIsNullAndFailedAtBeforeOrderByCreatedAtAsc(any(Instant.class)))
-                .thenReturn(List.of());
+        when(outboxRepo.lockPendingBatch()).thenReturn(List.of(pending));
+        when(outboxRepo.lockRetryBatch(any(Instant.class))).thenReturn(List.of());
         when(outboxRepo.save(any())).thenAnswer(inv -> inv.getArgument(0));
 
-        service.relayPendingEvents();
+        executor.relayBatch();
 
         verify(publisher).publish(anyString(), anyString(), anyString());
         ArgumentCaptor<OutboxEventJpaEntity> captor = ArgumentCaptor.forClass(OutboxEventJpaEntity.class);
@@ -66,12 +71,10 @@ class OutboxRelayServiceTest {
 
     @Test
     void recentlyFailedEventTwoMinutesAgoIsNotRetried() {
-        when(outboxRepo.findTop10ByPublishedAtIsNullAndFailedAtIsNullOrderByCreatedAtAsc())
-                .thenReturn(List.of());
-        when(outboxRepo.findTop10ByPublishedAtIsNullAndFailedAtBeforeOrderByCreatedAtAsc(any(Instant.class)))
-                .thenReturn(List.of()); // 2-min-old failure NOT returned
+        when(outboxRepo.lockPendingBatch()).thenReturn(List.of());
+        when(outboxRepo.lockRetryBatch(any(Instant.class))).thenReturn(List.of()); // 2-min-old failure NOT returned
 
-        service.relayPendingEvents();
+        executor.relayBatch();
 
         verify(publisher, never()).publish(anyString(), anyString(), anyString());
         verify(outboxRepo, never()).save(any());
@@ -80,18 +83,50 @@ class OutboxRelayServiceTest {
     @Test
     void oldFailedEventSixMinutesAgoIsRetried() {
         OutboxEventJpaEntity oldFailed = buildOldFailed();
-        when(outboxRepo.findTop10ByPublishedAtIsNullAndFailedAtIsNullOrderByCreatedAtAsc())
-                .thenReturn(List.of());
-        when(outboxRepo.findTop10ByPublishedAtIsNullAndFailedAtBeforeOrderByCreatedAtAsc(any(Instant.class)))
-                .thenReturn(List.of(oldFailed));
+        when(outboxRepo.lockPendingBatch()).thenReturn(List.of());
+        when(outboxRepo.lockRetryBatch(any(Instant.class))).thenReturn(List.of(oldFailed));
         when(outboxRepo.save(any())).thenAnswer(inv -> inv.getArgument(0));
 
-        service.relayPendingEvents();
+        executor.relayBatch();
 
         verify(publisher, times(1)).publish(anyString(), anyString(), anyString());
         ArgumentCaptor<OutboxEventJpaEntity> captor = ArgumentCaptor.forClass(OutboxEventJpaEntity.class);
         verify(outboxRepo, times(1)).save(captor.capture());
         assertThat(captor.getValue().getPublishedAt()).isNotNull();
+    }
+
+    @Test
+    void publishFailureSetsFailedAtAndErrorOnOutboxRow() {
+        OutboxEventJpaEntity pending = buildPending();
+        when(outboxRepo.lockPendingBatch()).thenReturn(List.of(pending));
+        when(outboxRepo.lockRetryBatch(any(Instant.class))).thenReturn(List.of());
+        when(outboxRepo.save(any())).thenAnswer(inv -> inv.getArgument(0));
+        org.mockito.Mockito.doThrow(new RuntimeException("Kafka down"))
+                .when(publisher).publish(anyString(), anyString(), anyString());
+
+        executor.relayBatch();
+
+        ArgumentCaptor<OutboxEventJpaEntity> captor = ArgumentCaptor.forClass(OutboxEventJpaEntity.class);
+        verify(outboxRepo).save(captor.capture());
+        assertThat(captor.getValue().getFailedAt()).isNotNull();
+        assertThat(captor.getValue().getError()).contains("Kafka down");
+        assertThat(captor.getValue().getPublishedAt()).isNull();
+    }
+
+    // ── OutboxRelayService cross-bean delegation ──────────────────────────────
+
+    @Test
+    void scheduledRelayDelegatestoExecutorCrossBean() {
+        // OutboxRelayService.scheduledRelay() must call executor.relayBatch() not itself
+        // We verify by confirming the executor's repo methods are invoked (would not happen
+        // if self-invocation bypassed the executor).
+        when(outboxRepo.lockPendingBatch()).thenReturn(List.of());
+        when(outboxRepo.lockRetryBatch(any(Instant.class))).thenReturn(List.of());
+
+        service.scheduledRelay();
+
+        // If the executor was called, lockPendingBatch must have been invoked
+        verify(outboxRepo).lockPendingBatch();
     }
 
     // ── helpers ──────────────────────────────────────────────────────────────
