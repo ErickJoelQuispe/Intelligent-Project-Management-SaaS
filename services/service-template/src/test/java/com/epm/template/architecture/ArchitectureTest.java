@@ -14,10 +14,11 @@ import com.tngtech.archunit.lang.ArchRule;
  * <p>These tests run on every build and enforce the dependency rules that define
  * hexagonal architecture. If any rule is violated, the build fails — no exceptions.
  *
- * <p>The three invariants enforced here:
+ * <p>The invariants enforced here:
  * <ol>
- *   <li>Domain is framework-free: no Spring, no JPA, no Kafka in domain classes.
- *   <li>Application is infrastructure-free: use cases do not import adapters or Spring beans.
+ *   <li>Domain is framework-free: no Spring, no JPA, no Kafka, no Jackson in domain classes.
+ *   <li>Application is infrastructure-free: use cases do not import adapters or Spring beans,
+ *       and must not depend on Jackson or Kafka directly.
  *   <li>Layered dependency direction: domain ← application ← infrastructure (never reversed).
  * </ol>
  */
@@ -60,7 +61,35 @@ class ArchitectureTest {
             .resideInAPackage("jakarta.persistence..");
 
     /**
-     * Rule 3 — Application must not depend on Infrastructure.
+     * Rule 3 — Domain must not depend on Jackson.
+     *
+     * <p>JSON serialization is an infrastructure concern. Domain events are
+     * plain records; the outbox publisher adapter handles envelope construction.
+     */
+    @ArchTest
+    static final ArchRule domainMustNotDependOnJackson = noClasses()
+            .that()
+            .resideInAPackage("..domain..")
+            .should()
+            .dependOnClassesThat()
+            .resideInAPackage("com.fasterxml.jackson..");
+
+    /**
+     * Rule 4 — Domain must not depend on Kafka.
+     *
+     * <p>The domain publishes events via the {@code ExampleEventPublisher} port.
+     * Kafka is an implementation detail that lives in the infrastructure layer.
+     */
+    @ArchTest
+    static final ArchRule domainMustNotDependOnKafka = noClasses()
+            .that()
+            .resideInAPackage("..domain..")
+            .should()
+            .dependOnClassesThat()
+            .resideInAPackage("org.apache.kafka..");
+
+    /**
+     * Rule 5 — Application must not depend on Infrastructure.
      *
      * <p>Use cases define *what* the system does; adapters define *how*.
      * If a use case imports an adapter, the system loses the ability to
@@ -76,7 +105,33 @@ class ArchitectureTest {
             .resideInAPackage("..infrastructure..");
 
     /**
-     * Rule 4 — Layered architecture: strict dependency direction.
+     * Rule 6 — Application must not depend on Jackson.
+     *
+     * <p>Serialization logic belongs in infrastructure adapters, not use cases.
+     */
+    @ArchTest
+    static final ArchRule applicationMustNotDependOnJackson = noClasses()
+            .that()
+            .resideInAPackage("..application..")
+            .should()
+            .dependOnClassesThat()
+            .resideInAPackage("com.fasterxml.jackson..");
+
+    /**
+     * Rule 7 — Application must not depend on Kafka.
+     *
+     * <p>Use cases depend on domain ports (interfaces), never on Kafka classes directly.
+     */
+    @ArchTest
+    static final ArchRule applicationMustNotDependOnKafka = noClasses()
+            .that()
+            .resideInAPackage("..application..")
+            .should()
+            .dependOnClassesThat()
+            .resideInAPackage("org.apache.kafka..");
+
+    /**
+     * Rule 8 — Layered architecture: strict dependency direction.
      *
      * <p>Codifies the full dependency graph as a single declarative rule:
      * infrastructure can access application and domain,

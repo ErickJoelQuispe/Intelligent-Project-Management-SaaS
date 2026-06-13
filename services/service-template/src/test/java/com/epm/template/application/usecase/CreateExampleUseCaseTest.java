@@ -5,11 +5,10 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
-import com.epm.template.domain.event.ExampleCreatedEvent;
-import com.epm.template.domain.model.Example;
-import com.epm.template.domain.port.out.ExampleEventPublisher;
-import com.epm.template.domain.port.out.ExampleRepository;
 import java.util.UUID;
+
+import com.epm.template.domain.model.Example;
+import com.epm.template.domain.port.out.TransactionalExampleWriter;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -21,32 +20,45 @@ import org.mockito.junit.jupiter.MockitoExtension;
  *
  * <p>Uses Mockito to stub driven ports. No Spring context needed —
  * the use case is plain Java and instantiated directly in the test.
+ *
+ * <p>The use case must delegate to {@link TransactionalExampleWriter#saveAndPublish},
+ * NOT to separate repository + publisher calls. Atomicity is enforced by the writer.
  */
 @ExtendWith(MockitoExtension.class)
 class CreateExampleUseCaseTest {
 
     @Mock
-    private ExampleRepository repository;
-
-    @Mock
-    private ExampleEventPublisher eventPublisher;
+    private TransactionalExampleWriter writer;
 
     private CreateExampleUseCaseImpl useCase;
 
     @BeforeEach
     void setUp() {
-        useCase = new CreateExampleUseCaseImpl(repository, eventPublisher);
+        useCase = new CreateExampleUseCaseImpl(writer);
     }
 
     @Test
-    void shouldSaveAndPublishEventOnCreate() {
-        Example savedExample = new Example(UUID.randomUUID(), "Test example");
-        when(repository.save(any(Example.class))).thenReturn(savedExample);
+    void createDelegatesToTransactionalWriterAndReturnsAggregate() {
+        UUID tenantId = UUID.randomUUID();
+        Example savedExample = Example.reconstitute(UUID.randomUUID(), tenantId, "Test example");
+        when(writer.saveAndPublish(any(Example.class))).thenReturn(savedExample);
 
-        Example result = useCase.create("Test example");
+        Example result = useCase.create(tenantId, "Test example");
 
         assertThat(result.name()).isEqualTo("Test example");
-        verify(repository).save(any(Example.class));
-        verify(eventPublisher).publish(any(ExampleCreatedEvent.class));
+        assertThat(result.tenantId()).isEqualTo(tenantId);
+        verify(writer).saveAndPublish(any(Example.class));
+    }
+
+    @Test
+    void createPassesTenantIdAndNameToAggregate() {
+        UUID tenantId = UUID.randomUUID();
+        Example savedExample = Example.reconstitute(UUID.randomUUID(), tenantId, "Named example");
+        when(writer.saveAndPublish(any(Example.class))).thenReturn(savedExample);
+
+        Example result = useCase.create(tenantId, "Named example");
+
+        assertThat(result.tenantId()).isEqualTo(tenantId);
+        assertThat(result.name()).isEqualTo("Named example");
     }
 }
