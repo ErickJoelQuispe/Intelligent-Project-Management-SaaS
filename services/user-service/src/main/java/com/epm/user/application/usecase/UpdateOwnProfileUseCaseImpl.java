@@ -7,7 +7,7 @@ import com.epm.user.domain.model.UserProfile;
 import com.epm.user.domain.port.in.UpdateOwnProfileUseCase;
 import com.epm.user.domain.port.in.command.UpdateProfileCommand;
 import com.epm.user.domain.port.in.result.UserProfileResult;
-import com.epm.user.domain.port.out.DomainEventPublisher;
+import com.epm.user.domain.port.out.TransactionalOutboxWriter;
 import com.epm.user.domain.port.out.UserProfileRepository;
 
 /**
@@ -18,12 +18,12 @@ import com.epm.user.domain.port.out.UserProfileRepository;
 public class UpdateOwnProfileUseCaseImpl implements UpdateOwnProfileUseCase {
 
     private final UserProfileRepository profileRepository;
-    private final DomainEventPublisher eventPublisher;
+    private final TransactionalOutboxWriter outboxWriter;
 
     public UpdateOwnProfileUseCaseImpl(UserProfileRepository profileRepository,
-            DomainEventPublisher eventPublisher) {
+            TransactionalOutboxWriter outboxWriter) {
         this.profileRepository = profileRepository;
-        this.eventPublisher = eventPublisher;
+        this.outboxWriter = outboxWriter;
     }
 
     @Override
@@ -34,8 +34,7 @@ public class UpdateOwnProfileUseCaseImpl implements UpdateOwnProfileUseCase {
         profile.update(command.firstName(), command.lastName(), command.bio(),
                 command.avatarUrl(), command.version());
 
-        eventPublisher.publish(profile.pullDomainEvents());
-        UserProfile saved = profileRepository.save(profile);
+        UserProfile saved = outboxWriter.saveProfileAndPublish(profile);
 
         return new UserProfileResult(saved.getId(), saved.getTenantId(), saved.getEmail(),
                 saved.getFirstName(), saved.getLastName(), saved.getBio(),

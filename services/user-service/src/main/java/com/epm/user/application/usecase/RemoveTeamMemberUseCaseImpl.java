@@ -7,8 +7,8 @@ import com.epm.user.domain.exception.UnauthorizedException;
 import com.epm.user.domain.model.Team;
 import com.epm.user.domain.model.TeamRole;
 import com.epm.user.domain.port.in.RemoveTeamMemberUseCase;
-import com.epm.user.domain.port.out.DomainEventPublisher;
 import com.epm.user.domain.port.out.TeamRepository;
+import com.epm.user.domain.port.out.TransactionalOutboxWriter;
 
 /**
  * Implementation of {@link RemoveTeamMemberUseCase}.
@@ -18,11 +18,12 @@ import com.epm.user.domain.port.out.TeamRepository;
 public class RemoveTeamMemberUseCaseImpl implements RemoveTeamMemberUseCase {
 
     private final TeamRepository teamRepository;
-    private final DomainEventPublisher eventPublisher;
+    private final TransactionalOutboxWriter outboxWriter;
 
-    public RemoveTeamMemberUseCaseImpl(TeamRepository teamRepository, DomainEventPublisher eventPublisher) {
+    public RemoveTeamMemberUseCaseImpl(TeamRepository teamRepository,
+            TransactionalOutboxWriter outboxWriter) {
         this.teamRepository = teamRepository;
-        this.eventPublisher = eventPublisher;
+        this.outboxWriter = outboxWriter;
     }
 
     @Override
@@ -40,7 +41,6 @@ public class RemoveTeamMemberUseCaseImpl implements RemoveTeamMemberUseCase {
         }
 
         team.removeMember(targetUserId);
-        eventPublisher.publish(team.pullDomainEvents());
-        teamRepository.save(team);
+        outboxWriter.saveTeamAndPublish(team);
     }
 }

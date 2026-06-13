@@ -9,8 +9,8 @@ import com.epm.user.domain.model.Team;
 import com.epm.user.domain.model.TeamRole;
 import com.epm.user.domain.port.in.AddTeamMemberUseCase;
 import com.epm.user.domain.port.in.command.AddMemberCommand;
-import com.epm.user.domain.port.out.DomainEventPublisher;
 import com.epm.user.domain.port.out.TeamRepository;
+import com.epm.user.domain.port.out.TransactionalOutboxWriter;
 import com.epm.user.domain.port.out.UserProfileRepository;
 
 /**
@@ -22,14 +22,14 @@ public class AddTeamMemberUseCaseImpl implements AddTeamMemberUseCase {
 
     private final TeamRepository teamRepository;
     private final UserProfileRepository profileRepository;
-    private final DomainEventPublisher eventPublisher;
+    private final TransactionalOutboxWriter outboxWriter;
 
     public AddTeamMemberUseCaseImpl(TeamRepository teamRepository,
             UserProfileRepository profileRepository,
-            DomainEventPublisher eventPublisher) {
+            TransactionalOutboxWriter outboxWriter) {
         this.teamRepository = teamRepository;
         this.profileRepository = profileRepository;
-        this.eventPublisher = eventPublisher;
+        this.outboxWriter = outboxWriter;
     }
 
     @Override
@@ -52,7 +52,6 @@ public class AddTeamMemberUseCaseImpl implements AddTeamMemberUseCase {
         }
 
         team.addMember(command.userId(), command.role());
-        eventPublisher.publish(team.pullDomainEvents());
-        teamRepository.save(team);
+        outboxWriter.saveTeamAndPublish(team);
     }
 }

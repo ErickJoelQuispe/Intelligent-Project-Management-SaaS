@@ -12,8 +12,8 @@ import com.epm.user.domain.exception.LastOwnerException;
 import com.epm.user.domain.exception.UnauthorizedException;
 import com.epm.user.domain.model.Team;
 import com.epm.user.domain.model.TeamRole;
-import com.epm.user.domain.port.out.DomainEventPublisher;
 import com.epm.user.domain.port.out.TeamRepository;
+import com.epm.user.domain.port.out.TransactionalOutboxWriter;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -22,7 +22,6 @@ import org.mockito.junit.jupiter.MockitoExtension;
 
 /**
  * Unit tests for {@link RemoveTeamMemberUseCaseImpl}.
- * RED: RemoveTeamMemberUseCaseImpl does not exist yet.
  */
 @ExtendWith(MockitoExtension.class)
 class RemoveTeamMemberUseCaseTest {
@@ -31,13 +30,13 @@ class RemoveTeamMemberUseCaseTest {
     private TeamRepository teamRepository;
 
     @Mock
-    private DomainEventPublisher eventPublisher;
+    private TransactionalOutboxWriter outboxWriter;
 
     private RemoveTeamMemberUseCaseImpl useCase;
 
     @BeforeEach
     void setUp() {
-        useCase = new RemoveTeamMemberUseCaseImpl(teamRepository, eventPublisher);
+        useCase = new RemoveTeamMemberUseCaseImpl(teamRepository, outboxWriter);
     }
 
     @Test
@@ -49,12 +48,11 @@ class RemoveTeamMemberUseCaseTest {
         team.addMember(memberId, TeamRole.MEMBER);
         team.pullDomainEvents();
         when(teamRepository.findByIdAndTenantId(team.getId(), tenantId)).thenReturn(Optional.of(team));
-        when(teamRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
+        when(outboxWriter.saveTeamAndPublish(any())).thenAnswer(inv -> inv.getArgument(0));
 
         useCase.removeMember(team.getId(), ownerId, memberId, tenantId);
 
-        verify(teamRepository).save(any());
-        verify(eventPublisher).publish(any());
+        verify(outboxWriter).saveTeamAndPublish(any());
     }
 
     @Test

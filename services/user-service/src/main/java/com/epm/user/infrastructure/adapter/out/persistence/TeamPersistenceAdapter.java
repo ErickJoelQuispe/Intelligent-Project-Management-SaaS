@@ -2,19 +2,25 @@ package com.epm.user.infrastructure.adapter.out.persistence;
 
 import java.time.Instant;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
+import java.util.stream.Collectors;
 
 import com.epm.user.domain.model.Team;
 import com.epm.user.domain.model.TeamMembership;
 import com.epm.user.domain.model.TeamRole;
 import com.epm.user.domain.port.out.TeamRepository;
 import org.springframework.stereotype.Component;
+import org.springframework.transaction.annotation.Transactional;
 
 /**
  * Adapter implementing {@link TeamRepository} port using JPA.
  *
  * <p>Reconstitutes the Team aggregate with all its memberships.
+ *
+ * <p>The list path ({@link #findAllByMemberUserId}) fetches memberships for all
+ * returned teams in a single batch query to avoid the N+1 problem.
  */
 @Component
 public class TeamPersistenceAdapter implements TeamRepository {
@@ -35,11 +41,12 @@ public class TeamPersistenceAdapter implements TeamRepository {
     }
 
     @Override
+    @Transactional
     public Team save(Team team) {
         TeamJpaEntity teamEntity = toTeamEntity(team);
         teamJpaRepository.save(teamEntity);
 
-        // Save/update all memberships
+        // Save/update all memberships — runs within the same transaction as the team row
         for (TeamMembership membership : team.getMemberships()) {
             TeamMembershipJpaEntity membershipEntity = toMembershipEntity(membership, team.getTenantId());
             membershipJpaRepository.save(membershipEntity);
@@ -49,19 +56,48 @@ public class TeamPersistenceAdapter implements TeamRepository {
                 .orElseThrow(() -> new IllegalStateException("Failed to reload team after save"));
     }
 
+    /**
+     * Lists all teams a user is an active member of.
+     *
+     * <p>Memberships for all returned teams are fetched in a <em>single</em> batch
+     * query ({@code findByTeamIdInAndRemovedAtIsNull}) and grouped in memory,
+     * eliminating the N+1 per-team membership query that the old implementation had.
+     */
     @Override
     public List<Team> findAllByMemberUserId(UUID userId, UUID tenantId) {
-        return teamJpaRepository.findAllTeamsByMemberUserId(userId, tenantId).stream()
-                .map(this::reconstitute)
+        List<TeamJpaEntity> teamEntities =
+                teamJpaRepository.findAllTeamsByMemberUserId(userId, tenantId);
+
+        if (teamEntities.isEmpty()) {
+            return List.of();
+        }
+
+        // Batch-fetch all memberships for the found teams in ONE query
+        List<UUID> teamIds = teamEntities.stream().map(TeamJpaEntity::getId).toList();
+        Map<UUID, List<TeamMembershipJpaEntity>> membershipsByTeam =
+                membershipJpaRepository.findByTeamIdInAndRemovedAtIsNull(teamIds)
+                        .stream()
+                        .collect(Collectors.groupingBy(TeamMembershipJpaEntity::getTeamId));
+
+        return teamEntities.stream()
+                .map(entity -> reconstituteWithMemberships(
+                        entity,
+                        membershipsByTeam.getOrDefault(entity.getId(), List.of())))
                 .toList();
     }
 
     // ── Mapping ──────────────────────────────────────────────────────────────
 
+    /** Single-team reconstitution — issues one membership query per call (used for single-team paths). */
     private Team reconstitute(TeamJpaEntity entity) {
         List<TeamMembershipJpaEntity> membershipEntities =
                 membershipJpaRepository.findByTeamIdAndRemovedAtIsNull(entity.getId());
-        // Also include removed memberships to preserve aggregate integrity
+        return reconstituteWithMemberships(entity, membershipEntities);
+    }
+
+    /** Reconstitution from pre-fetched memberships — no additional DB query. */
+    private Team reconstituteWithMemberships(TeamJpaEntity entity,
+            List<TeamMembershipJpaEntity> membershipEntities) {
         List<TeamMembership> memberships = membershipEntities.stream()
                 .map(this::toMembershipDomain)
                 .toList();

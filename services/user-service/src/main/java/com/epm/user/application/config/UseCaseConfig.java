@@ -9,8 +9,8 @@ import com.epm.user.application.usecase.ListTeamsUseCaseImpl;
 import com.epm.user.application.usecase.ListTenantUsersUseCaseImpl;
 import com.epm.user.application.usecase.RemoveTeamMemberUseCaseImpl;
 import com.epm.user.application.usecase.UpdateOwnProfileUseCaseImpl;
-import com.epm.user.domain.port.out.DomainEventPublisher;
 import com.epm.user.domain.port.out.TeamRepository;
+import com.epm.user.domain.port.out.TransactionalOutboxWriter;
 import com.epm.user.domain.port.out.UserProfileRepository;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -36,14 +36,13 @@ public class UseCaseConfig {
 
     @Bean
     UpdateOwnProfileUseCaseImpl updateOwnProfileUseCase(UserProfileRepository profileRepository,
-            DomainEventPublisher eventPublisher) {
-        return new UpdateOwnProfileUseCaseImpl(profileRepository, eventPublisher);
+            TransactionalOutboxWriter outboxWriter) {
+        return new UpdateOwnProfileUseCaseImpl(profileRepository, outboxWriter);
     }
 
     @Bean
-    CreateTeamUseCaseImpl createTeamUseCase(TeamRepository teamRepository,
-            DomainEventPublisher eventPublisher) {
-        return new CreateTeamUseCaseImpl(teamRepository, eventPublisher);
+    CreateTeamUseCaseImpl createTeamUseCase(TransactionalOutboxWriter outboxWriter) {
+        return new CreateTeamUseCaseImpl(outboxWriter);
     }
 
     @Bean
@@ -59,19 +58,19 @@ public class UseCaseConfig {
     @Bean
     AddTeamMemberUseCaseImpl addTeamMemberUseCase(TeamRepository teamRepository,
             UserProfileRepository profileRepository,
-            DomainEventPublisher eventPublisher) {
-        return new AddTeamMemberUseCaseImpl(teamRepository, profileRepository, eventPublisher);
+            TransactionalOutboxWriter outboxWriter) {
+        return new AddTeamMemberUseCaseImpl(teamRepository, profileRepository, outboxWriter);
     }
 
     @Bean
     RemoveTeamMemberUseCaseImpl removeTeamMemberUseCase(TeamRepository teamRepository,
-            DomainEventPublisher eventPublisher) {
-        return new RemoveTeamMemberUseCaseImpl(teamRepository, eventPublisher);
+            TransactionalOutboxWriter outboxWriter) {
+        return new RemoveTeamMemberUseCaseImpl(teamRepository, outboxWriter);
     }
 
     @Bean
     DeleteTeamUseCaseImpl deleteTeamUseCase(TeamRepository teamRepository,
-            DomainEventPublisher eventPublisher) {
-        return new DeleteTeamUseCaseImpl(teamRepository, eventPublisher);
+            TransactionalOutboxWriter outboxWriter) {
+        return new DeleteTeamUseCaseImpl(teamRepository, outboxWriter);
     }
 }

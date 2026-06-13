@@ -7,8 +7,8 @@ import com.epm.user.domain.exception.UnauthorizedException;
 import com.epm.user.domain.model.Team;
 import com.epm.user.domain.model.TeamRole;
 import com.epm.user.domain.port.in.DeleteTeamUseCase;
-import com.epm.user.domain.port.out.DomainEventPublisher;
 import com.epm.user.domain.port.out.TeamRepository;
+import com.epm.user.domain.port.out.TransactionalOutboxWriter;
 
 /**
  * Implementation of {@link DeleteTeamUseCase}.
@@ -18,12 +18,12 @@ import com.epm.user.domain.port.out.TeamRepository;
 public class DeleteTeamUseCaseImpl implements DeleteTeamUseCase {
 
     private final TeamRepository teamRepository;
-    private final DomainEventPublisher eventPublisher;
+    private final TransactionalOutboxWriter outboxWriter;
 
     public DeleteTeamUseCaseImpl(TeamRepository teamRepository,
-            DomainEventPublisher eventPublisher) {
+            TransactionalOutboxWriter outboxWriter) {
         this.teamRepository = teamRepository;
-        this.eventPublisher = eventPublisher;
+        this.outboxWriter = outboxWriter;
     }
 
     @Override
@@ -40,7 +40,6 @@ public class DeleteTeamUseCaseImpl implements DeleteTeamUseCase {
         }
 
         team.delete();
-        eventPublisher.publish(team.pullDomainEvents());
-        teamRepository.save(team);
+        outboxWriter.saveTeamAndPublish(team);
     }
 }

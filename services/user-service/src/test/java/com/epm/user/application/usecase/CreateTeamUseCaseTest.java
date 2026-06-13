@@ -8,12 +8,11 @@ import static org.mockito.Mockito.when;
 
 import java.util.UUID;
 
+import com.epm.user.domain.exception.InvalidTeamNameException;
 import com.epm.user.domain.model.TeamRole;
 import com.epm.user.domain.port.in.command.CreateTeamCommand;
 import com.epm.user.domain.port.in.result.TeamResult;
-import com.epm.user.domain.port.out.DomainEventPublisher;
-import com.epm.user.domain.port.out.TeamRepository;
-import jakarta.validation.ValidationException;
+import com.epm.user.domain.port.out.TransactionalOutboxWriter;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -22,29 +21,26 @@ import org.mockito.junit.jupiter.MockitoExtension;
 
 /**
  * Unit tests for {@link CreateTeamUseCaseImpl}.
- * RED: CreateTeamUseCaseImpl does not exist yet.
  */
 @ExtendWith(MockitoExtension.class)
 class CreateTeamUseCaseTest {
 
     @Mock
-    private TeamRepository teamRepository;
-
-    @Mock
-    private DomainEventPublisher eventPublisher;
+    private TransactionalOutboxWriter outboxWriter;
 
     private CreateTeamUseCaseImpl useCase;
 
     @BeforeEach
     void setUp() {
-        useCase = new CreateTeamUseCaseImpl(teamRepository, eventPublisher);
+        useCase = new CreateTeamUseCaseImpl(outboxWriter);
     }
 
     @Test
     void happyPathCreatesTeamWithOwnerMembershipAndPublishesEvent() {
         UUID ownerId = UUID.randomUUID();
         UUID tenantId = UUID.randomUUID();
-        when(teamRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
+        // outboxWriter.saveTeamAndPublish returns the same team (events already pulled)
+        when(outboxWriter.saveTeamAndPublish(any())).thenAnswer(inv -> inv.getArgument(0));
 
         CreateTeamCommand cmd = new CreateTeamCommand("Alpha Team", "A test team");
         TeamResult result = useCase.createTeam(ownerId, tenantId, cmd);
@@ -55,17 +51,27 @@ class CreateTeamUseCaseTest {
         assertThat(result.members()).hasSize(1);
         assertThat(result.members().get(0).role()).isEqualTo(TeamRole.OWNER);
         assertThat(result.members().get(0).userId()).isEqualTo(ownerId);
-        verify(eventPublisher).publish(any());
+        verify(outboxWriter).saveTeamAndPublish(any());
     }
 
     @Test
-    void nameTooLongThrowsValidationException() {
+    void nameTooLongThrowsInvalidTeamNameException() {
         UUID ownerId = UUID.randomUUID();
         UUID tenantId = UUID.randomUUID();
         String tooLong = "A".repeat(101);
         CreateTeamCommand cmd = new CreateTeamCommand(tooLong, null);
 
         assertThatThrownBy(() -> useCase.createTeam(ownerId, tenantId, cmd))
-                .isInstanceOf(ValidationException.class);
+                .isInstanceOf(InvalidTeamNameException.class);
+    }
+
+    @Test
+    void blankNameThrowsInvalidTeamNameException() {
+        UUID ownerId = UUID.randomUUID();
+        UUID tenantId = UUID.randomUUID();
+        CreateTeamCommand cmd = new CreateTeamCommand("  ", null);
+
+        assertThatThrownBy(() -> useCase.createTeam(ownerId, tenantId, cmd))
+                .isInstanceOf(InvalidTeamNameException.class);
     }
 }

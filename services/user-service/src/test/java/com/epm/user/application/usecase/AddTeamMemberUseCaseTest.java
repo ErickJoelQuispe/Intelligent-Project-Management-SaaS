@@ -15,8 +15,8 @@ import com.epm.user.domain.exception.UserNotFoundException;
 import com.epm.user.domain.model.Team;
 import com.epm.user.domain.model.TeamRole;
 import com.epm.user.domain.port.in.command.AddMemberCommand;
-import com.epm.user.domain.port.out.DomainEventPublisher;
 import com.epm.user.domain.port.out.TeamRepository;
+import com.epm.user.domain.port.out.TransactionalOutboxWriter;
 import com.epm.user.domain.port.out.UserProfileRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -26,7 +26,6 @@ import org.mockito.junit.jupiter.MockitoExtension;
 
 /**
  * Unit tests for {@link AddTeamMemberUseCaseImpl}.
- * RED: AddTeamMemberUseCaseImpl does not exist yet.
  */
 @ExtendWith(MockitoExtension.class)
 class AddTeamMemberUseCaseTest {
@@ -38,13 +37,13 @@ class AddTeamMemberUseCaseTest {
     private UserProfileRepository profileRepository;
 
     @Mock
-    private DomainEventPublisher eventPublisher;
+    private TransactionalOutboxWriter outboxWriter;
 
     private AddTeamMemberUseCaseImpl useCase;
 
     @BeforeEach
     void setUp() {
-        useCase = new AddTeamMemberUseCaseImpl(teamRepository, profileRepository, eventPublisher);
+        useCase = new AddTeamMemberUseCaseImpl(teamRepository, profileRepository, outboxWriter);
     }
 
     @Test
@@ -55,12 +54,11 @@ class AddTeamMemberUseCaseTest {
         Team team = Team.create(tenantId, ownerId, "Alpha", null);
         when(teamRepository.findByIdAndTenantId(team.getId(), tenantId)).thenReturn(Optional.of(team));
         when(profileRepository.existsByIdAndTenantId(memberId, tenantId)).thenReturn(true);
-        when(teamRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
+        when(outboxWriter.saveTeamAndPublish(any())).thenAnswer(inv -> inv.getArgument(0));
 
         useCase.addMember(team.getId(), ownerId, tenantId, new AddMemberCommand(memberId, TeamRole.MEMBER));
 
-        verify(teamRepository).save(any());
-        verify(eventPublisher).publish(any());
+        verify(outboxWriter).saveTeamAndPublish(any());
     }
 
     @Test

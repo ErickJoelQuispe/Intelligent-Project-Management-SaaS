@@ -14,7 +14,7 @@ import com.epm.user.domain.exception.ProfileNotFoundException;
 import com.epm.user.domain.model.UserProfile;
 import com.epm.user.domain.port.in.command.UpdateProfileCommand;
 import com.epm.user.domain.port.in.result.UserProfileResult;
-import com.epm.user.domain.port.out.DomainEventPublisher;
+import com.epm.user.domain.port.out.TransactionalOutboxWriter;
 import com.epm.user.domain.port.out.UserProfileRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -24,7 +24,6 @@ import org.mockito.junit.jupiter.MockitoExtension;
 
 /**
  * Unit tests for {@link UpdateOwnProfileUseCaseImpl}.
- * RED: UpdateOwnProfileUseCaseImpl does not exist yet.
  */
 @ExtendWith(MockitoExtension.class)
 class UpdateOwnProfileUseCaseTest {
@@ -33,13 +32,13 @@ class UpdateOwnProfileUseCaseTest {
     private UserProfileRepository profileRepository;
 
     @Mock
-    private DomainEventPublisher eventPublisher;
+    private TransactionalOutboxWriter outboxWriter;
 
     private UpdateOwnProfileUseCaseImpl useCase;
 
     @BeforeEach
     void setUp() {
-        useCase = new UpdateOwnProfileUseCaseImpl(profileRepository, eventPublisher);
+        useCase = new UpdateOwnProfileUseCaseImpl(profileRepository, outboxWriter);
     }
 
     @Test
@@ -48,7 +47,7 @@ class UpdateOwnProfileUseCaseTest {
         UUID tenantId = UUID.randomUUID();
         UserProfile profile = UserProfile.create(userId, tenantId, "alice@example.com", "Alice", "Smith");
         when(profileRepository.findByIdAndTenantId(userId, tenantId)).thenReturn(Optional.of(profile));
-        when(profileRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
+        when(outboxWriter.saveProfileAndPublish(any())).thenAnswer(inv -> inv.getArgument(0));
 
         UpdateProfileCommand cmd = new UpdateProfileCommand("Bob", "Jones", "Bio", "http://img.png", 0);
         UserProfileResult result = useCase.updateProfile(userId, tenantId, cmd);
@@ -56,8 +55,7 @@ class UpdateOwnProfileUseCaseTest {
         assertThat(result.firstName()).isEqualTo("Bob");
         assertThat(result.lastName()).isEqualTo("Jones");
         assertThat(result.version()).isEqualTo(1L);
-        verify(profileRepository).save(any());
-        verify(eventPublisher).publish(any());
+        verify(outboxWriter).saveProfileAndPublish(any());
     }
 
     @Test
@@ -79,7 +77,7 @@ class UpdateOwnProfileUseCaseTest {
         UUID tenantId = UUID.randomUUID();
         UserProfile profile = UserProfile.create(userId, tenantId, "alice@example.com", "Alice", "Smith");
         when(profileRepository.findByIdAndTenantId(userId, tenantId)).thenReturn(Optional.of(profile));
-        when(profileRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
+        when(outboxWriter.saveProfileAndPublish(any())).thenAnswer(inv -> inv.getArgument(0));
 
         UpdateProfileCommand cmd = new UpdateProfileCommand("Bob", "Jones", null, null, 0);
         UserProfileResult result = useCase.updateProfile(userId, tenantId, cmd);
