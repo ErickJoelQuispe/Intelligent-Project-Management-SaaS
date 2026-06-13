@@ -2,33 +2,32 @@ package com.epm.template.application.usecase;
 
 import java.util.UUID;
 
-import com.epm.template.domain.event.ExampleCreatedEvent;
 import com.epm.template.domain.model.Example;
 import com.epm.template.domain.port.in.CreateExampleUseCase;
-import com.epm.template.domain.port.out.ExampleEventPublisher;
-import com.epm.template.domain.port.out.ExampleRepository;
+import com.epm.template.domain.port.out.TransactionalExampleWriter;
 
 /**
  * Implementation of {@link CreateExampleUseCase}.
  *
  * <p>Orchestrates domain objects and driven ports.
  * No Spring annotations here — wiring happens in {@code infrastructure/config}.
+ *
+ * <p>The use case delegates to {@link TransactionalExampleWriter} which persists
+ * the aggregate AND its domain events in a single transaction — the correct
+ * outbox pattern. This eliminates the non-atomic save-then-publish anti-pattern
+ * where a crash between the two calls would lose the event permanently.
  */
 public class CreateExampleUseCaseImpl implements CreateExampleUseCase {
 
-    private final ExampleRepository repository;
-    private final ExampleEventPublisher eventPublisher;
+    private final TransactionalExampleWriter writer;
 
-    public CreateExampleUseCaseImpl(ExampleRepository repository, ExampleEventPublisher eventPublisher) {
-        this.repository = repository;
-        this.eventPublisher = eventPublisher;
+    public CreateExampleUseCaseImpl(TransactionalExampleWriter writer) {
+        this.writer = writer;
     }
 
     @Override
-    public Example create(String name) {
-        Example example = new Example(UUID.randomUUID(), name);
-        Example saved = repository.save(example);
-        eventPublisher.publish(ExampleCreatedEvent.of(saved.id(), saved.name()));
-        return saved;
+    public Example create(UUID tenantId, String name) {
+        Example example = Example.create(tenantId, name);
+        return writer.saveAndPublish(example);
     }
 }

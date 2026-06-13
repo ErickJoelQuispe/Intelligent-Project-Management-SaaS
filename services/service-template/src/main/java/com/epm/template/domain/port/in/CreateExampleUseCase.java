@@ -1,5 +1,7 @@
 package com.epm.template.domain.port.in;
 
+import java.util.UUID;
+
 import com.epm.template.domain.model.Example;
 
 /**
@@ -10,5 +12,12 @@ import com.epm.template.domain.model.Example;
  */
 public interface CreateExampleUseCase {
 
-    Example create(String name);
+    /**
+     * Creates a new Example for the given tenant.
+     *
+     * @param tenantId the tenant this example belongs to
+     * @param name     a non-blank display name for the example
+     * @return the persisted Example aggregate
+     */
+    Example create(UUID tenantId, String name);
 }

@@ -9,9 +9,9 @@ import com.epm.template.domain.model.Example;
  *
  * <p>Mapping from domain to DTO lives here — not in the domain model.
  */
-record ExampleResponse(UUID id, String name) {
+record ExampleResponse(UUID id, UUID tenantId, String name) {
 
     static ExampleResponse from(Example example) {
-        return new ExampleResponse(example.id(), example.name());
+        return new ExampleResponse(example.id(), example.tenantId(), example.name());
     }
 }

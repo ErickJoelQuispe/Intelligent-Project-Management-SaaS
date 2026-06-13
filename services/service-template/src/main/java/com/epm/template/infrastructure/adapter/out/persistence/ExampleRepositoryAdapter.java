@@ -13,6 +13,12 @@ import org.springframework.stereotype.Component;
  * <p>This class is the only bridge between the domain's {@link ExampleRepository}
  * interface and Spring Data JPA. If tomorrow we switch to jOOQ or JDBC,
  * only this class changes.
+ *
+ * <p>Note: {@link #save} re-fetches the entity from the database (via the JPA identity map
+ * after {@code jpaRepository.save}), returning a fresh {@link Example} via
+ * {@link Example#reconstitute} — which has an empty domain-event list. This is intentional:
+ * domain events MUST be pulled from the aggregate BEFORE calling save (see
+ * {@link com.epm.template.infrastructure.adapter.out.persistence.TransactionalExampleWriterImpl}).
  */
 @Component
 class ExampleRepositoryAdapter implements ExampleRepository {
@@ -25,7 +31,7 @@ class ExampleRepositoryAdapter implements ExampleRepository {
 
     @Override
     public Example save(Example example) {
-        ExampleJpaEntity entity = new ExampleJpaEntity(example.id(), example.name());
+        ExampleJpaEntity entity = new ExampleJpaEntity(example.id(), example.tenantId(), example.name());
         ExampleJpaEntity saved = jpaRepository.save(entity);
         return toDomain(saved);
     }
@@ -36,6 +42,6 @@ class ExampleRepositoryAdapter implements ExampleRepository {
     }
 
     private Example toDomain(ExampleJpaEntity entity) {
-        return new Example(entity.getId(), entity.getName());
+        return Example.reconstitute(entity.getId(), entity.getTenantId(), entity.getName());
     }
 }

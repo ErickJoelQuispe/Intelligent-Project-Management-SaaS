@@ -27,7 +27,7 @@ class ExampleController {
 
     @PostMapping
     ResponseEntity<ExampleResponse> create(@RequestBody CreateExampleRequest request) {
-        Example example = createUseCase.create(request.name());
+        Example example = createUseCase.create(request.tenantId(), request.name());
         return ResponseEntity.ok(ExampleResponse.from(example));
     }
 

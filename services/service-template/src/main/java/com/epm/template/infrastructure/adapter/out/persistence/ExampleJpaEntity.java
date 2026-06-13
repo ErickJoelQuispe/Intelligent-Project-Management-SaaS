@@ -21,18 +21,26 @@ class ExampleJpaEntity {
     @Column(columnDefinition = "uuid")
     private UUID id;
 
+    @Column(name = "tenant_id", nullable = false, columnDefinition = "uuid")
+    private UUID tenantId;
+
     @Column(nullable = false)
     private String name;
 
     protected ExampleJpaEntity() {}
 
-    ExampleJpaEntity(UUID id, String name) {
+    ExampleJpaEntity(UUID id, UUID tenantId, String name) {
         this.id = id;
+        this.tenantId = tenantId;
         this.name = name;
     }
 
     UUID getId() {
         return id;
+    }
+
+    UUID getTenantId() {
+        return tenantId;
     }
 
     String getName() {
