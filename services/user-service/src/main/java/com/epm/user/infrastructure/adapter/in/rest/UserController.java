@@ -10,23 +10,27 @@ import com.epm.user.domain.port.in.command.UpdateProfileCommand;
 import com.epm.user.domain.port.in.dto.JwtClaimsDto;
 import com.epm.user.domain.port.in.result.UserProfileResult;
 import jakarta.validation.Valid;
+import jakarta.validation.constraints.Min;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.oauth2.jwt.Jwt;
+import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 /**
  * REST adapter for user profile operations.
  *
  * <p>GET /me returns X-Profile-Source: database | provisional.
- * <p>GET / lists all active tenant users (capped at 100).
+ * <p>GET / lists a page of active tenant users (default page=0, size=100, max size=100).
  */
 @RestController
 @RequestMapping("/api/v1/users")
+@Validated
 public class UserController {
 
     private final GetOwnProfileUseCase getOwnProfileUseCase;
@@ -83,13 +87,16 @@ public class UserController {
     }
 
     /**
-     * Lists all active users for the calling user's tenant.
-     * Results are capped at 100 — TODO: add cursor-based pagination.
+     * Lists active users for the calling user's tenant with offset pagination.
+     * Accepts optional {@code page} (default 0) and {@code size} (default 100, max 100).
      */
     @GetMapping
-    public List<TenantUserResponse> listTenantUsers(@AuthenticationPrincipal Jwt jwt) {
+    public List<TenantUserResponse> listTenantUsers(
+            @AuthenticationPrincipal Jwt jwt,
+            @RequestParam(defaultValue = "0") @Min(0) int page,
+            @RequestParam(defaultValue = "100") @Min(1) int size) {
         UUID tenantId = jwtClaimsExtractor.getTenantId(jwt);
-        return listTenantUsersUseCase.listTenantUsers(tenantId).stream()
+        return listTenantUsersUseCase.listTenantUsers(tenantId, page, size).stream()
                 .map(u -> new TenantUserResponse(u.getId(), u.getEmail(), u.getFirstName(), u.getLastName()))
                 .toList();
     }

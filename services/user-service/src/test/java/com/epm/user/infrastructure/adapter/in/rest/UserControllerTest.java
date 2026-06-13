@@ -158,4 +158,46 @@ class UserControllerTest {
         mockMvc.perform(get("/api/v1/users/me"))
                 .andExpect(status().isUnauthorized());
     }
+
+    // ── FIX C: invalid pagination params → 400 (not 500) ──────────────────────
+
+    @Test
+    void listTenantUsersWithNegativePageReturns400() throws Exception {
+        UUID userId = UUID.randomUUID();
+        UUID tenantId = UUID.randomUUID();
+
+        mockMvc.perform(get("/api/v1/users")
+                        .param("page", "-1")
+                        .with(jwt().jwt(j -> j
+                                .subject(userId.toString())
+                                .claim("tenant_id", tenantId.toString()))))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    void listTenantUsersWithNegativeSizeReturns400() throws Exception {
+        UUID userId = UUID.randomUUID();
+        UUID tenantId = UUID.randomUUID();
+
+        mockMvc.perform(get("/api/v1/users")
+                        .param("size", "-5")
+                        .with(jwt().jwt(j -> j
+                                .subject(userId.toString())
+                                .claim("tenant_id", tenantId.toString()))))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    void listTenantUsersWithValidDefaultsReturns200() throws Exception {
+        UUID userId = UUID.randomUUID();
+        UUID tenantId = UUID.randomUUID();
+        when(listTenantUsersUseCase.listTenantUsers(any(), org.mockito.ArgumentMatchers.anyInt(),
+                org.mockito.ArgumentMatchers.anyInt())).thenReturn(java.util.List.of());
+
+        mockMvc.perform(get("/api/v1/users")
+                        .with(jwt().jwt(j -> j
+                                .subject(userId.toString())
+                                .claim("tenant_id", tenantId.toString()))))
+                .andExpect(status().isOk());
+    }
 }

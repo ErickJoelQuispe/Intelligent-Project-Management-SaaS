@@ -15,6 +15,17 @@ public interface UserProfileRepository {
 
     List<UserProfile> findAllByTenantId(UUID tenantId);
 
+    /**
+     * Returns a page of active user profiles for the given tenant.
+     * DB-level limiting — no in-memory truncation.
+     *
+     * @param tenantId the tenant to query
+     * @param page     zero-based page number
+     * @param size     maximum number of results (capped by the caller)
+     * @return matching profiles for the requested page
+     */
+    List<UserProfile> findPageByTenantId(UUID tenantId, int page, int size);
+
     UserProfile save(UserProfile profile);
 
     boolean existsByIdAndTenantId(UUID id, UUID tenantId);
