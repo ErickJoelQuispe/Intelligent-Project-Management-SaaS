@@ -4,8 +4,8 @@ import com.epm.template.application.usecase.CreateExampleUseCaseImpl;
 import com.epm.template.application.usecase.FindExampleUseCaseImpl;
 import com.epm.template.domain.port.in.CreateExampleUseCase;
 import com.epm.template.domain.port.in.FindExampleUseCase;
-import com.epm.template.domain.port.out.ExampleEventPublisher;
 import com.epm.template.domain.port.out.ExampleRepository;
+import com.epm.template.domain.port.out.TransactionalExampleWriter;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
@@ -21,9 +21,8 @@ import org.springframework.context.annotation.Configuration;
 class UseCaseConfig {
 
     @Bean
-    CreateExampleUseCase createExampleUseCase(
-            ExampleRepository repository, ExampleEventPublisher eventPublisher) {
-        return new CreateExampleUseCaseImpl(repository, eventPublisher);
+    CreateExampleUseCase createExampleUseCase(TransactionalExampleWriter writer) {
+        return new CreateExampleUseCaseImpl(writer);
     }
 
     @Bean
