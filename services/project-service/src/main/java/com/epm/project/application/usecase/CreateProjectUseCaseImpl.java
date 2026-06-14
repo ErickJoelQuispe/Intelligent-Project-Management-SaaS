@@ -8,43 +8,36 @@ import com.epm.project.domain.port.in.command.CreateProjectCommand;
 import com.epm.project.domain.port.in.result.ProjectMemberResult;
 import com.epm.project.domain.port.in.result.ProjectResult;
 import com.epm.project.domain.port.in.result.ProjectTeamResult;
-import com.epm.project.domain.port.out.DomainEventPublisher;
-import com.epm.project.domain.port.out.ProjectRepository;
+import com.epm.project.domain.port.out.TransactionalOutboxWriter;
 import io.micrometer.core.instrument.Counter;
 import io.micrometer.core.instrument.MeterRegistry;
-import jakarta.validation.ValidationException;
 
 /**
  * Implementation of {@link CreateProjectUseCase}.
  *
  * <p>Pure Java — no Spring annotations. Wired by {@code UseCaseConfig}.
+ *
+ * <p>Uses {@link TransactionalOutboxWriter} so aggregate save and outbox event
+ * insertion happen atomically in one transaction (FIX 1).
+ * The duplicate name validation guard was removed (FIX 11): {@link Project#create}
+ * already throws {@link IllegalArgumentException} for blank or oversized names,
+ * which {@code GlobalExceptionHandler} maps to 400.
  */
 public class CreateProjectUseCaseImpl implements CreateProjectUseCase {
 
-    private final ProjectRepository projectRepository;
-    private final DomainEventPublisher eventPublisher;
+    private final TransactionalOutboxWriter outboxWriter;
     private final MeterRegistry meterRegistry;
 
-    public CreateProjectUseCaseImpl(ProjectRepository projectRepository,
-            DomainEventPublisher eventPublisher,
+    public CreateProjectUseCaseImpl(TransactionalOutboxWriter outboxWriter,
             MeterRegistry meterRegistry) {
-        this.projectRepository = projectRepository;
-        this.eventPublisher = eventPublisher;
+        this.outboxWriter = outboxWriter;
         this.meterRegistry = meterRegistry;
     }
 
     @Override
     public ProjectResult execute(CreateProjectCommand command) {
-        if (command.name() == null || command.name().isBlank()) {
-            throw new ValidationException("Project name must not be blank");
-        }
-        if (command.name().length() > 100) {
-            throw new ValidationException("Project name must not exceed 100 characters");
-        }
-
         Project project = Project.create(command);
-        eventPublisher.publish(project.pullDomainEvents());
-        Project saved = projectRepository.save(project);
+        Project saved = outboxWriter.saveAndPublish(project);
 
         Counter.builder("projects.created")
                 .tag("tenantId", command.tenantId().toString())

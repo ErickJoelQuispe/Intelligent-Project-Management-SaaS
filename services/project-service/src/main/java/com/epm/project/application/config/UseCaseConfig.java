@@ -7,8 +7,8 @@ import com.epm.project.application.usecase.CreateProjectUseCaseImpl;
 import com.epm.project.application.usecase.GetProjectUseCaseImpl;
 import com.epm.project.application.usecase.ListProjectsUseCaseImpl;
 import com.epm.project.application.usecase.UpdateProjectUseCaseImpl;
-import com.epm.project.domain.port.out.DomainEventPublisher;
 import com.epm.project.domain.port.out.ProjectRepository;
+import com.epm.project.domain.port.out.TransactionalOutboxWriter;
 import io.micrometer.core.instrument.MeterRegistry;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -23,10 +23,9 @@ import org.springframework.context.annotation.Configuration;
 public class UseCaseConfig {
 
     @Bean
-    CreateProjectUseCaseImpl createProjectUseCase(ProjectRepository projectRepository,
-            DomainEventPublisher eventPublisher,
+    CreateProjectUseCaseImpl createProjectUseCase(TransactionalOutboxWriter outboxWriter,
             MeterRegistry meterRegistry) {
-        return new CreateProjectUseCaseImpl(projectRepository, eventPublisher, meterRegistry);
+        return new CreateProjectUseCaseImpl(outboxWriter, meterRegistry);
     }
 
     @Bean
@@ -41,20 +40,20 @@ public class UseCaseConfig {
 
     @Bean
     UpdateProjectUseCaseImpl updateProjectUseCase(ProjectRepository projectRepository,
-            DomainEventPublisher eventPublisher) {
-        return new UpdateProjectUseCaseImpl(projectRepository, eventPublisher);
+            TransactionalOutboxWriter outboxWriter) {
+        return new UpdateProjectUseCaseImpl(projectRepository, outboxWriter);
     }
 
     @Bean
     ArchiveProjectUseCaseImpl archiveProjectUseCase(ProjectRepository projectRepository,
-            DomainEventPublisher eventPublisher) {
-        return new ArchiveProjectUseCaseImpl(projectRepository, eventPublisher);
+            TransactionalOutboxWriter outboxWriter) {
+        return new ArchiveProjectUseCaseImpl(projectRepository, outboxWriter);
     }
 
     @Bean
     AssignTeamToProjectUseCaseImpl assignTeamToProjectUseCase(ProjectRepository projectRepository,
-            DomainEventPublisher eventPublisher) {
-        return new AssignTeamToProjectUseCaseImpl(projectRepository, eventPublisher);
+            TransactionalOutboxWriter outboxWriter) {
+        return new AssignTeamToProjectUseCaseImpl(projectRepository, outboxWriter);
     }
 
     @Bean

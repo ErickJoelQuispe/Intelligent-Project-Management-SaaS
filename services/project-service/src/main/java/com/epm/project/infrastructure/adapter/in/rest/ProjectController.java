@@ -1,6 +1,7 @@
 package com.epm.project.infrastructure.adapter.in.rest;
 
 import java.util.List;
+import java.util.Set;
 import java.util.UUID;
 
 import com.epm.project.domain.model.ProjectVisibility;
@@ -93,7 +94,10 @@ public class ProjectController {
             @PathVariable UUID id) {
         UUID callerId = jwtClaimsExtractor.getUserId(jwt);
         UUID tenantId = jwtClaimsExtractor.getTenantId(jwt);
-        return toResponse(getProjectUseCase.execute(id, callerId, tenantId));
+        // TODO: source callerTeamIds from a JWT claim or a user-service lookup;
+        //       empty set means TEAM projects behave as PRIVATE until team claims are wired.
+        Set<UUID> callerTeamIds = Set.of();
+        return toResponse(getProjectUseCase.execute(id, callerId, tenantId, callerTeamIds));
     }
 
     /** PATCH /api/v1/projects/{id} → 200 */

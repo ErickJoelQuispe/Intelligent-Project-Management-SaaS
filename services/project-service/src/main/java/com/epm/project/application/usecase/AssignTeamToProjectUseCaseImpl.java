@@ -4,23 +4,26 @@ import com.epm.project.domain.exception.ProjectNotFoundException;
 import com.epm.project.domain.model.Project;
 import com.epm.project.domain.port.in.AssignTeamToProjectUseCase;
 import com.epm.project.domain.port.in.command.AssignTeamCommand;
-import com.epm.project.domain.port.out.DomainEventPublisher;
 import com.epm.project.domain.port.out.ProjectRepository;
+import com.epm.project.domain.port.out.TransactionalOutboxWriter;
 
 /**
  * Implementation of {@link AssignTeamToProjectUseCase}.
  *
  * <p>Pure Java — no Spring annotations. Wired by {@code UseCaseConfig}.
+ *
+ * <p>Uses {@link TransactionalOutboxWriter} so aggregate save and outbox event
+ * insertion happen atomically in one transaction (FIX 1).
  */
 public class AssignTeamToProjectUseCaseImpl implements AssignTeamToProjectUseCase {
 
     private final ProjectRepository projectRepository;
-    private final DomainEventPublisher eventPublisher;
+    private final TransactionalOutboxWriter outboxWriter;
 
     public AssignTeamToProjectUseCaseImpl(ProjectRepository projectRepository,
-            DomainEventPublisher eventPublisher) {
+            TransactionalOutboxWriter outboxWriter) {
         this.projectRepository = projectRepository;
-        this.eventPublisher = eventPublisher;
+        this.outboxWriter = outboxWriter;
     }
 
     @Override
@@ -31,7 +34,6 @@ public class AssignTeamToProjectUseCaseImpl implements AssignTeamToProjectUseCas
 
         project.assignTeam(command.teamId(), command.callerProfileId());
 
-        eventPublisher.publish(project.pullDomainEvents());
-        projectRepository.save(project);
+        outboxWriter.saveAndPublish(project);
     }
 }
