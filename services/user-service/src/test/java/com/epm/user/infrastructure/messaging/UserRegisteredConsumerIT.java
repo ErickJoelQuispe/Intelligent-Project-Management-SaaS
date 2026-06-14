@@ -142,8 +142,9 @@ class UserRegisteredConsumerIT extends AbstractPostgresIT {
      *
      * <p>Asserts:
      * <ol>
-     *   <li>At most one task threw — the race loser must be caught as a benign
-     *       duplicate and return normally (ideally zero throw).</li>
+     *   <li>NEITHER task threw — with the {@code REQUIRES_NEW} {@code IdempotencyGuard}
+     *       the race loser skips benignly and the consumer transaction is never poisoned,
+     *       so no {@code UnexpectedRollbackException} escapes either thread.</li>
      *   <li>Exactly ONE {@code user_profiles} row exists for the account.</li>
      *   <li>Exactly ONE {@code processed_events} row exists for the eventId
      *       (counted, not {@code existsByEventId} which is true for 1 OR N).</li>
@@ -187,10 +188,11 @@ class UserRegisteredConsumerIT extends AbstractPostgresIT {
             pool.shutdownNow();
         }
 
-        // At most one task threw; the race loser is a benign duplicate.
+        // NEITHER task threw: the REQUIRES_NEW guard prevents rollback poisoning, so the
+        // race loser skips benignly instead of throwing UnexpectedRollbackException at commit.
         assertThat(threwCount.get())
-                .as("At most one concurrent task may throw (benign duplicate)")
-                .isLessThanOrEqualTo(1);
+                .as("No concurrent task may throw — REQUIRES_NEW guard prevents rollback poisoning")
+                .isZero();
 
         // Exactly ONE profile row for the account.
         long profileCount = profileJpaRepository.findAll().stream()
@@ -248,6 +250,34 @@ class UserRegisteredConsumerIT extends AbstractPostgresIT {
         assertThat(profileCount)
                 .as("Only the first profile must exist for tenant %s / email %s", tenantId, email)
                 .isEqualTo(1);
+    }
+
+    /**
+     * Regression guard for poison-message handling.
+     *
+     * <p>A structurally invalid message (missing {@code payload}) is parsed up-front, BEFORE
+     * the idempotency claim. Such a message will NEVER succeed on retry, so the consumer must
+     * skip it WITHOUT rethrowing — it must not waste the error handler's retries or land in
+     * the DLT. We invoke the bean directly and assert no exception escapes and nothing is
+     * persisted.
+     */
+    @Test
+    void consumeAccountRegisteredEvent_poisonMissingPayload_doesNotRethrow() throws Exception {
+        UUID eventId = UUID.randomUUID();
+
+        ObjectNode envelope = objectMapper.createObjectNode();
+        envelope.put("eventId", eventId.toString());
+        envelope.put("eventType", "AccountRegistered");
+        envelope.put("tenantId", UUID.randomUUID().toString());
+        // Intentionally NO payload — structurally invalid (poison).
+        String poison = objectMapper.writeValueAsString(envelope);
+
+        // Must NOT throw — poison is logged and skipped, not rethrown.
+        consumer.consume(poison);
+
+        // Nothing claimed, nothing persisted.
+        assertThat(processedEventRepository.existsByEventId(eventId.toString())).isFalse();
+        assertThat(profileJpaRepository.findAll()).isEmpty();
     }
 
     // ── Helpers ──────────────────────────────────────────────────────────────
