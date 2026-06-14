@@ -85,12 +85,23 @@ public class GlobalExceptionHandler {
         return problem;
     }
 
-    /** 400 Bad Request — invalid status. */
+    /**
+     * 409 Conflict — invalid status string or FSM transition violation.
+     *
+     * <p>Covers two cases:
+     * <ul>
+     *   <li>Controller: an unrecognised status string in the request path.</li>
+     *   <li>Domain FSM: a {@code changeStatus()} call that violates the allowed transition
+     *       table (e.g., DONE → IN_REVIEW, which is not permitted).</li>
+     * </ul>
+     * 409 is the appropriate code for a structurally valid request that conflicts with the
+     * current state of the resource (RFC 7231 §6.5.8).
+     */
     @ExceptionHandler(InvalidStatusException.class)
     public ProblemDetail handleInvalidStatus(InvalidStatusException ex) {
-        ProblemDetail problem = ProblemDetail.forStatus(HttpStatus.BAD_REQUEST);
+        ProblemDetail problem = ProblemDetail.forStatus(HttpStatus.CONFLICT);
         problem.setType(URI.create("https://api.epm.com/errors/invalid-status"));
-        problem.setTitle("Invalid Status");
+        problem.setTitle("Invalid Status Transition");
         problem.setDetail(ex.getMessage());
         problem.setProperty("errorCode", "INVALID_STATUS");
         return problem;

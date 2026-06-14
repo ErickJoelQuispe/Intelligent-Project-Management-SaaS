@@ -4,7 +4,11 @@ import java.time.Instant;
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.EnumMap;
+import java.util.EnumSet;
 import java.util.List;
+import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 
 import com.epm.task.domain.event.TaskAssigned;
@@ -12,6 +16,7 @@ import com.epm.task.domain.event.TaskCreated;
 import com.epm.task.domain.event.TaskDeleted;
 import com.epm.task.domain.event.TaskStatusChanged;
 import com.epm.task.domain.event.TaskUpdated;
+import com.epm.task.domain.exception.InvalidStatusException;
 import com.epm.task.domain.exception.TenantRequiredException;
 import com.epm.task.domain.port.in.command.CreateTaskCommand;
 import com.github.f4b6a3.uuid.UuidCreator;
@@ -39,6 +44,42 @@ public class Task {
     private final Instant createdAt;
     private Instant updatedAt;
     private final List<Object> domainEvents = new ArrayList<>();
+
+    // ── Status FSM ────────────────────────────────────────────────────────────
+
+    /**
+     * Allowed user-driven status transitions (FSM).
+     *
+     * <p>These transitions are enforced by {@link #changeStatus(TaskStatus)} and reflect
+     * product owner decisions:
+     * <ul>
+     *   <li>TODO → IN_PROGRESS, CANCELLED</li>
+     *   <li>IN_PROGRESS → TODO, IN_REVIEW, DONE, CANCELLED</li>
+     *   <li>IN_REVIEW → IN_PROGRESS, DONE, CANCELLED</li>
+     *   <li>DONE → IN_PROGRESS (reopen)</li>
+     *   <li>CANCELLED → TODO (reactivate)</li>
+     * </ul>
+     *
+     * <p>{@link #cancel()} is a system/cascade operation that is NOT FSM-guarded —
+     * it sets CANCELLED from any non-CANCELLED state and is used for cascade cancellations
+     * (e.g., project archived) where DONE → CANCELLED must be permitted.
+     */
+    private static final Map<TaskStatus, Set<TaskStatus>> ALLOWED;
+
+    static {
+        Map<TaskStatus, Set<TaskStatus>> map = new EnumMap<>(TaskStatus.class);
+        map.put(TaskStatus.TODO,
+                EnumSet.of(TaskStatus.IN_PROGRESS, TaskStatus.CANCELLED));
+        map.put(TaskStatus.IN_PROGRESS,
+                EnumSet.of(TaskStatus.TODO, TaskStatus.IN_REVIEW, TaskStatus.DONE, TaskStatus.CANCELLED));
+        map.put(TaskStatus.IN_REVIEW,
+                EnumSet.of(TaskStatus.IN_PROGRESS, TaskStatus.DONE, TaskStatus.CANCELLED));
+        map.put(TaskStatus.DONE,
+                EnumSet.of(TaskStatus.IN_PROGRESS));
+        map.put(TaskStatus.CANCELLED,
+                EnumSet.of(TaskStatus.TODO));
+        ALLOWED = Collections.unmodifiableMap(map);
+    }
 
     // ── Factory ──────────────────────────────────────────────────────────────
 
@@ -175,11 +216,29 @@ public class Task {
     }
 
     /**
-     * Changes the task status and records a {@link TaskStatusChanged} event.
+     * User-driven status change — FSM-validated.
      *
-     * @param newStatus the new status
+     * <p>Allowed transitions are defined in {@link #ALLOWED}. Same-state transitions
+     * (e.g., TODO → TODO) are a silent no-op: the state and {@code updatedAt} are unchanged
+     * and no domain event is emitted. Illegal transitions throw
+     * {@link InvalidStatusException}.
+     *
+     * <p>This method is for API-driven state changes. For cascade/system cancellations
+     * (e.g., project archived), use {@link #cancel()} which is not FSM-guarded.
+     *
+     * @param newStatus the requested new status
+     * @throws InvalidStatusException if the transition from the current status to
+     *                                {@code newStatus} is not permitted by the FSM
      */
     public void changeStatus(TaskStatus newStatus) {
+        if (this.status == newStatus) {
+            // Same-state no-op: idempotent, no event emitted
+            return;
+        }
+        Set<TaskStatus> allowed = ALLOWED.get(this.status);
+        if (allowed == null || !allowed.contains(newStatus)) {
+            throw new InvalidStatusException(this.status, newStatus);
+        }
         TaskStatus oldStatus = this.status;
         this.status = newStatus;
         this.updatedAt = Instant.now();
@@ -209,11 +268,30 @@ public class Task {
     }
 
     /**
-     * Cancels the task by setting status to {@link TaskStatus#CANCELLED}
-     * and records a {@link TaskStatusChanged} event.
+     * System/cascade cancel — NOT FSM-guarded.
+     *
+     * <p>Sets the task status to {@link TaskStatus#CANCELLED} and records a
+     * {@link TaskStatusChanged} event, regardless of the current status. If the task
+     * is already CANCELLED, this is a no-op (no event emitted, no state change).
+     *
+     * <p>This is intentionally distinct from the user-driven {@link #changeStatus} method:
+     * cascade cancellations (e.g., project archived) must be able to cancel tasks in
+     * ANY status — including DONE → CANCELLED, which is not in the FSM's allowed set.
      */
     public void cancel() {
-        changeStatus(TaskStatus.CANCELLED);
+        if (this.status == TaskStatus.CANCELLED) {
+            return; // already cancelled — no-op
+        }
+        TaskStatus oldStatus = this.status;
+        this.status = TaskStatus.CANCELLED;
+        this.updatedAt = Instant.now();
+        domainEvents.add(new TaskStatusChanged(
+                UuidCreator.getTimeOrderedEpoch(),
+                this.id,
+                oldStatus,
+                TaskStatus.CANCELLED,
+                this.tenantId,
+                this.updatedAt));
     }
 
     /**

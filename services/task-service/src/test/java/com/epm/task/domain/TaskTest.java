@@ -10,6 +10,7 @@ import com.epm.task.domain.event.TaskAssigned;
 import com.epm.task.domain.event.TaskCreated;
 import com.epm.task.domain.event.TaskStatusChanged;
 import com.epm.task.domain.event.TaskUpdated;
+import com.epm.task.domain.exception.InvalidStatusException;
 import com.epm.task.domain.exception.TenantRequiredException;
 import com.epm.task.domain.model.Task;
 import com.epm.task.domain.model.TaskPriority;
@@ -19,6 +20,9 @@ import org.junit.jupiter.api.Test;
 
 /**
  * Unit tests for the Task aggregate root.
+ *
+ * <p>Covers: factory methods, FSM transitions (allowed, disallowed, same-state no-op),
+ * cancel() exempt from FSM, assign(), update(), pullDomainEvents().
  */
 class TaskTest {
 
@@ -86,6 +90,211 @@ class TaskTest {
                 .hasMessageContaining("title");
     }
 
+    // ── FSM: allowed transitions ───────────────────────────────────────────────
+
+    @Test
+    void changeStatus_todoToInProgress_allowed() {
+        Task task = createValidTask(); // TODO
+        task.changeStatus(TaskStatus.IN_PROGRESS);
+        assertThat(task.getStatus()).isEqualTo(TaskStatus.IN_PROGRESS);
+        assertThat(task.getDomainEvents()).hasSize(1);
+    }
+
+    @Test
+    void changeStatus_todoToCancelled_allowed() {
+        Task task = createValidTask(); // TODO
+        task.changeStatus(TaskStatus.CANCELLED);
+        assertThat(task.getStatus()).isEqualTo(TaskStatus.CANCELLED);
+    }
+
+    @Test
+    void changeStatus_inProgressToTodo_allowed() {
+        Task task = createTaskWithStatus(TaskStatus.IN_PROGRESS);
+        task.changeStatus(TaskStatus.TODO);
+        assertThat(task.getStatus()).isEqualTo(TaskStatus.TODO);
+    }
+
+    @Test
+    void changeStatus_inProgressToInReview_allowed() {
+        Task task = createTaskWithStatus(TaskStatus.IN_PROGRESS);
+        task.changeStatus(TaskStatus.IN_REVIEW);
+        assertThat(task.getStatus()).isEqualTo(TaskStatus.IN_REVIEW);
+    }
+
+    @Test
+    void changeStatus_inProgressToDone_allowed() {
+        Task task = createTaskWithStatus(TaskStatus.IN_PROGRESS);
+        task.changeStatus(TaskStatus.DONE);
+        assertThat(task.getStatus()).isEqualTo(TaskStatus.DONE);
+    }
+
+    @Test
+    void changeStatus_inProgressToCancelled_allowed() {
+        Task task = createTaskWithStatus(TaskStatus.IN_PROGRESS);
+        task.changeStatus(TaskStatus.CANCELLED);
+        assertThat(task.getStatus()).isEqualTo(TaskStatus.CANCELLED);
+    }
+
+    @Test
+    void changeStatus_inReviewToInProgress_allowed() {
+        Task task = createTaskWithStatus(TaskStatus.IN_REVIEW);
+        task.changeStatus(TaskStatus.IN_PROGRESS);
+        assertThat(task.getStatus()).isEqualTo(TaskStatus.IN_PROGRESS);
+    }
+
+    @Test
+    void changeStatus_inReviewToDone_allowed() {
+        Task task = createTaskWithStatus(TaskStatus.IN_REVIEW);
+        task.changeStatus(TaskStatus.DONE);
+        assertThat(task.getStatus()).isEqualTo(TaskStatus.DONE);
+    }
+
+    @Test
+    void changeStatus_inReviewToCancelled_allowed() {
+        Task task = createTaskWithStatus(TaskStatus.IN_REVIEW);
+        task.changeStatus(TaskStatus.CANCELLED);
+        assertThat(task.getStatus()).isEqualTo(TaskStatus.CANCELLED);
+    }
+
+    @Test
+    void changeStatus_doneToInProgress_allowed_reopen() {
+        Task task = createTaskWithStatus(TaskStatus.DONE);
+        task.changeStatus(TaskStatus.IN_PROGRESS);
+        assertThat(task.getStatus()).isEqualTo(TaskStatus.IN_PROGRESS);
+    }
+
+    @Test
+    void changeStatus_cancelledToTodo_allowed_reactivate() {
+        Task task = createTaskWithStatus(TaskStatus.CANCELLED);
+        task.changeStatus(TaskStatus.TODO);
+        assertThat(task.getStatus()).isEqualTo(TaskStatus.TODO);
+    }
+
+    // ── FSM: disallowed transitions ────────────────────────────────────────────
+
+    @Test
+    void changeStatus_todoToDone_throws() {
+        Task task = createValidTask(); // TODO
+        assertThatThrownBy(() -> task.changeStatus(TaskStatus.DONE))
+                .isInstanceOf(InvalidStatusException.class)
+                .hasMessageContaining("TODO")
+                .hasMessageContaining("DONE");
+    }
+
+    @Test
+    void changeStatus_todoToInReview_throws() {
+        Task task = createValidTask(); // TODO
+        assertThatThrownBy(() -> task.changeStatus(TaskStatus.IN_REVIEW))
+                .isInstanceOf(InvalidStatusException.class);
+    }
+
+    @Test
+    void changeStatus_doneToCancelled_throws() {
+        Task task = createTaskWithStatus(TaskStatus.DONE);
+        assertThatThrownBy(() -> task.changeStatus(TaskStatus.CANCELLED))
+                .isInstanceOf(InvalidStatusException.class)
+                .hasMessageContaining("DONE")
+                .hasMessageContaining("CANCELLED");
+    }
+
+    @Test
+    void changeStatus_doneToTodo_throws() {
+        Task task = createTaskWithStatus(TaskStatus.DONE);
+        assertThatThrownBy(() -> task.changeStatus(TaskStatus.TODO))
+                .isInstanceOf(InvalidStatusException.class);
+    }
+
+    @Test
+    void changeStatus_cancelledToDone_throws() {
+        Task task = createTaskWithStatus(TaskStatus.CANCELLED);
+        assertThatThrownBy(() -> task.changeStatus(TaskStatus.DONE))
+                .isInstanceOf(InvalidStatusException.class);
+    }
+
+    @Test
+    void changeStatus_cancelledToInProgress_throws() {
+        Task task = createTaskWithStatus(TaskStatus.CANCELLED);
+        assertThatThrownBy(() -> task.changeStatus(TaskStatus.IN_PROGRESS))
+                .isInstanceOf(InvalidStatusException.class);
+    }
+
+    // ── FSM: same-state no-op ──────────────────────────────────────────────────
+
+    @Test
+    void changeStatus_sameState_todoToTodo_isNoOp() {
+        Task task = createValidTask(); // TODO
+        task.changeStatus(TaskStatus.TODO);
+        assertThat(task.getStatus()).isEqualTo(TaskStatus.TODO);
+        assertThat(task.getDomainEvents()).isEmpty(); // no event emitted
+    }
+
+    @Test
+    void changeStatus_sameState_inProgressToInProgress_isNoOp() {
+        Task task = createTaskWithStatus(TaskStatus.IN_PROGRESS);
+        task.changeStatus(TaskStatus.IN_PROGRESS);
+        assertThat(task.getDomainEvents()).isEmpty();
+    }
+
+    @Test
+    void changeStatus_sameState_doneToSameDone_isNoOp() {
+        Task task = createTaskWithStatus(TaskStatus.DONE);
+        task.changeStatus(TaskStatus.DONE);
+        assertThat(task.getDomainEvents()).isEmpty();
+    }
+
+    // ── cancel(): system operation — exempt from FSM ───────────────────────────
+
+    @Test
+    void cancel_fromTodo_setsCANCELLED_emitsEvent() {
+        Task task = createValidTask(); // TODO
+        task.cancel();
+        assertThat(task.getStatus()).isEqualTo(TaskStatus.CANCELLED);
+        List<Object> events = task.pullDomainEvents();
+        assertThat(events).hasSize(1);
+        TaskStatusChanged event = (TaskStatusChanged) events.get(0);
+        assertThat(event.oldStatus()).isEqualTo(TaskStatus.TODO);
+        assertThat(event.newStatus()).isEqualTo(TaskStatus.CANCELLED);
+    }
+
+    @Test
+    void cancel_fromInProgress_setsCANCELLED_emitsEvent() {
+        Task task = createTaskWithStatus(TaskStatus.IN_PROGRESS);
+        task.cancel();
+        assertThat(task.getStatus()).isEqualTo(TaskStatus.CANCELLED);
+        List<Object> events = task.pullDomainEvents();
+        assertThat(events).hasSize(1);
+        TaskStatusChanged event = (TaskStatusChanged) events.get(0);
+        assertThat(event.oldStatus()).isEqualTo(TaskStatus.IN_PROGRESS);
+    }
+
+    @Test
+    void cancel_fromDone_setsCANCELLED_exemptFromFsm() {
+        // cancel() is the cascade/system op — DONE → CANCELLED is allowed
+        Task task = createTaskWithStatus(TaskStatus.DONE);
+        task.cancel();
+        assertThat(task.getStatus()).isEqualTo(TaskStatus.CANCELLED);
+        List<Object> events = task.pullDomainEvents();
+        assertThat(events).hasSize(1);
+        TaskStatusChanged event = (TaskStatusChanged) events.get(0);
+        assertThat(event.oldStatus()).isEqualTo(TaskStatus.DONE);
+        assertThat(event.newStatus()).isEqualTo(TaskStatus.CANCELLED);
+    }
+
+    @Test
+    void cancel_fromInReview_setsCANCELLED_emitsEvent() {
+        Task task = createTaskWithStatus(TaskStatus.IN_REVIEW);
+        task.cancel();
+        assertThat(task.getStatus()).isEqualTo(TaskStatus.CANCELLED);
+    }
+
+    @Test
+    void cancel_alreadyCancelled_isNoOp() {
+        Task task = createTaskWithStatus(TaskStatus.CANCELLED);
+        task.cancel();
+        assertThat(task.getStatus()).isEqualTo(TaskStatus.CANCELLED);
+        assertThat(task.getDomainEvents()).isEmpty(); // no event emitted
+    }
+
     // ── T-B1-12: changeStatus() records TaskStatusChanged event ──
 
     @Test
@@ -107,9 +316,9 @@ class TaskTest {
     void changeStatus_updatesStatusField() {
         Task task = createValidTask();
 
-        task.changeStatus(TaskStatus.DONE);
+        task.changeStatus(TaskStatus.IN_PROGRESS);
 
-        assertThat(task.getStatus()).isEqualTo(TaskStatus.DONE);
+        assertThat(task.getStatus()).isEqualTo(TaskStatus.IN_PROGRESS);
     }
 
     // ── T-B1-13: assign() records TaskAssigned event ──
@@ -166,36 +375,6 @@ class TaskTest {
         assertThat(task.getPriority()).isEqualTo(TaskPriority.HIGH);
     }
 
-    // ── T-B1-15: cancel() sets CANCELLED and records TaskStatusChanged ──
-
-    @Test
-    void cancel_setsStatusCancelled_recordsTaskStatusChangedEvent() {
-        Task task = createValidTask();
-
-        task.cancel();
-
-        assertThat(task.getStatus()).isEqualTo(TaskStatus.CANCELLED);
-        List<Object> events = task.pullDomainEvents();
-        assertThat(events).hasSize(1);
-        assertThat(events.get(0)).isInstanceOf(TaskStatusChanged.class);
-        TaskStatusChanged event = (TaskStatusChanged) events.get(0);
-        assertThat(event.newStatus()).isEqualTo(TaskStatus.CANCELLED);
-    }
-
-    @Test
-    void cancel_fromInProgress_recordsOldStatus() {
-        Task task = createValidTask();
-        task.changeStatus(TaskStatus.IN_PROGRESS);
-        task.pullDomainEvents(); // clear create+change events
-
-        task.cancel();
-
-        List<Object> events = task.pullDomainEvents();
-        TaskStatusChanged event = (TaskStatusChanged) events.get(0);
-        assertThat(event.oldStatus()).isEqualTo(TaskStatus.IN_PROGRESS);
-        assertThat(event.newStatus()).isEqualTo(TaskStatus.CANCELLED);
-    }
-
     // ── T-B1-17: pullDomainEvents() clears list after pull ──
 
     @Test
@@ -222,5 +401,25 @@ class TaskTest {
         Task task = Task.create(command);
         task.pullDomainEvents(); // start fresh
         return task;
+    }
+
+    /**
+     * Creates a task reconstituted at the given status (simulates a loaded-from-DB task).
+     * Uses {@code Task.reconstitute} so no domain events are emitted.
+     */
+    private static Task createTaskWithStatus(TaskStatus status) {
+        return Task.reconstitute(
+                UUID.randomUUID(),
+                UUID.randomUUID(),
+                UUID.randomUUID(),
+                null,
+                "Task in status " + status,
+                null,
+                status,
+                TaskPriority.MEDIUM,
+                null,
+                null,
+                java.time.Instant.now(),
+                java.time.Instant.now());
     }
 }
