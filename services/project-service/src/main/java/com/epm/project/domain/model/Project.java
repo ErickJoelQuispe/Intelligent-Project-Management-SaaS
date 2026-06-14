@@ -4,6 +4,7 @@ import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.Set;
 import java.util.UUID;
 
 import com.epm.project.domain.event.ProjectArchived;
@@ -136,11 +137,18 @@ public class Project {
     /**
      * Archives this project. Only an OWNER may archive.
      *
+     * <p>Idempotent: if the project is already ARCHIVED, this method is a no-op
+     * and does NOT emit a duplicate {@link ProjectArchived} event. Authorization
+     * is checked first so a non-owner cannot re-archive (authz before short-circuit).
+     *
      * @param callerProfileId the profile requesting the archive
      * @throws UnauthorizedProjectAccessException if caller is not OWNER
      */
     public void archive(UUID callerProfileId) {
-        guardRole(callerProfileId, ProjectRole.OWNER);
+        guardRole(callerProfileId, ProjectRole.OWNER); // authz first — non-owners are always rejected
+        if (this.status == ProjectStatus.ARCHIVED) {
+            return; // idempotent — no duplicate event emitted
+        }
         this.status = ProjectStatus.ARCHIVED;
         this.updatedAt = Instant.now();
         domainEvents.add(new ProjectArchived(
@@ -179,11 +187,16 @@ public class Project {
     /**
      * Adds a member to the project.
      *
-     * @param profileId the profile to add
-     * @param role      the role to assign
-     * @throws DuplicateProjectMemberException if profile is already an active member
+     * <p>Only an OWNER or MANAGER may add members (authorization guard added as FIX 6).
+     *
+     * @param profileId       the profile to add
+     * @param role            the role to assign
+     * @param callerProfileId the profile performing the action (must be OWNER or MANAGER)
+     * @throws UnauthorizedProjectAccessException if caller lacks OWNER or MANAGER role
+     * @throws DuplicateProjectMemberException    if profile is already an active member
      */
-    public void addMember(UUID profileId, ProjectRole role) {
+    public void addMember(UUID profileId, ProjectRole role, UUID callerProfileId) {
+        guardRole(callerProfileId, ProjectRole.OWNER, ProjectRole.MANAGER);
         guardNoDuplicateMember(profileId);
         members.add(ProjectMember.create(id, profileId, role));
     }
@@ -207,6 +220,38 @@ public class Project {
     public boolean isMember(UUID profileId) {
         return members.stream()
                 .anyMatch(m -> m.getProfileId().equals(profileId) && m.isActive());
+    }
+
+    /**
+     * Determines whether the caller may access this project, applying visibility semantics:
+     * <ul>
+     *   <li>{@link ProjectVisibility#PUBLIC}: accessible to everyone.</li>
+     *   <li>{@link ProjectVisibility#PRIVATE}: accessible only to direct members.</li>
+     *   <li>{@link ProjectVisibility#TEAM}: accessible to direct members OR to any user
+     *       whose team is actively assigned to this project (i.e., {@code callerTeamIds}
+     *       overlaps with the project's active team assignments).</li>
+     * </ul>
+     *
+     * <p>The {@code callerTeamIds} set comes from the caller's JWT or a lookup in
+     * user-service. Passing an empty set for TEAM projects means the caller is treated
+     * as PRIVATE until team-claim sourcing is wired.
+     *
+     * @param callerProfileId the profile requesting access
+     * @param callerTeamIds   the set of teams the caller belongs to (may be empty)
+     * @return {@code true} if the caller is allowed to see this project
+     */
+    public boolean canBeAccessedBy(UUID callerProfileId, Set<UUID> callerTeamIds) {
+        if (visibility == ProjectVisibility.PUBLIC) {
+            return true;
+        }
+        if (isMember(callerProfileId)) {
+            return true;
+        }
+        if (visibility == ProjectVisibility.TEAM && callerTeamIds != null) {
+            return teams.stream()
+                    .anyMatch(t -> t.isActive() && callerTeamIds.contains(t.getTeamId()));
+        }
+        return false;
     }
 
     /**
