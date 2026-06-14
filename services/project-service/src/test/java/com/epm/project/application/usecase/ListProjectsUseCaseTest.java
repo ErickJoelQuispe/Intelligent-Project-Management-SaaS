@@ -2,6 +2,9 @@ package com.epm.project.application.usecase;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyInt;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import java.util.Collections;
@@ -21,7 +24,6 @@ import org.mockito.junit.jupiter.MockitoExtension;
 
 /**
  * Unit tests for {@link ListProjectsUseCaseImpl}.
- * RED phase — implementation does not exist yet.
  */
 @ExtendWith(MockitoExtension.class)
 class ListProjectsUseCaseTest {
@@ -44,7 +46,8 @@ class ListProjectsUseCaseTest {
                 "Alpha", null, ProjectVisibility.PRIVATE, callerId, tenantId));
         Project p2 = Project.create(new CreateProjectCommand(
                 "Beta", null, ProjectVisibility.TEAM, callerId, tenantId));
-        when(projectRepository.findAllByMemberProfileIdExcludingArchived(callerId, tenantId))
+        when(projectRepository.findPageByMemberProfileIdExcludingArchived(
+                eq(callerId), eq(tenantId), anyInt(), anyInt()))
                 .thenReturn(List.of(p1, p2));
 
         List<ProjectResult> results = useCase.execute(callerId, tenantId);
@@ -58,7 +61,8 @@ class ListProjectsUseCaseTest {
     void returns_empty_list_when_no_projects_found() {
         UUID callerId = UUID.randomUUID();
         UUID tenantId = UUID.randomUUID();
-        when(projectRepository.findAllByMemberProfileIdExcludingArchived(any(), any()))
+        when(projectRepository.findPageByMemberProfileIdExcludingArchived(
+                any(), any(), anyInt(), anyInt()))
                 .thenReturn(Collections.emptyList());
 
         List<ProjectResult> results = useCase.execute(callerId, tenantId);
@@ -75,13 +79,29 @@ class ListProjectsUseCaseTest {
         // Simulate archived project by reconstituting with ARCHIVED status
         Project archived = Project.create(new CreateProjectCommand(
                 "Archived Project", null, ProjectVisibility.PRIVATE, callerId, tenantId));
-        when(projectRepository.findAllByMemberProfileId(callerId, tenantId))
+        when(projectRepository.findPageByMemberProfileId(
+                eq(callerId), eq(tenantId), anyInt(), anyInt()))
                 .thenReturn(List.of(p1, archived));
 
-        List<ProjectResult> results = useCase.execute(callerId, tenantId, true);
+        List<ProjectResult> results = useCase.execute(callerId, tenantId, true, 0, 20);
 
         assertThat(results).hasSize(2);
         assertThat(results).extracting(ProjectResult::name)
                 .containsExactlyInAnyOrder("Alpha", "Archived Project");
+    }
+
+    @Test
+    void caps_size_at_MAX_PAGE_SIZE_and_floors_negative_page() {
+        UUID callerId = UUID.randomUUID();
+        UUID tenantId = UUID.randomUUID();
+        when(projectRepository.findPageByMemberProfileIdExcludingArchived(
+                eq(callerId), eq(tenantId), anyInt(), anyInt()))
+                .thenReturn(Collections.emptyList());
+
+        // Negative page and an oversized size must be clamped before hitting the repository.
+        useCase.execute(callerId, tenantId, false, -5, 10_000);
+
+        verify(projectRepository).findPageByMemberProfileIdExcludingArchived(
+                callerId, tenantId, 0, ListProjectsUseCaseImpl.MAX_PAGE_SIZE);
     }
 }

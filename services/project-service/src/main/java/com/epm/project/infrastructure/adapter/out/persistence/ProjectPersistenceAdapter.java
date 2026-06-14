@@ -15,6 +15,7 @@ import com.epm.project.domain.model.ProjectStatus;
 import com.epm.project.domain.model.ProjectTeam;
 import com.epm.project.domain.model.ProjectVisibility;
 import com.epm.project.domain.port.out.ProjectRepository;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Component;
 
 /**
@@ -69,9 +70,28 @@ public class ProjectPersistenceAdapter implements ProjectRepository {
     }
 
     @Override
+    public List<Project> findPageByMemberProfileId(UUID profileId, UUID tenantId, int page, int size) {
+        // LIMIT/OFFSET delegated to the database via PageRequest — no in-memory truncation.
+        // The batch-load of members/teams then operates only on this page's project IDs.
+        List<ProjectJpaEntity> projectEntities =
+                projectJpaRepo.findPageByMemberProfileId(profileId, tenantId, PageRequest.of(page, size));
+        return reconstituteBatch(projectEntities);
+    }
+
+    @Override
     public List<Project> findAllByMemberProfileIdExcludingArchived(UUID profileId, UUID tenantId) {
         List<ProjectJpaEntity> projectEntities =
                 projectJpaRepo.findAllProjectsByMemberProfileIdExcludingArchived(profileId, tenantId);
+        return reconstituteBatch(projectEntities);
+    }
+
+    @Override
+    public List<Project> findPageByMemberProfileIdExcludingArchived(
+            UUID profileId, UUID tenantId, int page, int size) {
+        // LIMIT/OFFSET delegated to the database via PageRequest — no in-memory truncation.
+        // The batch-load of members/teams then operates only on this page's project IDs.
+        List<ProjectJpaEntity> projectEntities = projectJpaRepo
+                .findPageByMemberProfileIdExcludingArchived(profileId, tenantId, PageRequest.of(page, size));
         return reconstituteBatch(projectEntities);
     }
 

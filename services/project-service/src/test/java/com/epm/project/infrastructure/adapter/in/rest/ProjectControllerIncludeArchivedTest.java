@@ -1,6 +1,7 @@
 package com.epm.project.infrastructure.adapter.in.rest;
 
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -88,7 +89,7 @@ class ProjectControllerIncludeArchivedTest {
         UUID archivedProjectId = UUID.randomUUID();
         ProjectResult archivedResult = buildProjectResult(archivedProjectId, "ARCHIVED");
 
-        when(listProjectsUseCase.execute(any(), any(), eq(true)))
+        when(listProjectsUseCase.execute(any(), any(), eq(true), anyInt(), anyInt()))
                 .thenReturn(List.of(archivedResult));
 
         mockMvc.perform(get("/api/v1/projects")
@@ -100,7 +101,7 @@ class ProjectControllerIncludeArchivedTest {
                 .andExpect(jsonPath("$[0].status").value("ARCHIVED"))
                 .andExpect(jsonPath("$[0].id").value(archivedProjectId.toString()));
 
-        verify(listProjectsUseCase).execute(ownerId, tenantId, true);
+        verify(listProjectsUseCase).execute(ownerId, tenantId, true, 0, 20);
     }
 
     // ── T-A-02: No param (default) excludes archived ─────────────────────────
@@ -114,7 +115,7 @@ class ProjectControllerIncludeArchivedTest {
         UUID activeProjectId = UUID.randomUUID();
         ProjectResult activeResult = buildProjectResult(activeProjectId, "ACTIVE");
 
-        when(listProjectsUseCase.execute(any(), any(), eq(false)))
+        when(listProjectsUseCase.execute(any(), any(), eq(false), anyInt(), anyInt()))
                 .thenReturn(List.of(activeResult));
 
         mockMvc.perform(get("/api/v1/projects")
@@ -125,7 +126,7 @@ class ProjectControllerIncludeArchivedTest {
                 .andExpect(jsonPath("$[0].status").value("ACTIVE"))
                 .andExpect(jsonPath("$").isArray());
 
-        verify(listProjectsUseCase).execute(ownerId, tenantId, false);
+        verify(listProjectsUseCase).execute(ownerId, tenantId, false, 0, 20);
     }
 
     // ── Helpers ──────────────────────────────────────────────────────────────

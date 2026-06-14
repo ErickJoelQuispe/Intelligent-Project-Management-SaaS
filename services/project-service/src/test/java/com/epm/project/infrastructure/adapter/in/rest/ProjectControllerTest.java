@@ -1,8 +1,10 @@
 package com.epm.project.infrastructure.adapter.in.rest;
 
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doThrow;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.jwt;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
@@ -103,7 +105,7 @@ class ProjectControllerTest {
 
     @Test
     void listProjects_returns200() throws Exception {
-        when(listProjectsUseCase.execute(any(), any(), eq(false)))
+        when(listProjectsUseCase.execute(any(), any(), eq(false), anyInt(), anyInt()))
                 .thenReturn(List.of(buildProjectResult(UUID.randomUUID())));
 
         mockMvc.perform(get("/api/v1/projects")
@@ -112,6 +114,48 @@ class ProjectControllerTest {
                                 .claim("tenant_id", tenantId.toString()))))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$[0].name").value("Alpha Project"));
+    }
+
+    // ── GET /api/v1/projects with explicit pagination → passes page/size through ──
+
+    @Test
+    void listProjects_passesPageAndSizeThrough() throws Exception {
+        when(listProjectsUseCase.execute(any(), any(), eq(false), anyInt(), anyInt()))
+                .thenReturn(List.of(buildProjectResult(UUID.randomUUID())));
+
+        mockMvc.perform(get("/api/v1/projects")
+                        .param("page", "2")
+                        .param("size", "50")
+                        .with(jwt().jwt(j -> j
+                                .subject(ownerId.toString())
+                                .claim("tenant_id", tenantId.toString()))))
+                .andExpect(status().isOk());
+
+        verify(listProjectsUseCase).execute(ownerId, tenantId, false, 2, 50);
+    }
+
+    // ── GET /api/v1/projects?page=-1 → 400 (validation) ──────────────────────
+
+    @Test
+    void listProjects_returns400_whenNegativePage() throws Exception {
+        mockMvc.perform(get("/api/v1/projects")
+                        .param("page", "-1")
+                        .with(jwt().jwt(j -> j
+                                .subject(ownerId.toString())
+                                .claim("tenant_id", tenantId.toString()))))
+                .andExpect(status().isBadRequest());
+    }
+
+    // ── GET /api/v1/projects?size=0 → 400 (validation) ───────────────────────
+
+    @Test
+    void listProjects_returns400_whenNonPositiveSize() throws Exception {
+        mockMvc.perform(get("/api/v1/projects")
+                        .param("size", "0")
+                        .with(jwt().jwt(j -> j
+                                .subject(ownerId.toString())
+                                .claim("tenant_id", tenantId.toString()))))
+                .andExpect(status().isBadRequest());
     }
 
     // ── GET /api/v1/projects/{id} → 200 ─────────────────────────────────────

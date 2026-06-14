@@ -16,9 +16,11 @@ import com.epm.project.domain.port.in.command.CreateProjectCommand;
 import com.epm.project.domain.port.in.command.UpdateProjectCommand;
 import com.epm.project.domain.port.in.result.ProjectResult;
 import jakarta.validation.Valid;
+import jakarta.validation.constraints.Min;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.oauth2.jwt.Jwt;
+import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
@@ -35,6 +37,7 @@ import org.springframework.web.bind.annotation.RestController;
  */
 @RestController
 @RequestMapping("/api/v1/projects")
+@Validated
 public class ProjectController {
 
     private final CreateProjectUseCase createProjectUseCase;
@@ -75,14 +78,21 @@ public class ProjectController {
         return toResponse(result);
     }
 
-    /** GET /api/v1/projects → 200 */
+    /**
+     * GET /api/v1/projects → 200
+     *
+     * <p>Returns a single page of projects (default page=0, size=20, max size=100 enforced
+     * in the use case). Pagination is pushed to SQL to prevent an unbounded result set (DoS).
+     */
     @GetMapping
     public List<ProjectResponse> listProjects(
             @AuthenticationPrincipal Jwt jwt,
-            @RequestParam(defaultValue = "false") boolean includeArchived) {
+            @RequestParam(defaultValue = "false") boolean includeArchived,
+            @RequestParam(defaultValue = "0") @Min(0) int page,
+            @RequestParam(defaultValue = "20") @Min(1) int size) {
         UUID callerId = jwtClaimsExtractor.getUserId(jwt);
         UUID tenantId = jwtClaimsExtractor.getTenantId(jwt);
-        return listProjectsUseCase.execute(callerId, tenantId, includeArchived).stream()
+        return listProjectsUseCase.execute(callerId, tenantId, includeArchived, page, size).stream()
                 .map(this::toResponse)
                 .toList();
     }
