@@ -39,7 +39,9 @@ import org.springframework.test.context.TestPropertySource;
  *
  * <p>Asserts:
  * <ol>
- *   <li>At most one task threw (the race loser must be caught as a benign duplicate).</li>
+ *   <li>NEITHER task threw — with the {@code REQUIRES_NEW} {@link IdempotencyGuard} the
+ *       race loser skips benignly and the consumer transaction is never poisoned, so no
+ *       {@code UnexpectedRollbackException} escapes either thread.</li>
  *   <li>The project-team assignment is orphaned (business logic applied exactly once).</li>
  *   <li>Exactly ONE {@code processed_events} row exists for the eventId.</li>
  * </ol>
@@ -132,11 +134,14 @@ class TeamDeletedConsumerIT extends AbstractPostgresIT {
     }
 
     /**
-     * Regression guard for insert-first TOCTOU fix.
+     * Regression guard for the REQUIRES_NEW idempotency-guard fix (rollback poisoning).
      *
-     * <p>Two threads race on the SAME eventId. The processed_events PK constraint
-     * is the authoritative backstop: exactly one thread wins; the other catches
-     * {@code DataIntegrityViolationException} and returns benignly (does not throw).
+     * <p>Two threads race on the SAME eventId. The {@link IdempotencyGuard} claims the
+     * processed_events row in its OWN {@code REQUIRES_NEW} transaction, so the loser's
+     * {@code DataIntegrityViolationException} is confined to that inner transaction and the
+     * consumer's transaction is never marked rollback-only. Therefore NEITHER thread throws
+     * (no {@code UnexpectedRollbackException} at commit), exactly one processed_events row
+     * exists, and the assignment is orphaned exactly once.
      */
     @Test
     void consume_concurrentSameEventId_exactlyOneProcessedRow_noExceptionEscapes() throws Exception {
@@ -170,10 +175,11 @@ class TeamDeletedConsumerIT extends AbstractPostgresIT {
             pool.shutdownNow();
         }
 
-        // At most one task threw; the race loser is a benign duplicate.
+        // NEITHER task threw: the REQUIRES_NEW guard prevents rollback poisoning, so the
+        // race loser skips benignly instead of throwing UnexpectedRollbackException at commit.
         assertThat(threwCount.get())
-                .as("At most one concurrent task may throw (benign duplicate)")
-                .isLessThanOrEqualTo(1);
+                .as("No concurrent task may throw — REQUIRES_NEW guard prevents rollback poisoning")
+                .isZero();
 
         // Exactly ONE processed_events row for the eventId.
         long processedCount = processedEventRepo.findAll().stream()
