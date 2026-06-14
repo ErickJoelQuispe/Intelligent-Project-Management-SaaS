@@ -1,10 +1,5 @@
 package com.epm.task.infrastructure.adapter.out.messaging;
 
-import java.time.Instant;
-import java.util.List;
-
-import com.epm.task.infrastructure.adapter.out.persistence.OutboxEventJpaEntity;
-import com.epm.task.infrastructure.adapter.out.persistence.OutboxEventJpaRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.scheduling.annotation.Scheduled;
@@ -13,62 +8,53 @@ import org.springframework.transaction.event.TransactionPhase;
 import org.springframework.transaction.event.TransactionalEventListener;
 
 /**
- * Relays outbox events to Kafka after the producing transaction commits.
+ * Thin relay trigger: delegates actual relay work to {@link OutboxRelayExecutor}.
  *
- * <p>Two relay triggers:
+ * <p>Two relay triggers are registered here:
  * <ol>
- *   <li>Immediate: {@link TransactionalEventListener} fires after commit of the
- *       transaction that saved the outbox row.</li>
- *   <li>Polling fallback: {@link Scheduled} every 5 s picks up any events missed
- *       by the immediate path (e.g., crash between save and relay).</li>
+ *   <li>Immediate: {@link TransactionalEventListener} fires after the transaction
+ *       that saved an outbox row commits (fast path).</li>
+ *   <li>Polling fallback: {@link Scheduled} every 5 s picks up events missed by
+ *       the immediate path (e.g., process crash between save and relay).</li>
  * </ol>
+ *
+ * <p><strong>Why a separate executor bean?</strong> If {@code relayBatch()} were a
+ * private method on this class and called from {@code onOutboxEventSaved()} or
+ * {@code relayScheduled()}, Spring AOP would not intercept the call (self-invocation
+ * bypasses the proxy). That would mean {@code @Transactional} on the relay logic is
+ * silently skipped, the {@code FOR UPDATE SKIP LOCKED} row locks are released
+ * immediately, and concurrent scheduler runs can double-publish the same event.
+ * Calling {@link OutboxRelayExecutor#relayBatch()} cross-bean ensures the proxy is
+ * always honoured.
  */
 @Component
 public class OutboxRelayService {
 
     private static final Logger log = LoggerFactory.getLogger(OutboxRelayService.class);
-    private static final long RETRY_THRESHOLD_MS = 30_000L;
 
-    private final OutboxEventJpaRepository outboxRepo;
-    private final KafkaOutboxPublisher publisher;
+    private final OutboxRelayExecutor executor;
 
-    public OutboxRelayService(OutboxEventJpaRepository outboxRepo, KafkaOutboxPublisher publisher) {
-        this.outboxRepo = outboxRepo;
-        this.publisher = publisher;
+    public OutboxRelayService(OutboxRelayExecutor executor) {
+        this.executor = executor;
     }
 
-    /** Fires immediately after the transaction that saved an outbox event commits. */
+    /**
+     * Fires immediately after the transaction that saved an outbox event commits.
+     * Delegates to {@link OutboxRelayExecutor#relayBatch()} cross-bean so that
+     * {@code @Transactional} on the executor is honoured.
+     */
     @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
     public void onOutboxEventSaved(OutboxEventSavedEvent event) {
-        relayPending();
+        log.debug("Outbox event saved — triggering immediate relay");
+        executor.relayBatch();
     }
 
-    /** Polling fallback — catches any events not relayed by the immediate path. */
+    /**
+     * Polling fallback — catches events not relayed by the immediate path.
+     * Delegates cross-bean to {@link OutboxRelayExecutor#relayBatch()}.
+     */
     @Scheduled(fixedDelay = 5000)
     public void relayScheduled() {
-        relayPending();
-        retryFailed();
-    }
-
-    private void relayPending() {
-        List<OutboxEventJpaEntity> pending =
-                outboxRepo.findTop10ByPublishedAtIsNullAndFailedAtIsNullOrderByCreatedAtAsc();
-        for (OutboxEventJpaEntity entity : pending) {
-            log.debug("Relaying outbox event {} to topic {}", entity.getId(), entity.getTopic());
-            publisher.publish(entity);
-        }
-    }
-
-    private void retryFailed() {
-        Instant threshold = Instant.now().minusMillis(RETRY_THRESHOLD_MS);
-        List<OutboxEventJpaEntity> failed =
-                outboxRepo.findTop10ByPublishedAtIsNullAndFailedAtBeforeOrderByCreatedAtAsc(threshold);
-        for (OutboxEventJpaEntity entity : failed) {
-            log.warn("Retrying failed outbox event {} to topic {}", entity.getId(), entity.getTopic());
-            entity.setFailedAt(null);
-            entity.setError(null);
-            outboxRepo.save(entity);
-            publisher.publish(entity);
-        }
+        executor.relayBatch();
     }
 }
