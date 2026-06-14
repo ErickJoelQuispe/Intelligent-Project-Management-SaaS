@@ -14,7 +14,9 @@ import com.epm.task.domain.model.TaskPriority;
 import com.epm.task.domain.port.in.CreateTaskUseCase;
 import com.epm.task.domain.port.in.command.CreateTaskCommand;
 import com.epm.task.infrastructure.adapter.in.messaging.AiEventConsumer;
-import com.epm.task.infrastructure.adapter.out.persistence.ProcessedEventJpaRepository;
+import com.epm.task.infrastructure.adapter.in.messaging.IdempotencyGuard;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -34,13 +36,15 @@ class AiEventConsumerTest {
     private CreateTaskUseCase createTaskUseCase;
 
     @Mock
-    private ProcessedEventJpaRepository processedEventRepo;
+    private IdempotencyGuard idempotencyGuard;
 
     private AiEventConsumer consumer;
 
     @BeforeEach
     void setUp() {
-        consumer = new AiEventConsumer(createTaskUseCase, processedEventRepo);
+        ObjectMapper objectMapper = new ObjectMapper();
+        objectMapper.registerModule(new JavaTimeModule());
+        consumer = new AiEventConsumer(createTaskUseCase, idempotencyGuard, objectMapper);
     }
 
     // ── Scenario: valid batch creates N tasks ──────────────────────────────────
@@ -59,7 +63,7 @@ class AiEventConsumerTest {
                         new TaskDraftSpec("Setup CI", "Configure GitHub Actions", "LOW")
                 ));
 
-        when(processedEventRepo.existsByEventId(eventId.toString())).thenReturn(false);
+        when(idempotencyGuard.claim(eventId.toString(), "ai.events")).thenReturn(true);
 
         consumer.consume(message);
 
@@ -99,7 +103,7 @@ class AiEventConsumerTest {
         String message = buildAiTasksGeneratedMessage(eventId, projectId, tenantId, generatedBy,
                 List.of(new TaskDraftSpec("Deploy to prod", "Blue-green deployment", "HIGH")));
 
-        when(processedEventRepo.existsByEventId(eventId.toString())).thenReturn(false);
+        when(idempotencyGuard.claim(eventId.toString(), "ai.events")).thenReturn(true);
 
         consumer.consume(message);
 
@@ -124,7 +128,7 @@ class AiEventConsumerTest {
         String message = buildAiTasksGeneratedMessage(eventId, projectId, tenantId, generatedBy,
                 List.of(new TaskDraftSpec("Some task", "Some description", "MEDIUM")));
 
-        when(processedEventRepo.existsByEventId(eventId.toString())).thenReturn(true);
+        when(idempotencyGuard.claim(eventId.toString(), "ai.events")).thenReturn(false);
 
         consumer.consume(message);
 
@@ -142,6 +146,64 @@ class AiEventConsumerTest {
                 () -> consumer.consume(malformedMessage));
 
         verify(createTaskUseCase, never()).execute(org.mockito.ArgumentMatchers.any());
+    }
+
+    // ── DoS guard: batch size exceeds max ─────────────────────────────────────
+
+    @Test
+    void consume_batchExceedsMaxSize_discardedAsPoison() {
+        UUID eventId = UUID.randomUUID();
+        UUID projectId = UUID.randomUUID();
+        UUID tenantId = UUID.randomUUID();
+        UUID generatedBy = UUID.randomUUID();
+
+        // Build 51 drafts — one over the limit
+        List<TaskDraftSpec> drafts = java.util.stream.IntStream.rangeClosed(1, 51)
+                .mapToObj(i -> new TaskDraftSpec("Task " + i, "Desc " + i, "MEDIUM"))
+                .toList();
+
+        String message = buildAiTasksGeneratedMessage(eventId, projectId, tenantId, generatedBy, drafts);
+
+        consumer.consume(message);
+
+        // Poisoned before claim — no tasks created, guard not called
+        verify(idempotencyGuard, never()).claim(org.mockito.ArgumentMatchers.any(), org.mockito.ArgumentMatchers.any());
+        verify(createTaskUseCase, never()).execute(org.mockito.ArgumentMatchers.any());
+    }
+
+    // ── Draft validation: blank title skipped ─────────────────────────────────
+
+    @Test
+    void consume_draftWithBlankTitle_skipped_otherDraftsProcessed() {
+        UUID eventId = UUID.randomUUID();
+        UUID projectId = UUID.randomUUID();
+        UUID tenantId = UUID.randomUUID();
+        UUID generatedBy = UUID.randomUUID();
+
+        // Build raw JSON with a blank-title draft + a valid draft
+        String message = """
+                {
+                  "eventId": "%s",
+                  "eventType": "AiTasksGenerated",
+                  "tenantId": "%s",
+                  "occurredAt": "2026-06-15T12:00:00Z",
+                  "payload": {
+                    "projectId": "%s",
+                    "generatedBy": "%s",
+                    "tasks": [
+                      {"title": "  ", "description": "blank title", "priority": "MEDIUM"},
+                      {"title": "Valid task", "description": "good", "priority": "LOW"}
+                    ]
+                  }
+                }
+                """.formatted(eventId, tenantId, projectId, generatedBy);
+
+        when(idempotencyGuard.claim(eventId.toString(), "ai.events")).thenReturn(true);
+
+        consumer.consume(message);
+
+        // Only the valid draft should be created
+        verify(createTaskUseCase, times(1)).execute(org.mockito.ArgumentMatchers.any());
     }
 
     // ── Helpers ───────────────────────────────────────────────────────────────
