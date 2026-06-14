@@ -163,25 +163,94 @@ CREATE TABLE processed_events (
 );
 ```
 
-### The correct claim-first pattern
+### The correct claim-first pattern — claim in its OWN `REQUIRES_NEW` transaction
+
+The claim INSERT must run in a **separate** transaction from the consumer, AND the
+`DataIntegrityViolationException` must be caught **outside** that transactional boundary.
+That requires TWO beans: an inner `REQUIRES_NEW` insert that lets the exception propagate,
+and a non-transactional guard that catches it.
+
+```java
+@Component
+public class ProcessedEventClaimer {
+
+    private final ProcessedEventsRepository processedEventsRepository;
+
+    public ProcessedEventClaimer(ProcessedEventsRepository processedEventsRepository) {
+        this.processedEventsRepository = processedEventsRepository;
+    }
+
+    // No try/catch here: a duplicate PK must PROPAGATE so this inner transaction
+    // rolls back cleanly. Catching it INSIDE this boundary would leave the tx
+    // rollback-only and throw UnexpectedRollbackException at commit.
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
+    public void insertClaim(String eventId) {
+        processedEventsRepository.saveAndFlush(new ProcessedEventEntity(eventId));
+    }
+}
+
+@Component
+public class IdempotencyGuard {
+
+    private final ProcessedEventClaimer claimer; // separate bean → proxy honoured
+
+    public IdempotencyGuard(ProcessedEventClaimer claimer) {
+        this.claimer = claimer;
+    }
+
+    /** @return true if this call claimed the event; false if it was already claimed. */
+    public boolean claim(String eventId) {            // NOT @Transactional
+        try {
+            claimer.insertClaim(eventId);
+            return true;
+        } catch (DataIntegrityViolationException duplicate) {
+            // The REQUIRES_NEW tx already rolled back cleanly; caught outside any
+            // transaction, so nothing is left rollback-only.
+            return false;
+        }
+    }
+}
+```
 
 ```java
 @Transactional
 public void handle(ExampleCreatedEnvelope envelope) {
-    // Step 1: claim the event — INSERT will throw on duplicate PK
-    try {
-        processedEventsRepository.saveAndFlush(
-            new ProcessedEventEntity(envelope.eventId()));
-    } catch (DataIntegrityViolationException duplicate) {
-        // Benign duplicate — already processed; ack and return
+    // Step 1: claim the event in a SEPARATE committed transaction.
+    if (!idempotencyGuard.claim(envelope.eventId())) {
         log.info("Duplicate event {} — skipping", envelope.eventId());
-        return;
+        return; // consumer transaction is clean — nothing was poisoned
     }
-    // Step 2: do the business work inside the same transaction
+    // Step 2: do the business work inside THIS consumer transaction.
     // Any genuine business constraint violation (not a PK conflict) propagates here.
     aggregateRepository.save(buildAggregate(envelope));
 }
 ```
+
+### Why `REQUIRES_NEW` — the rollback-only poisoning trap
+
+It is tempting to `saveAndFlush` the claim directly inside the consumer's `@Transactional`
+method and catch `DataIntegrityViolationException` there. **This is a trap.** When a
+constraint violation occurs, Spring marks the *current* transaction **rollback-only**.
+Catching the exception does NOT clear that marker — so even though your code "returns
+normally", the transaction fails at commit with `UnexpectedRollbackException`, which escapes
+the consumer. The race loser therefore *does* throw, contradicting the benign-duplicate
+contract (and getting routed to the DLT for a non-error).
+
+`REQUIRES_NEW` is necessary but **not sufficient on its own**: if you catch the
+`DataIntegrityViolationException` *inside* the `REQUIRES_NEW` method, that method's own
+transaction is the one marked rollback-only, and it throws `UnexpectedRollbackException` at
+its commit. The catch MUST be outside the transactional boundary. Hence the two beans above:
+`ProcessedEventClaimer.insertClaim` (`REQUIRES_NEW`, lets the exception propagate so the
+inner tx rolls back cleanly) and `IdempotencyGuard.claim` (non-transactional, catches the
+exception and returns `false`). The consumer's outer transaction is never marked
+rollback-only.
+
+> **Tradeoff to be aware of:** because the claim commits before the business work, a
+> transient business failure after a successful claim leaves the `processed_events` row
+> committed, so the event is treated as a duplicate on redelivery. Use this claim-first
+> design when the business work is **idempotent** (safe to skip if it already partially ran);
+> otherwise claim and do the work in the same transaction and rely on a different
+> duplicate-suppression strategy.
 
 ### Why NOT check-then-act
 
@@ -196,9 +265,9 @@ processedEventsRepository.save(...); // two consumers can reach here simultaneou
 ```
 
 Between the `existsByEventId` check and the `save`, a second concurrent consumer can pass
-the check and process the same event twice. The INSERT-first approach is race-free: only one
-transaction can hold the PK, and the loser gets a clean `DataIntegrityViolationException`
-distinguishable from real business errors.
+the check and process the same event twice. The `REQUIRES_NEW` claim above is race-free: only
+one transaction can hold the PK, and the loser gets a clean `DataIntegrityViolationException`
+(confined to the guard's transaction) distinguishable from real business errors.
 
 ---
 
