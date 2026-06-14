@@ -8,8 +8,7 @@ import java.util.UUID;
 
 import com.epm.project.domain.model.ProjectVisibility;
 import com.epm.project.domain.port.in.command.CreateProjectCommand;
-import com.epm.project.domain.port.out.DomainEventPublisher;
-import com.epm.project.domain.port.out.ProjectRepository;
+import com.epm.project.domain.port.out.TransactionalOutboxWriter;
 import io.micrometer.core.instrument.Counter;
 import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 import org.junit.jupiter.api.BeforeEach;
@@ -28,10 +27,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 class ProjectMetricsTest {
 
     @Mock
-    ProjectRepository projectRepository;
-
-    @Mock
-    DomainEventPublisher eventPublisher;
+    TransactionalOutboxWriter outboxWriter;
 
     SimpleMeterRegistry meterRegistry;
     CreateProjectUseCaseImpl useCase;
@@ -39,14 +35,14 @@ class ProjectMetricsTest {
     @BeforeEach
     void setUp() {
         meterRegistry = new SimpleMeterRegistry();
-        useCase = new CreateProjectUseCaseImpl(projectRepository, eventPublisher, meterRegistry);
+        useCase = new CreateProjectUseCaseImpl(outboxWriter, meterRegistry);
     }
 
     @Test
     void createProject_incrementsProjectsCreatedCounter() {
         UUID ownerId = UUID.randomUUID();
         UUID tenantId = UUID.randomUUID();
-        when(projectRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
+        when(outboxWriter.saveAndPublish(any())).thenAnswer(inv -> inv.getArgument(0));
 
         CreateProjectCommand command = new CreateProjectCommand(
                 "My Project", "Description", ProjectVisibility.PRIVATE, ownerId, tenantId);
@@ -65,7 +61,7 @@ class ProjectMetricsTest {
         UUID ownerId = UUID.randomUUID();
         UUID tenantA = UUID.randomUUID();
         UUID tenantB = UUID.randomUUID();
-        when(projectRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
+        when(outboxWriter.saveAndPublish(any())).thenAnswer(inv -> inv.getArgument(0));
 
         useCase.execute(new CreateProjectCommand("Project A", null, ProjectVisibility.PRIVATE, ownerId, tenantA));
         useCase.execute(new CreateProjectCommand("Project B", null, ProjectVisibility.PUBLIC, ownerId, tenantB));

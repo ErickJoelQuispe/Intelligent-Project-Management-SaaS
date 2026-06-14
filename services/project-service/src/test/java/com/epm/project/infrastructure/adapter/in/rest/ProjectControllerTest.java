@@ -119,7 +119,7 @@ class ProjectControllerTest {
     @Test
     void getProject_returns200() throws Exception {
         UUID projectId = UUID.randomUUID();
-        when(getProjectUseCase.execute(any(), any(), any()))
+        when(getProjectUseCase.execute(any(), any(), any(), any()))
                 .thenReturn(buildProjectResult(projectId));
 
         mockMvc.perform(get("/api/v1/projects/{id}", projectId)
@@ -135,7 +135,7 @@ class ProjectControllerTest {
     @Test
     void getProject_returns404_whenNotFound() throws Exception {
         UUID projectId = UUID.randomUUID();
-        when(getProjectUseCase.execute(any(), any(), any()))
+        when(getProjectUseCase.execute(any(), any(), any(), any()))
                 .thenThrow(new ProjectNotFoundException(projectId));
 
         mockMvc.perform(get("/api/v1/projects/{id}", projectId)
@@ -150,7 +150,7 @@ class ProjectControllerTest {
     @Test
     void getProject_returns403_whenUnauthorized() throws Exception {
         UUID projectId = UUID.randomUUID();
-        when(getProjectUseCase.execute(any(), any(), any()))
+        when(getProjectUseCase.execute(any(), any(), any(), any()))
                 .thenThrow(new UnauthorizedProjectAccessException(ownerId, projectId));
 
         mockMvc.perform(get("/api/v1/projects/{id}", projectId)

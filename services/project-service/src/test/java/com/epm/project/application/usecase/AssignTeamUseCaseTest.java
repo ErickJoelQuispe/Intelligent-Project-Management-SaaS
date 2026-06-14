@@ -16,8 +16,8 @@ import com.epm.project.domain.model.ProjectRole;
 import com.epm.project.domain.model.ProjectVisibility;
 import com.epm.project.domain.port.in.command.AssignTeamCommand;
 import com.epm.project.domain.port.in.command.CreateProjectCommand;
-import com.epm.project.domain.port.out.DomainEventPublisher;
 import com.epm.project.domain.port.out.ProjectRepository;
+import com.epm.project.domain.port.out.TransactionalOutboxWriter;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -26,7 +26,6 @@ import org.mockito.junit.jupiter.MockitoExtension;
 
 /**
  * Unit tests for {@link AssignTeamToProjectUseCaseImpl}.
- * RED phase — implementation does not exist yet.
  */
 @ExtendWith(MockitoExtension.class)
 class AssignTeamUseCaseTest {
@@ -35,13 +34,13 @@ class AssignTeamUseCaseTest {
     private ProjectRepository projectRepository;
 
     @Mock
-    private DomainEventPublisher eventPublisher;
+    private TransactionalOutboxWriter outboxWriter;
 
     private AssignTeamToProjectUseCaseImpl useCase;
 
     @BeforeEach
     void setUp() {
-        useCase = new AssignTeamToProjectUseCaseImpl(projectRepository, eventPublisher);
+        useCase = new AssignTeamToProjectUseCaseImpl(projectRepository, outboxWriter);
     }
 
     @Test
@@ -53,13 +52,12 @@ class AssignTeamUseCaseTest {
                 "Alpha", null, ProjectVisibility.PRIVATE, ownerId, tenantId));
         when(projectRepository.findByIdAndTenantId(project.getId(), tenantId))
                 .thenReturn(Optional.of(project));
-        when(projectRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
+        when(outboxWriter.saveAndPublish(any())).thenAnswer(inv -> inv.getArgument(0));
 
         AssignTeamCommand cmd = new AssignTeamCommand(project.getId(), teamId, ownerId, tenantId);
         useCase.execute(cmd);
 
-        verify(projectRepository).save(any());
-        verify(eventPublisher).publish(any());
+        verify(outboxWriter).saveAndPublish(any());
     }
 
     @Test
@@ -70,6 +68,7 @@ class AssignTeamUseCaseTest {
         Project project = Project.create(new CreateProjectCommand(
                 "Alpha", null, ProjectVisibility.PRIVATE, ownerId, tenantId));
         project.assignTeam(teamId, ownerId); // first assignment
+        project.pullDomainEvents();
         when(projectRepository.findByIdAndTenantId(project.getId(), tenantId))
                 .thenReturn(Optional.of(project));
 
@@ -87,7 +86,7 @@ class AssignTeamUseCaseTest {
         UUID teamId = UUID.randomUUID();
         Project project = Project.create(new CreateProjectCommand(
                 "Alpha", null, ProjectVisibility.PRIVATE, ownerId, tenantId));
-        project.addMember(contributorId, ProjectRole.CONTRIBUTOR);
+        project.addMember(contributorId, ProjectRole.CONTRIBUTOR, ownerId);
         when(projectRepository.findByIdAndTenantId(project.getId(), tenantId))
                 .thenReturn(Optional.of(project));
 

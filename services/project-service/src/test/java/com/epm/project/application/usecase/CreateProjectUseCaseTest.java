@@ -12,10 +12,8 @@ import com.epm.project.domain.model.ProjectRole;
 import com.epm.project.domain.model.ProjectVisibility;
 import com.epm.project.domain.port.in.command.CreateProjectCommand;
 import com.epm.project.domain.port.in.result.ProjectResult;
-import com.epm.project.domain.port.out.DomainEventPublisher;
-import com.epm.project.domain.port.out.ProjectRepository;
+import com.epm.project.domain.port.out.TransactionalOutboxWriter;
 import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
-import jakarta.validation.ValidationException;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -24,29 +22,25 @@ import org.mockito.junit.jupiter.MockitoExtension;
 
 /**
  * Unit tests for {@link CreateProjectUseCaseImpl}.
- * RED phase — implementation does not exist yet.
  */
 @ExtendWith(MockitoExtension.class)
 class CreateProjectUseCaseTest {
 
     @Mock
-    private ProjectRepository projectRepository;
-
-    @Mock
-    private DomainEventPublisher eventPublisher;
+    private TransactionalOutboxWriter outboxWriter;
 
     private CreateProjectUseCaseImpl useCase;
 
     @BeforeEach
     void setUp() {
-        useCase = new CreateProjectUseCaseImpl(projectRepository, eventPublisher, new SimpleMeterRegistry());
+        useCase = new CreateProjectUseCaseImpl(outboxWriter, new SimpleMeterRegistry());
     }
 
     @Test
-    void happyPath_creates_project_with_owner_membership_and_publishes_events() {
+    void happyPath_creates_project_with_owner_membership_and_persists_atomically() {
         UUID ownerId = UUID.randomUUID();
         UUID tenantId = UUID.randomUUID();
-        when(projectRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
+        when(outboxWriter.saveAndPublish(any())).thenAnswer(inv -> inv.getArgument(0));
 
         CreateProjectCommand cmd = new CreateProjectCommand(
                 "Alpha Project", "A description", ProjectVisibility.PRIVATE, ownerId, tenantId);
@@ -58,30 +52,30 @@ class CreateProjectUseCaseTest {
         assertThat(result.status()).isEqualTo("ACTIVE");
         assertThat(result.members()).hasSize(1);
         assertThat(result.members().get(0).role()).isEqualTo(ProjectRole.OWNER.name());
-        verify(eventPublisher).publish(any());
+        verify(outboxWriter).saveAndPublish(any());
     }
 
     @Test
-    void blank_name_throws_ValidationException() {
+    void blank_name_throws_IllegalArgumentException() {
         UUID ownerId = UUID.randomUUID();
         UUID tenantId = UUID.randomUUID();
         CreateProjectCommand cmd = new CreateProjectCommand(
                 "  ", null, ProjectVisibility.PRIVATE, ownerId, tenantId);
 
         assertThatThrownBy(() -> useCase.execute(cmd))
-                .isInstanceOf(ValidationException.class)
+                .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("name");
     }
 
     @Test
-    void name_over_100_chars_throws_ValidationException() {
+    void name_over_100_chars_throws_IllegalArgumentException() {
         UUID ownerId = UUID.randomUUID();
         UUID tenantId = UUID.randomUUID();
         CreateProjectCommand cmd = new CreateProjectCommand(
                 "A".repeat(101), null, ProjectVisibility.PRIVATE, ownerId, tenantId);
 
         assertThatThrownBy(() -> useCase.execute(cmd))
-                .isInstanceOf(ValidationException.class)
+                .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("name");
     }
 }

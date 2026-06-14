@@ -16,8 +16,8 @@ import com.epm.project.domain.model.ProjectVisibility;
 import com.epm.project.domain.port.in.command.CreateProjectCommand;
 import com.epm.project.domain.port.in.command.UpdateProjectCommand;
 import com.epm.project.domain.port.in.result.ProjectResult;
-import com.epm.project.domain.port.out.DomainEventPublisher;
 import com.epm.project.domain.port.out.ProjectRepository;
+import com.epm.project.domain.port.out.TransactionalOutboxWriter;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -26,7 +26,6 @@ import org.mockito.junit.jupiter.MockitoExtension;
 
 /**
  * Unit tests for {@link UpdateProjectUseCaseImpl}.
- * RED phase — implementation does not exist yet.
  */
 @ExtendWith(MockitoExtension.class)
 class UpdateProjectUseCaseTest {
@@ -35,13 +34,13 @@ class UpdateProjectUseCaseTest {
     private ProjectRepository projectRepository;
 
     @Mock
-    private DomainEventPublisher eventPublisher;
+    private TransactionalOutboxWriter outboxWriter;
 
     private UpdateProjectUseCaseImpl useCase;
 
     @BeforeEach
     void setUp() {
-        useCase = new UpdateProjectUseCaseImpl(projectRepository, eventPublisher);
+        useCase = new UpdateProjectUseCaseImpl(projectRepository, outboxWriter);
     }
 
     @Test
@@ -52,7 +51,7 @@ class UpdateProjectUseCaseTest {
                 "Old Name", "Old desc", ProjectVisibility.PRIVATE, ownerId, tenantId));
         when(projectRepository.findByIdAndTenantId(project.getId(), tenantId))
                 .thenReturn(Optional.of(project));
-        when(projectRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
+        when(outboxWriter.saveAndPublish(any())).thenAnswer(inv -> inv.getArgument(0));
 
         UpdateProjectCommand cmd = new UpdateProjectCommand(
                 project.getId(), "New Name", "New desc", ProjectVisibility.PUBLIC, ownerId, tenantId);
@@ -70,7 +69,7 @@ class UpdateProjectUseCaseTest {
         UUID tenantId = UUID.randomUUID();
         Project project = Project.create(new CreateProjectCommand(
                 "Alpha", null, ProjectVisibility.PRIVATE, ownerId, tenantId));
-        project.addMember(contributorId, ProjectRole.CONTRIBUTOR);
+        project.addMember(contributorId, ProjectRole.CONTRIBUTOR, ownerId);
         when(projectRepository.findByIdAndTenantId(project.getId(), tenantId))
                 .thenReturn(Optional.of(project));
 

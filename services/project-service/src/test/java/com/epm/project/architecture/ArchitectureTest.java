@@ -66,4 +66,48 @@ class ArchitectureTest {
             .whereLayer("Infrastructure").mayNotBeAccessedByAnyLayer()
             .whereLayer("Application").mayOnlyBeAccessedByLayers("Infrastructure")
             .whereLayer("Domain").mayOnlyBeAccessedByLayers("Application", "Infrastructure");
+
+    /**
+     * Rule 5 — Domain must not depend on Jackson (serialization is infrastructure concern).
+     */
+    @ArchTest
+    static final ArchRule domainMustNotDependOnJackson = noClasses()
+            .that()
+            .resideInAPackage("..domain..")
+            .should()
+            .dependOnClassesThat()
+            .resideInAPackage("com.fasterxml.jackson..");
+
+    /**
+     * Rule 6 — Domain must not depend on Kafka.
+     */
+    @ArchTest
+    static final ArchRule domainMustNotDependOnKafka = noClasses()
+            .that()
+            .resideInAPackage("..domain..")
+            .should()
+            .dependOnClassesThat()
+            .resideInAPackage("org.apache.kafka..");
+
+    /**
+     * Rule 7 — Application must not depend on Jackson.
+     */
+    @ArchTest
+    static final ArchRule applicationMustNotDependOnJackson = noClasses()
+            .that()
+            .resideInAPackage("..application..")
+            .should()
+            .dependOnClassesThat()
+            .resideInAPackage("com.fasterxml.jackson..");
+
+    /**
+     * Rule 8 — Application must not depend on Kafka.
+     */
+    @ArchTest
+    static final ArchRule applicationMustNotDependOnKafka = noClasses()
+            .that()
+            .resideInAPackage("..application..")
+            .should()
+            .dependOnClassesThat()
+            .resideInAPackage("org.apache.kafka..");
 }
