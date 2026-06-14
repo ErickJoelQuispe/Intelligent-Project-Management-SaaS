@@ -7,9 +7,8 @@ import com.epm.task.domain.exception.TaskNotFoundException;
 import com.epm.task.domain.model.ActivityLog;
 import com.epm.task.domain.model.Task;
 import com.epm.task.domain.port.in.DeleteTaskUseCase;
-import com.epm.task.domain.port.out.ActivityLogRepository;
-import com.epm.task.domain.port.out.DomainEventPublisher;
 import com.epm.task.domain.port.out.TaskRepository;
+import com.epm.task.domain.port.out.TransactionalOutboxWriter;
 
 /**
  * Implementation of {@link DeleteTaskUseCase}.
@@ -18,20 +17,21 @@ import com.epm.task.domain.port.out.TaskRepository;
  * Publishes a {@link com.epm.task.domain.event.TaskDeleted} event for the root
  * and {@link com.epm.task.domain.event.TaskStatusChanged} events for each subtask.
  *
+ * <p>Each subtask cancel and the root delete are each atomic via
+ * {@link TransactionalOutboxWriter} — task state, outbox events, and activity log
+ * are committed together.
+ *
  * <p>Pure Java — no Spring annotations. Wired by {@code UseCaseConfig}.
  */
 public class DeleteTaskUseCaseImpl implements DeleteTaskUseCase {
 
     private final TaskRepository taskRepository;
-    private final ActivityLogRepository activityLogRepository;
-    private final DomainEventPublisher eventPublisher;
+    private final TransactionalOutboxWriter outboxWriter;
 
     public DeleteTaskUseCaseImpl(TaskRepository taskRepository,
-            ActivityLogRepository activityLogRepository,
-            DomainEventPublisher eventPublisher) {
+            TransactionalOutboxWriter outboxWriter) {
         this.taskRepository = taskRepository;
-        this.activityLogRepository = activityLogRepository;
-        this.eventPublisher = eventPublisher;
+        this.outboxWriter = outboxWriter;
     }
 
     @Override
@@ -42,16 +42,11 @@ public class DeleteTaskUseCaseImpl implements DeleteTaskUseCase {
         List<Task> subtasks = taskRepository.findSubtasksByParentId(taskId, tenantId);
         for (Task subtask : subtasks) {
             subtask.cancel();
-            taskRepository.save(subtask);
-            eventPublisher.publish(subtask.pullDomainEvents());
-
-            ActivityLog log = ActivityLog.create(
-                    subtask.getId(), tenantId, "CANCELLED", taskId);
-            activityLogRepository.save(log);
+            ActivityLog log = ActivityLog.create(subtask.getId(), tenantId, "CANCELLED", taskId);
+            outboxWriter.saveAndPublish(subtask, log);
         }
 
         root.markDeleted();
-        eventPublisher.publish(root.pullDomainEvents());
-        taskRepository.deleteByIdAndTenantId(taskId, tenantId);
+        outboxWriter.publishAndDelete(root);
     }
 }

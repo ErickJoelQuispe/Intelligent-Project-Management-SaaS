@@ -7,12 +7,12 @@ import static org.mockito.Mockito.when;
 import java.util.UUID;
 
 import com.epm.task.application.usecase.CreateTaskUseCaseImpl;
+import com.epm.task.domain.model.ActivityLog;
+import com.epm.task.domain.model.Task;
 import com.epm.task.domain.model.TaskPriority;
 import com.epm.task.domain.port.in.command.CreateTaskCommand;
-import com.epm.task.domain.port.out.ActivityLogRepository;
-import com.epm.task.domain.port.out.DomainEventPublisher;
 import com.epm.task.domain.port.out.ProjectMembershipPort;
-import com.epm.task.domain.port.out.TaskRepository;
+import com.epm.task.domain.port.out.TransactionalOutboxWriter;
 import io.micrometer.core.instrument.Counter;
 import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 import org.junit.jupiter.api.BeforeEach;
@@ -31,13 +31,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 class TaskMetricsTest {
 
     @Mock
-    TaskRepository taskRepository;
-
-    @Mock
-    ActivityLogRepository activityLogRepository;
-
-    @Mock
-    DomainEventPublisher eventPublisher;
+    TransactionalOutboxWriter outboxWriter;
 
     @Mock
     ProjectMembershipPort membershipPort;
@@ -48,8 +42,7 @@ class TaskMetricsTest {
     @BeforeEach
     void setUp() {
         meterRegistry = new SimpleMeterRegistry();
-        useCase = new CreateTaskUseCaseImpl(
-                taskRepository, activityLogRepository, eventPublisher, membershipPort, meterRegistry);
+        useCase = new CreateTaskUseCaseImpl(outboxWriter, membershipPort, meterRegistry);
     }
 
     @Test
@@ -61,7 +54,8 @@ class TaskMetricsTest {
                 tenantId, projectId, callerId, "Implement login", null, TaskPriority.HIGH, null, null);
 
         when(membershipPort.isMember(projectId, callerId, tenantId)).thenReturn(true);
-        when(taskRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
+        when(outboxWriter.saveAndPublish(any(Task.class), any(ActivityLog.class)))
+                .thenAnswer(inv -> inv.getArgument(0));
 
         useCase.execute(command);
 
@@ -79,7 +73,8 @@ class TaskMetricsTest {
         UUID callerId = UUID.randomUUID();
 
         when(membershipPort.isMember(projectId, callerId, tenantId)).thenReturn(true);
-        when(taskRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
+        when(outboxWriter.saveAndPublish(any(Task.class), any(ActivityLog.class)))
+                .thenAnswer(inv -> inv.getArgument(0));
 
         CreateTaskCommand cmd1 = new CreateTaskCommand(
                 tenantId, projectId, callerId, "Task one", null, TaskPriority.LOW, null, null);

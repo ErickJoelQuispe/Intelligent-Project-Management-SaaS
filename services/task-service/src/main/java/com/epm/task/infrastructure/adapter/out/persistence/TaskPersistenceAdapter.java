@@ -39,9 +39,18 @@ public class TaskPersistenceAdapter implements TaskRepository, ActivityLogReposi
     public Task save(Task task) {
         TaskJpaEntity entity;
         if (task.getId() != null) {
-            // Update path: load existing entity to preserve @Version field
-            entity = taskJpaRepo.findById(task.getId()).orElseGet(TaskJpaEntity::new);
-            updateJpa(entity, task);
+            // Try to load an existing entity to preserve @Version and immutable fields.
+            // If not found (new task whose ID was assigned in the domain), fall through
+            // to the insert path so toJpa() sets all fields including the ID.
+            TaskJpaEntity existing = taskJpaRepo.findById(task.getId()).orElse(null);
+            if (existing != null) {
+                // Update path: mutate existing entity to preserve @Version
+                updateJpa(existing, task);
+                entity = existing;
+            } else {
+                // Insert path: first save for this task ID
+                entity = toJpa(task);
+            }
         } else {
             entity = toJpa(task);
         }

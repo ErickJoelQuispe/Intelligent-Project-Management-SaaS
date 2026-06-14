@@ -9,11 +9,10 @@ import com.epm.task.application.usecase.GetSubtasksUseCaseImpl;
 import com.epm.task.application.usecase.GetTaskKanbanUseCaseImpl;
 import com.epm.task.application.usecase.ListTasksByProjectUseCaseImpl;
 import com.epm.task.application.usecase.UpdateTaskUseCaseImpl;
-import com.epm.task.domain.port.out.ActivityLogRepository;
-import com.epm.task.domain.port.out.DomainEventPublisher;
 import com.epm.task.domain.port.out.KanbanViewRepository;
 import com.epm.task.domain.port.out.ProjectMembershipPort;
 import com.epm.task.domain.port.out.TaskRepository;
+import com.epm.task.domain.port.out.TransactionalOutboxWriter;
 import io.micrometer.core.instrument.MeterRegistry;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -28,48 +27,40 @@ import org.springframework.context.annotation.Configuration;
 public class UseCaseConfig {
 
     @Bean
-    CreateTaskUseCaseImpl createTaskUseCase(TaskRepository taskRepository,
-            ActivityLogRepository activityLogRepository,
-            DomainEventPublisher eventPublisher,
+    CreateTaskUseCaseImpl createTaskUseCase(TransactionalOutboxWriter outboxWriter,
             ProjectMembershipPort membershipPort,
             MeterRegistry meterRegistry) {
-        return new CreateTaskUseCaseImpl(taskRepository, activityLogRepository,
-                eventPublisher, membershipPort, meterRegistry);
+        return new CreateTaskUseCaseImpl(outboxWriter, membershipPort, meterRegistry);
     }
 
     @Bean
     CreateSubtaskUseCaseImpl createSubtaskUseCase(TaskRepository taskRepository,
-            ActivityLogRepository activityLogRepository,
-            DomainEventPublisher eventPublisher) {
-        return new CreateSubtaskUseCaseImpl(taskRepository, activityLogRepository, eventPublisher);
+            TransactionalOutboxWriter outboxWriter) {
+        return new CreateSubtaskUseCaseImpl(taskRepository, outboxWriter);
     }
 
     @Bean
     UpdateTaskUseCaseImpl updateTaskUseCase(TaskRepository taskRepository,
-            ActivityLogRepository activityLogRepository,
-            DomainEventPublisher eventPublisher) {
-        return new UpdateTaskUseCaseImpl(taskRepository, activityLogRepository, eventPublisher);
+            TransactionalOutboxWriter outboxWriter) {
+        return new UpdateTaskUseCaseImpl(taskRepository, outboxWriter);
     }
 
     @Bean
     ChangeTaskStatusUseCaseImpl changeTaskStatusUseCase(TaskRepository taskRepository,
-            ActivityLogRepository activityLogRepository,
-            DomainEventPublisher eventPublisher) {
-        return new ChangeTaskStatusUseCaseImpl(taskRepository, activityLogRepository, eventPublisher);
+            TransactionalOutboxWriter outboxWriter) {
+        return new ChangeTaskStatusUseCaseImpl(taskRepository, outboxWriter);
     }
 
     @Bean
     AssignTaskUseCaseImpl assignTaskUseCase(TaskRepository taskRepository,
-            ActivityLogRepository activityLogRepository,
-            DomainEventPublisher eventPublisher) {
-        return new AssignTaskUseCaseImpl(taskRepository, activityLogRepository, eventPublisher);
+            TransactionalOutboxWriter outboxWriter) {
+        return new AssignTaskUseCaseImpl(taskRepository, outboxWriter);
     }
 
     @Bean
     DeleteTaskUseCaseImpl deleteTaskUseCase(TaskRepository taskRepository,
-            ActivityLogRepository activityLogRepository,
-            DomainEventPublisher eventPublisher) {
-        return new DeleteTaskUseCaseImpl(taskRepository, activityLogRepository, eventPublisher);
+            TransactionalOutboxWriter outboxWriter) {
+        return new DeleteTaskUseCaseImpl(taskRepository, outboxWriter);
     }
 
     @Bean

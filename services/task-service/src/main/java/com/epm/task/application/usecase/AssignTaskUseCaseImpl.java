@@ -1,16 +1,13 @@
 package com.epm.task.application.usecase;
 
-import java.util.List;
-
 import com.epm.task.domain.exception.TaskNotFoundException;
 import com.epm.task.domain.model.ActivityLog;
 import com.epm.task.domain.model.Task;
 import com.epm.task.domain.port.in.AssignTaskUseCase;
 import com.epm.task.domain.port.in.command.AssignTaskCommand;
 import com.epm.task.domain.port.in.result.TaskResult;
-import com.epm.task.domain.port.out.ActivityLogRepository;
-import com.epm.task.domain.port.out.DomainEventPublisher;
 import com.epm.task.domain.port.out.TaskRepository;
+import com.epm.task.domain.port.out.TransactionalOutboxWriter;
 
 /**
  * Implementation of {@link AssignTaskUseCase}.
@@ -20,15 +17,12 @@ import com.epm.task.domain.port.out.TaskRepository;
 public class AssignTaskUseCaseImpl implements AssignTaskUseCase {
 
     private final TaskRepository taskRepository;
-    private final ActivityLogRepository activityLogRepository;
-    private final DomainEventPublisher eventPublisher;
+    private final TransactionalOutboxWriter outboxWriter;
 
     public AssignTaskUseCaseImpl(TaskRepository taskRepository,
-            ActivityLogRepository activityLogRepository,
-            DomainEventPublisher eventPublisher) {
+            TransactionalOutboxWriter outboxWriter) {
         this.taskRepository = taskRepository;
-        this.activityLogRepository = activityLogRepository;
-        this.eventPublisher = eventPublisher;
+        this.outboxWriter = outboxWriter;
     }
 
     @Override
@@ -37,13 +31,9 @@ public class AssignTaskUseCaseImpl implements AssignTaskUseCase {
                 .orElseThrow(() -> new TaskNotFoundException(command.taskId(), command.tenantId()));
 
         task.assign(command.assigneeId());
-        List<Object> events = task.pullDomainEvents();
-        Task saved = taskRepository.save(task);
-        eventPublisher.publish(events);
 
-        ActivityLog log = ActivityLog.create(
-                saved.getId(), command.tenantId(), "ASSIGNED", command.callerId());
-        activityLogRepository.save(log);
+        ActivityLog log = ActivityLog.create(task.getId(), command.tenantId(), "ASSIGNED", command.callerId());
+        Task saved = outboxWriter.saveAndPublish(task, log);
 
         return TaskMapper.toResult(saved);
     }

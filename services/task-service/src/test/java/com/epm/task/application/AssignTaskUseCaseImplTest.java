@@ -3,21 +3,24 @@ package com.epm.task.application;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import java.time.Instant;
 import java.util.Optional;
 import java.util.UUID;
 
 import com.epm.task.application.usecase.AssignTaskUseCaseImpl;
 import com.epm.task.domain.exception.TaskNotFoundException;
+import com.epm.task.domain.model.ActivityLog;
 import com.epm.task.domain.model.Task;
 import com.epm.task.domain.model.TaskPriority;
+import com.epm.task.domain.model.TaskStatus;
 import com.epm.task.domain.port.in.command.AssignTaskCommand;
 import com.epm.task.domain.port.in.command.CreateTaskCommand;
 import com.epm.task.domain.port.in.result.TaskResult;
-import com.epm.task.domain.port.out.ActivityLogRepository;
-import com.epm.task.domain.port.out.DomainEventPublisher;
 import com.epm.task.domain.port.out.TaskRepository;
+import com.epm.task.domain.port.out.TransactionalOutboxWriter;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -31,14 +34,13 @@ import org.mockito.junit.jupiter.MockitoExtension;
 class AssignTaskUseCaseImplTest {
 
     @Mock TaskRepository taskRepository;
-    @Mock ActivityLogRepository activityLogRepository;
-    @Mock DomainEventPublisher eventPublisher;
+    @Mock TransactionalOutboxWriter outboxWriter;
 
     AssignTaskUseCaseImpl useCase;
 
     @BeforeEach
     void setUp() {
-        useCase = new AssignTaskUseCaseImpl(taskRepository, activityLogRepository, eventPublisher);
+        useCase = new AssignTaskUseCaseImpl(taskRepository, outboxWriter);
     }
 
     @Test
@@ -52,13 +54,15 @@ class AssignTaskUseCaseImplTest {
 
         when(taskRepository.findByIdAndTenantId(task.getId(), tenantId))
                 .thenReturn(Optional.of(task));
-        when(taskRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
+        when(outboxWriter.saveAndPublish(any(Task.class), any(ActivityLog.class)))
+                .thenAnswer(inv -> inv.getArgument(0));
 
         AssignTaskCommand command = new AssignTaskCommand(task.getId(), tenantId, UUID.randomUUID(), assigneeId);
 
         TaskResult result = useCase.execute(command);
 
         assertThat(result.assigneeId()).isEqualTo(assigneeId);
+        verify(outboxWriter).saveAndPublish(any(Task.class), any(ActivityLog.class));
     }
 
     @Test
@@ -68,12 +72,13 @@ class AssignTaskUseCaseImplTest {
         Task task = Task.reconstitute(
                 UUID.randomUUID(), tenantId, UUID.randomUUID(), null,
                 "Assigned task", null,
-                com.epm.task.domain.model.TaskStatus.TODO, TaskPriority.MEDIUM,
-                null, existingAssignee, java.time.Instant.now(), java.time.Instant.now());
+                TaskStatus.TODO, TaskPriority.MEDIUM,
+                null, existingAssignee, Instant.now(), Instant.now());
 
         when(taskRepository.findByIdAndTenantId(task.getId(), tenantId))
                 .thenReturn(Optional.of(task));
-        when(taskRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
+        when(outboxWriter.saveAndPublish(any(Task.class), any(ActivityLog.class)))
+                .thenAnswer(inv -> inv.getArgument(0));
 
         AssignTaskCommand command = new AssignTaskCommand(task.getId(), tenantId, UUID.randomUUID(), null);
 

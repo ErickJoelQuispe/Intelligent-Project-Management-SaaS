@@ -3,23 +3,25 @@ package com.epm.task.application;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import java.time.Instant;
 import java.util.Optional;
 import java.util.UUID;
 
 import com.epm.task.application.usecase.CreateSubtaskUseCaseImpl;
 import com.epm.task.domain.exception.MaxDepthExceededException;
 import com.epm.task.domain.exception.TaskNotFoundException;
+import com.epm.task.domain.model.ActivityLog;
 import com.epm.task.domain.model.Task;
 import com.epm.task.domain.model.TaskPriority;
 import com.epm.task.domain.model.TaskStatus;
 import com.epm.task.domain.port.in.command.CreateSubtaskCommand;
 import com.epm.task.domain.port.in.command.CreateTaskCommand;
 import com.epm.task.domain.port.in.result.TaskResult;
-import com.epm.task.domain.port.out.ActivityLogRepository;
-import com.epm.task.domain.port.out.DomainEventPublisher;
 import com.epm.task.domain.port.out.TaskRepository;
+import com.epm.task.domain.port.out.TransactionalOutboxWriter;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -33,14 +35,13 @@ import org.mockito.junit.jupiter.MockitoExtension;
 class CreateSubtaskUseCaseImplTest {
 
     @Mock TaskRepository taskRepository;
-    @Mock ActivityLogRepository activityLogRepository;
-    @Mock DomainEventPublisher eventPublisher;
+    @Mock TransactionalOutboxWriter outboxWriter;
 
     CreateSubtaskUseCaseImpl useCase;
 
     @BeforeEach
     void setUp() {
-        useCase = new CreateSubtaskUseCaseImpl(taskRepository, activityLogRepository, eventPublisher);
+        useCase = new CreateSubtaskUseCaseImpl(taskRepository, outboxWriter);
     }
 
     @Test
@@ -53,7 +54,8 @@ class CreateSubtaskUseCaseImplTest {
 
         when(taskRepository.findByIdAndTenantId(rootTask.getId(), tenantId))
                 .thenReturn(Optional.of(rootTask));
-        when(taskRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
+        when(outboxWriter.saveAndPublish(any(Task.class), any(ActivityLog.class)))
+                .thenAnswer(inv -> inv.getArgument(0));
 
         CreateSubtaskCommand command = new CreateSubtaskCommand(
                 tenantId, projectId, rootTask.getId(), UUID.randomUUID(),
@@ -64,6 +66,7 @@ class CreateSubtaskUseCaseImplTest {
         assertThat(result.parentTaskId()).isEqualTo(rootTask.getId());
         assertThat(result.status()).isEqualTo(TaskStatus.TODO);
         assertThat(result.title()).isEqualTo("Subtask");
+        verify(outboxWriter).saveAndPublish(any(Task.class), any(ActivityLog.class));
     }
 
     @Test
@@ -76,7 +79,7 @@ class CreateSubtaskUseCaseImplTest {
         Task subtask = Task.reconstitute(
                 UUID.randomUUID(), tenantId, projectId, rootId,
                 "Existing subtask", null, TaskStatus.TODO, TaskPriority.LOW,
-                null, null, java.time.Instant.now(), java.time.Instant.now());
+                null, null, Instant.now(), Instant.now());
 
         when(taskRepository.findByIdAndTenantId(subtask.getId(), tenantId))
                 .thenReturn(Optional.of(subtask));
