@@ -6,12 +6,16 @@ import com.epm.project.domain.exception.DuplicateProjectMemberException;
 import com.epm.project.domain.exception.DuplicateTeamAssignmentException;
 import com.epm.project.domain.exception.ProjectNotFoundException;
 import com.epm.project.domain.exception.UnauthorizedProjectAccessException;
+import jakarta.validation.ConstraintViolationException;
+import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ProblemDetail;
+import org.springframework.orm.ObjectOptimisticLockingFailureException;
 import org.springframework.validation.FieldError;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.method.annotation.HandlerMethodValidationException;
 
 /**
  * Maps domain exceptions to RFC 7807 Problem Details responses.
@@ -61,7 +65,27 @@ public class GlobalExceptionHandler {
         return problem;
     }
 
-    /** 400 Bad Request — bean validation failure. */
+    /** 409 Conflict — optimistic locking failure (concurrent modification). */
+    @ExceptionHandler(ObjectOptimisticLockingFailureException.class)
+    public ProblemDetail handleOptimisticLock(ObjectOptimisticLockingFailureException ex) {
+        ProblemDetail problem = ProblemDetail.forStatus(HttpStatus.CONFLICT);
+        problem.setType(URI.create("https://api.epm.com/errors/concurrent-modification"));
+        problem.setTitle("Concurrent Modification");
+        problem.setDetail("The resource was modified by another request. Please retry.");
+        return problem;
+    }
+
+    /** 400 Bad Request — domain invariant violation (blank name, oversized input, etc.). */
+    @ExceptionHandler(IllegalArgumentException.class)
+    public ProblemDetail handleIllegalArgument(IllegalArgumentException ex) {
+        ProblemDetail problem = ProblemDetail.forStatus(HttpStatus.BAD_REQUEST);
+        problem.setType(URI.create("https://api.epm.com/errors/invalid-argument"));
+        problem.setTitle("Invalid Argument");
+        problem.setDetail(ex.getMessage());
+        return problem;
+    }
+
+    /** 400 Bad Request — bean validation failure on @RequestBody. */
     @ExceptionHandler(MethodArgumentNotValidException.class)
     public ProblemDetail handleValidation(MethodArgumentNotValidException ex) {
         ProblemDetail problem = ProblemDetail.forStatus(HttpStatus.BAD_REQUEST);
@@ -75,10 +99,34 @@ public class GlobalExceptionHandler {
         return problem;
     }
 
+    /** 400 Bad Request — @Validated @RequestParam / @PathVariable constraint violations. */
+    @ExceptionHandler(HandlerMethodValidationException.class)
+    public ProblemDetail handleHandlerMethodValidation(HandlerMethodValidationException ex) {
+        ProblemDetail problem = ProblemDetail.forStatus(HttpStatus.BAD_REQUEST);
+        problem.setType(URI.create("https://api.epm.com/errors/validation-failed"));
+        problem.setTitle("Validation Failed");
+        problem.setDetail(ex.getMessage());
+        return problem;
+    }
+
+    /** 400 Bad Request — JSR-303 constraint violations (e.g. @Validated on service beans). */
+    @ExceptionHandler(ConstraintViolationException.class)
+    public ProblemDetail handleConstraintViolation(ConstraintViolationException ex) {
+        ProblemDetail problem = ProblemDetail.forStatus(HttpStatus.BAD_REQUEST);
+        problem.setType(URI.create("https://api.epm.com/errors/validation-failed"));
+        problem.setTitle("Validation Failed");
+        String detail = ex.getConstraintViolations().stream()
+                .map(v -> v.getPropertyPath() + ": " + v.getMessage())
+                .findFirst()
+                .orElse("Constraint violation");
+        problem.setDetail(detail);
+        return problem;
+    }
+
     /** 500 Internal Server Error — unexpected exception. */
     @ExceptionHandler(Exception.class)
     public ProblemDetail handleGeneric(Exception ex) {
-        org.slf4j.LoggerFactory.getLogger(GlobalExceptionHandler.class)
+        LoggerFactory.getLogger(GlobalExceptionHandler.class)
                 .error("Unhandled exception: {}", ex.getMessage(), ex);
         ProblemDetail problem = ProblemDetail.forStatus(HttpStatus.INTERNAL_SERVER_ERROR);
         problem.setType(URI.create("https://api.epm.com/errors/internal-error"));

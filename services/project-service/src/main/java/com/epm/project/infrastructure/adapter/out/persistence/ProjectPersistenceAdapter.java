@@ -2,9 +2,11 @@ package com.epm.project.infrastructure.adapter.out.persistence;
 
 import java.time.Instant;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.UUID;
+import java.util.stream.Collectors;
 
 import com.epm.project.domain.model.Project;
 import com.epm.project.domain.model.ProjectMember;
@@ -19,6 +21,11 @@ import org.springframework.stereotype.Component;
  * Adapter implementing {@link ProjectRepository} port using JPA.
  *
  * <p>Reconstitutes the {@link Project} aggregate with all its members and teams.
+ *
+ * <p>List operations ({@link #findAllByMemberProfileId}, {@link #findAllByTeamId}) use
+ * batch-loading (IN queries) to avoid the N+1 fan-out that was present before FIX 8:
+ * instead of 3 extra queries per project, members and teams are fetched in two bulk
+ * queries and grouped in memory.
  */
 @Component
 public class ProjectPersistenceAdapter implements ProjectRepository {
@@ -56,24 +63,79 @@ public class ProjectPersistenceAdapter implements ProjectRepository {
 
     @Override
     public List<Project> findAllByMemberProfileId(UUID profileId, UUID tenantId) {
-        return projectJpaRepo.findAllProjectsByMemberProfileId(profileId, tenantId).stream()
-                .map(this::reconstitute)
-                .toList();
+        List<ProjectJpaEntity> projectEntities =
+                projectJpaRepo.findAllProjectsByMemberProfileId(profileId, tenantId);
+        return reconstituteBatch(projectEntities);
     }
 
     @Override
     public List<Project> findAllByMemberProfileIdExcludingArchived(UUID profileId, UUID tenantId) {
-        return projectJpaRepo.findAllProjectsByMemberProfileIdExcludingArchived(profileId, tenantId).stream()
-                .map(this::reconstitute)
-                .toList();
+        List<ProjectJpaEntity> projectEntities =
+                projectJpaRepo.findAllProjectsByMemberProfileIdExcludingArchived(profileId, tenantId);
+        return reconstituteBatch(projectEntities);
     }
 
     @Override
     public List<Project> findAllByTeamId(UUID teamId, UUID tenantId) {
-        return teamJpaRepo.findByTeamIdAndOrphanedAtIsNull(teamId).stream()
-                .filter(pt -> pt.getTenantId().equals(tenantId))
-                .map(pt -> findByIdAndTenantId(pt.getProjectId(), pt.getTenantId()).orElse(null))
-                .filter(Objects::nonNull)
+        // FIX 8 + FIX 19: push tenant filter into SQL; fetch all matching project IDs in one query.
+        List<UUID> projectIds = teamJpaRepo.findByTeamIdAndTenantIdAndOrphanedAtIsNull(teamId, tenantId)
+                .stream()
+                .map(ProjectTeamJpaEntity::getProjectId)
+                .toList();
+
+        if (projectIds.isEmpty()) {
+            return List.of();
+        }
+
+        List<ProjectJpaEntity> projectEntities = projectJpaRepo.findAllById(projectIds)
+                .stream()
+                .filter(p -> p.getDeletedAt() == null)
+                .toList();
+
+        return reconstituteBatch(projectEntities);
+    }
+
+    // ── Batch reconstitution (FIX 8) ─────────────────────────────────────────
+
+    /**
+     * Reconstitutes multiple projects using two bulk queries instead of N×3 per-project
+     * queries. Members and teams for all projects are loaded in one IN query each, then
+     * grouped by projectId in memory.
+     */
+    private List<Project> reconstituteBatch(List<ProjectJpaEntity> projectEntities) {
+        if (projectEntities.isEmpty()) {
+            return List.of();
+        }
+
+        List<UUID> projectIds = projectEntities.stream()
+                .map(ProjectJpaEntity::getId)
+                .toList();
+
+        // Batch-load all active teams and members for the given project IDs.
+        Map<UUID, List<ProjectTeamJpaEntity>> teamsByProject =
+                teamJpaRepo.findByProjectIdInAndOrphanedAtIsNull(projectIds)
+                        .stream()
+                        .collect(Collectors.groupingBy(ProjectTeamJpaEntity::getProjectId));
+
+        Map<UUID, List<ProjectMemberJpaEntity>> membersByProject =
+                memberJpaRepo.findByProjectIdInAndRemovedAtIsNull(projectIds)
+                        .stream()
+                        .collect(Collectors.groupingBy(ProjectMemberJpaEntity::getProjectId));
+
+        return projectEntities.stream()
+                .map(entity -> {
+                    List<ProjectTeam> teams = teamsByProject
+                            .getOrDefault(entity.getId(), List.of())
+                            .stream()
+                            .map(this::toTeamDomain)
+                            .toList();
+                    List<ProjectMember> members = membersByProject
+                            .getOrDefault(entity.getId(), List.of())
+                            .stream()
+                            .map(this::toMemberDomain)
+                            .toList();
+                    return reconstitute(entity, members, teams);
+                })
                 .toList();
     }
 
@@ -88,6 +150,11 @@ public class ProjectPersistenceAdapter implements ProjectRepository {
                 .stream()
                 .map(this::toMemberDomain)
                 .toList();
+        return reconstitute(entity, members, teams);
+    }
+
+    private Project reconstitute(ProjectJpaEntity entity,
+            List<ProjectMember> members, List<ProjectTeam> teams) {
         return Project.reconstitute(
                 entity.getId(),
                 entity.getTenantId(),
