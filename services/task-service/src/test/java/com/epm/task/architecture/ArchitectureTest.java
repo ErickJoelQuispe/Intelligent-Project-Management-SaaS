@@ -11,7 +11,9 @@ import com.tngtech.archunit.lang.ArchRule;
 /**
  * Architecture fitness functions for task-service hexagonal structure.
  *
- * <p>Enforces the four invariants of hexagonal architecture.
+ * <p>Enforces the four invariants of hexagonal architecture, plus two
+ * framework-isolation rules: domain and application layers must not depend on
+ * Jackson ({@code com.fasterxml.jackson..}) or Kafka ({@code org.apache.kafka..}).
  */
 @AnalyzeClasses(
         packages = "com.epm.task",
@@ -66,4 +68,58 @@ class ArchitectureTest {
             .whereLayer("Infrastructure").mayNotBeAccessedByAnyLayer()
             .whereLayer("Application").mayOnlyBeAccessedByLayers("Infrastructure")
             .whereLayer("Domain").mayOnlyBeAccessedByLayers("Application", "Infrastructure");
+
+    /**
+     * Rule 5 — Domain must not depend on Jackson.
+     *
+     * <p>Jackson is a serialisation framework — it belongs in the infrastructure adapter layer.
+     * Domain objects must remain plain Java (serialization-agnostic).
+     */
+    @ArchTest
+    static final ArchRule domainMustNotDependOnJackson = noClasses()
+            .that()
+            .resideInAPackage("..domain..")
+            .should()
+            .dependOnClassesThat()
+            .resideInAPackage("com.fasterxml.jackson..");
+
+    /**
+     * Rule 6 — Application must not depend on Jackson.
+     *
+     * <p>Use case implementations are pure Java. Serialization concerns belong in infra.
+     */
+    @ArchTest
+    static final ArchRule applicationMustNotDependOnJackson = noClasses()
+            .that()
+            .resideInAPackage("..application..")
+            .should()
+            .dependOnClassesThat()
+            .resideInAPackage("com.fasterxml.jackson..");
+
+    /**
+     * Rule 7 — Domain must not depend on Kafka.
+     *
+     * <p>Kafka is a messaging infrastructure concern. Domain events are plain records;
+     * only infrastructure adapters touch the Kafka API.
+     */
+    @ArchTest
+    static final ArchRule domainMustNotDependOnKafka = noClasses()
+            .that()
+            .resideInAPackage("..domain..")
+            .should()
+            .dependOnClassesThat()
+            .resideInAPackage("org.apache.kafka..");
+
+    /**
+     * Rule 8 — Application must not depend on Kafka.
+     *
+     * <p>Use case implementations must remain messaging-agnostic.
+     */
+    @ArchTest
+    static final ArchRule applicationMustNotDependOnKafka = noClasses()
+            .that()
+            .resideInAPackage("..application..")
+            .should()
+            .dependOnClassesThat()
+            .resideInAPackage("org.apache.kafka..");
 }
