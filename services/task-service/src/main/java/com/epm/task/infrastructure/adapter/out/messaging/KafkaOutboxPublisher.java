@@ -1,9 +1,10 @@
 package com.epm.task.infrastructure.adapter.out.messaging;
 
-import java.time.Instant;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
 
 import com.epm.task.infrastructure.adapter.out.persistence.OutboxEventJpaEntity;
-import com.epm.task.infrastructure.adapter.out.persistence.OutboxEventJpaRepository;
 import com.epm.task.infrastructure.messaging.tracing.KafkaTracingSupport;
 import org.apache.kafka.clients.producer.ProducerRecord;
 import org.slf4j.Logger;
@@ -12,57 +13,60 @@ import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.stereotype.Component;
 
 /**
- * Publishes a single outbox event to Kafka and marks it as published.
+ * Publishes a single outbox event to Kafka — blocking send.
  *
  * <p>Injects W3C trace context headers ({@code traceparent}) into each outgoing
  * {@link ProducerRecord} via {@link KafkaTracingSupport} so that downstream consumers
  * can continue the distributed trace.
+ *
+ * <p><strong>Blocking send</strong>: the send is blocking ({@code .get(timeout)}).
+ * With an async {@code whenComplete} callback the relay would update the outbox row on
+ * the producer thread — outside the relay's {@code @Transactional} boundary — so a failed
+ * send would not reliably set {@code failed_at} within the relay transaction.
+ * Blocking keeps the success/failure determination synchronous and within the relay's
+ * transaction boundary, where {@link OutboxRelayExecutor} owns the DB state update.
+ *
+ * <p><strong>Responsibility split</strong>: this class is responsible for Kafka delivery only.
+ * Setting {@code published_at} or {@code failed_at} on the outbox entity is done by
+ * {@link OutboxRelayExecutor} after this method returns or throws.
  */
 @Component
 public class KafkaOutboxPublisher {
 
     private static final Logger log = LoggerFactory.getLogger(KafkaOutboxPublisher.class);
+    private static final long SEND_TIMEOUT_SECONDS = 5;
 
     private final KafkaTemplate<String, String> kafkaTemplate;
-    private final OutboxEventJpaRepository outboxRepo;
 
-    public KafkaOutboxPublisher(KafkaTemplate<String, String> kafkaTemplate,
-            OutboxEventJpaRepository outboxRepo) {
+    public KafkaOutboxPublisher(KafkaTemplate<String, String> kafkaTemplate) {
         this.kafkaTemplate = kafkaTemplate;
-        this.outboxRepo = outboxRepo;
     }
 
     /**
-     * Sends the event payload to Kafka and updates the outbox row.
+     * Sends the event payload to Kafka, blocking until the broker acknowledges.
      *
      * <p>Builds a {@link ProducerRecord} explicitly so that W3C trace headers can be
      * injected before the record is handed to the Kafka producer.
      *
      * @param entity the outbox event to publish
+     * @throws RuntimeException if the send fails, times out, or the thread is interrupted
      */
     public void publish(OutboxEventJpaEntity entity) {
-        try {
-            ProducerRecord<String, String> record = new ProducerRecord<>(
-                    entity.getTopic(), entity.getAggregateId().toString(), entity.getPayload());
-            KafkaTracingSupport.injectTraceHeaders(record);
+        ProducerRecord<String, String> record = new ProducerRecord<>(
+                entity.getTopic(), entity.getAggregateId().toString(), entity.getPayload());
+        KafkaTracingSupport.injectTraceHeaders(record);
 
-            kafkaTemplate.send(record)
-                    .whenComplete((result, ex) -> {
-                        if (ex != null) {
-                            log.error("Failed to publish outbox event {} to topic {}",
-                                    entity.getId(), entity.getTopic(), ex);
-                            entity.setFailedAt(Instant.now());
-                            entity.setError(ex.getMessage());
-                        } else {
-                            entity.setPublishedAt(Instant.now());
-                        }
-                        outboxRepo.save(entity);
-                    });
-        } catch (Exception ex) {
-            log.error("Exception publishing outbox event {}", entity.getId(), ex);
-            entity.setFailedAt(Instant.now());
-            entity.setError(ex.getMessage());
-            outboxRepo.save(entity);
+        try {
+            kafkaTemplate.send(record).get(SEND_TIMEOUT_SECONDS, TimeUnit.SECONDS);
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            log.error("Interrupted publishing outbox event {} to topic {}",
+                    entity.getId(), entity.getTopic(), e);
+            throw new RuntimeException("Kafka send interrupted for event " + entity.getId(), e);
+        } catch (ExecutionException | TimeoutException e) {
+            log.error("Failed to publish outbox event {} to topic {}",
+                    entity.getId(), entity.getTopic(), e);
+            throw new RuntimeException("Kafka send failed for event " + entity.getId(), e);
         }
     }
 }

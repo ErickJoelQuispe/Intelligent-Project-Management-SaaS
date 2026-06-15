@@ -25,6 +25,23 @@ public class KafkaConfig {
     @Value("${spring.kafka.bootstrap-servers:localhost:9092}")
     private String bootstrapServers;
 
+    /**
+     * Maximum time {@code KafkaProducer.send()} may block while waiting for metadata/buffer.
+     * Bounded so that a down or unreachable broker fails the relay's blocking send quickly
+     * instead of hanging the relay thread for the Kafka default of 60 000 ms. The outbox
+     * relay simply marks the row failed and retries on the next poll, so a short block is safe.
+     */
+    @Value("${task.kafka.producer.max-block-ms:5000}")
+    private int maxBlockMs;
+
+    /**
+     * Upper bound on the total time to report success/failure of a single send (includes
+     * retries). Kept aligned with {@link #maxBlockMs} so a dead broker surfaces a failure
+     * promptly rather than tying up the relay.
+     */
+    @Value("${task.kafka.producer.delivery-timeout-ms:5000}")
+    private int deliveryTimeoutMs;
+
     @Bean
     ProducerFactory<String, String> producerFactory() {
         Map<String, Object> props = new HashMap<>();
@@ -33,6 +50,12 @@ public class KafkaConfig {
         props.put(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, StringSerializer.class);
         props.put(ProducerConfig.ACKS_CONFIG, "all");
         props.put(ProducerConfig.RETRIES_CONFIG, 3);
+        // Bound the time a send can block on metadata so a dead/slow broker cannot pin the
+        // outbox-relay thread for the Kafka default of 60s (delivery.timeout must be >=
+        // request.timeout + linger; request.timeout default 30s is lowered to fit).
+        props.put(ProducerConfig.MAX_BLOCK_MS_CONFIG, maxBlockMs);
+        props.put(ProducerConfig.DELIVERY_TIMEOUT_MS_CONFIG, deliveryTimeoutMs);
+        props.put(ProducerConfig.REQUEST_TIMEOUT_MS_CONFIG, deliveryTimeoutMs);
         return new DefaultKafkaProducerFactory<>(props);
     }
 

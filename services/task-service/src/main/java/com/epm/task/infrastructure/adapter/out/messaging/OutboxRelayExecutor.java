@@ -65,6 +65,11 @@ public class OutboxRelayExecutor {
     private void publish(OutboxEventJpaEntity event) {
         try {
             publisher.publish(event);
+            // On success, publisher.publish() throws nothing. Set publishedAt here in the
+            // relay's transaction (which holds the FOR UPDATE SKIP LOCKED lock), then save.
+            // This mirrors the project-service pattern where the relay owns the DB state update.
+            event.setPublishedAt(Instant.now());
+            outboxRepo.save(event);
             log.debug("Relayed outbox event {} to topic {}", event.getId(), event.getTopic());
         } catch (Exception ex) {
             log.warn("Failed to relay outbox event {}: {}", event.getId(), ex.getMessage());
