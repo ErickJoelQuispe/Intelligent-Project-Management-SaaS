@@ -107,24 +107,38 @@ class ProjectArchivedConsumerTest extends AbstractPostgresIT {
         kafkaTemplate.send(new ProducerRecord<>(
                 "project.project.archived", projectId.toString(), message));
 
-        // Wait until first event is processed — 30s for CI
+        // Wait until first event is processed and tasks are CANCELLED — 30s for CI
         Awaitility.await()
                 .atMost(Duration.ofSeconds(30))
                 .pollInterval(Duration.ofMillis(500))
-                .until(() -> processedEventRepo.existsByEventId(eventId));
+                .until(() -> processedEventRepo.existsByEventId(eventId)
+                        && taskJpaRepo.findAllByProjectIdAndTenantId(projectId, tenantId)
+                                .stream().allMatch(t -> t.getStatus() == TaskStatus.CANCELLED));
 
-        long outboxCountAfterFirst = outboxRepo.count();
+        // Exactly ONE processed_events row after the first event
+        long processedCountAfterFirst = processedEventRepo.findAll().stream()
+                .filter(p -> eventId.equals(p.getEventId()))
+                .count();
+        assertThat(processedCountAfterFirst)
+                .as("Exactly 1 processed_events row after first event")
+                .isEqualTo(1);
 
-        // Second event — must be skipped (no new outbox rows)
+        // Second event — must be skipped (same eventId)
         kafkaTemplate.send(new ProducerRecord<>(
                 "project.project.archived", projectId.toString(), message));
 
-        // Wait a bit and verify no extra outbox entries were created
+        // Wait a bit and verify the processed_events count remains exactly 1
         Awaitility.await()
-                .atMost(Duration.ofSeconds(10))
+                .atMost(Duration.ofSeconds(15))
                 .pollInterval(Duration.ofMillis(500))
-                .untilAsserted(() ->
-                        assertThat(outboxRepo.count()).isEqualTo(outboxCountAfterFirst));
+                .untilAsserted(() -> {
+                    long processedCount = processedEventRepo.findAll().stream()
+                            .filter(p -> eventId.equals(p.getEventId()))
+                            .count();
+                    assertThat(processedCount)
+                            .as("Still exactly 1 processed_events row — second event must be skipped")
+                            .isEqualTo(1);
+                });
     }
 
     // ── Helpers ──────────────────────────────────────────────────────────────

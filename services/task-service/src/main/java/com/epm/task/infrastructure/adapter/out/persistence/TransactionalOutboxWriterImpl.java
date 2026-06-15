@@ -25,6 +25,12 @@ import org.springframework.transaction.annotation.Transactional;
  * aggregate instance would therefore be lost after the save returns. Pulling first
  * ensures the captured events are published to the outbox within the same transaction.
  * This mirrors the pattern established in {@code project-service/TransactionalOutboxWriterImpl}.
+ *
+ * <p><strong>Transaction propagation:</strong> {@link TaskPersistenceAdapter#bulkDeleteSubtasks}
+ * and {@link TaskPersistenceAdapter#deleteByIdAndTenantId} are themselves annotated
+ * {@code @Transactional} with the default {@code REQUIRED} propagation — they join the
+ * existing transaction opened by this class rather than creating a new one. There is no
+ * {@code REQUIRES_NEW} on those methods.
  */
 @Component
 public class TransactionalOutboxWriterImpl implements TransactionalOutboxWriter {
@@ -66,20 +72,39 @@ public class TransactionalOutboxWriterImpl implements TransactionalOutboxWriter 
     }
 
     /**
-     * Publishes the task's pending domain events to the outbox and deletes the task row —
-     * all within one transaction. Used in the delete flow where the aggregate must be
-     * removed rather than updated.
+     * Atomically bulk-deletes all subtasks of the root task, publishes the root's pending
+     * domain events to the outbox, and deletes the root task row — ALL in one transaction.
      *
-     * <p>Events are pulled before deletion to ensure they are inserted into the outbox
-     * within the same transaction as the DELETE.
+     * <p>Operation order:
+     * <ol>
+     *   <li>Pull domain events from the aggregate (before any deletes, so the in-memory
+     *       event list is captured before the aggregate is gone).</li>
+     *   <li>Bulk-delete subtasks ({@link TaskRepository#bulkDeleteSubtasks}) — single DELETE.</li>
+     *   <li>Publish events to the outbox ({@link DomainEventPublisher#publish}).</li>
+     *   <li>Delete the root task row ({@link TaskRepository#deleteByIdAndTenantId}).</li>
+     * </ol>
      *
-     * @param task the aggregate whose events are to be published before deletion
+     * <p>All four steps participate in the SAME {@code @Transactional} boundary (REQUIRED
+     * propagation on the repository methods joins this transaction). A failure in any step
+     * rolls back all, preventing split-brain where subtasks are deleted but the root still
+     * exists or no event was published.
+     *
+     * @param root the root task aggregate with pending events raised by
+     *             {@link Task#markDeleted()}; its subtasks and row will be deleted
      */
     @Override
     @Transactional
-    public void publishAndDelete(Task task) {
-        List<Object> events = task.pullDomainEvents();
+    public void publishAndDeleteWithSubtasks(Task root) {
+        // Pull events first — must happen before deletion so event data is available.
+        List<Object> events = root.pullDomainEvents();
+
+        // Bulk-delete all children in one DELETE (no N+1).
+        taskRepository.bulkDeleteSubtasks(root.getId(), root.getTenantId());
+
+        // Publish TaskDeleted (and any other events) to the outbox within this transaction.
         eventPublisher.publish(events);
-        taskRepository.deleteByIdAndTenantId(task.getId(), task.getTenantId());
+
+        // Finally, delete the root task row.
+        taskRepository.deleteByIdAndTenantId(root.getId(), root.getTenantId());
     }
 }

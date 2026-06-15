@@ -35,32 +35,37 @@ public class UseCaseConfig {
 
     @Bean
     CreateSubtaskUseCaseImpl createSubtaskUseCase(TaskRepository taskRepository,
-            TransactionalOutboxWriter outboxWriter) {
-        return new CreateSubtaskUseCaseImpl(taskRepository, outboxWriter);
+            TransactionalOutboxWriter outboxWriter,
+            ProjectMembershipPort membershipPort) {
+        return new CreateSubtaskUseCaseImpl(taskRepository, outboxWriter, membershipPort);
     }
 
     @Bean
     UpdateTaskUseCaseImpl updateTaskUseCase(TaskRepository taskRepository,
-            TransactionalOutboxWriter outboxWriter) {
-        return new UpdateTaskUseCaseImpl(taskRepository, outboxWriter);
+            TransactionalOutboxWriter outboxWriter,
+            ProjectMembershipPort membershipPort) {
+        return new UpdateTaskUseCaseImpl(taskRepository, outboxWriter, membershipPort);
     }
 
     @Bean
     ChangeTaskStatusUseCaseImpl changeTaskStatusUseCase(TaskRepository taskRepository,
-            TransactionalOutboxWriter outboxWriter) {
-        return new ChangeTaskStatusUseCaseImpl(taskRepository, outboxWriter);
+            TransactionalOutboxWriter outboxWriter,
+            ProjectMembershipPort membershipPort) {
+        return new ChangeTaskStatusUseCaseImpl(taskRepository, outboxWriter, membershipPort);
     }
 
     @Bean
     AssignTaskUseCaseImpl assignTaskUseCase(TaskRepository taskRepository,
-            TransactionalOutboxWriter outboxWriter) {
-        return new AssignTaskUseCaseImpl(taskRepository, outboxWriter);
+            TransactionalOutboxWriter outboxWriter,
+            ProjectMembershipPort membershipPort) {
+        return new AssignTaskUseCaseImpl(taskRepository, outboxWriter, membershipPort);
     }
 
     @Bean
     DeleteTaskUseCaseImpl deleteTaskUseCase(TaskRepository taskRepository,
-            TransactionalOutboxWriter outboxWriter) {
-        return new DeleteTaskUseCaseImpl(taskRepository, outboxWriter);
+            TransactionalOutboxWriter outboxWriter,
+            ProjectMembershipPort membershipPort) {
+        return new DeleteTaskUseCaseImpl(taskRepository, outboxWriter, membershipPort);
     }
 
     @Bean

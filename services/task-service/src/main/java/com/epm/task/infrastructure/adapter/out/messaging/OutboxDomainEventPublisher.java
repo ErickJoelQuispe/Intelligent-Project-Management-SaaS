@@ -4,6 +4,7 @@ import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
 
+import com.epm.task.domain.event.ProjectTasksCancelled;
 import com.epm.task.domain.event.TaskAssigned;
 import com.epm.task.domain.event.TaskCreated;
 import com.epm.task.domain.event.TaskDeleted;
@@ -22,7 +23,8 @@ import org.springframework.stereotype.Component;
 /**
  * Implements {@link DomainEventPublisher} using the outbox pattern for task-service.
  *
- * <p>Handles TaskCreated, TaskUpdated, TaskStatusChanged, TaskAssigned, TaskDeleted.
+ * <p>Handles TaskCreated, TaskUpdated, TaskStatusChanged, TaskAssigned, TaskDeleted,
+ * and {@link ProjectTasksCancelled} (aggregate event emitted by the project-archive cascade).
  * All events are published to the {@code task.events} topic.
  */
 @Component
@@ -62,6 +64,9 @@ public class OutboxDomainEventPublisher implements DomainEventPublisher {
             } else if (event instanceof TaskDeleted e) {
                 entity = buildEntity(e.taskId(), "Task", "TaskDeleted",
                         TOPIC_TASK_EVENTS, buildTaskDeletedPayload(e));
+            } else if (event instanceof ProjectTasksCancelled e) {
+                entity = buildEntity(e.projectId(), "Project", "ProjectTasksCancelled",
+                        TOPIC_TASK_EVENTS, buildProjectTasksCancelledPayload(e));
             }
 
             if (entity != null) {
@@ -174,6 +179,23 @@ public class OutboxDomainEventPublisher implements DomainEventPublisher {
             return objectMapper.writeValueAsString(envelope);
         } catch (JsonProcessingException e) {
             throw new IllegalStateException("Failed to serialize TaskDeleted event", e);
+        }
+    }
+
+    private String buildProjectTasksCancelledPayload(ProjectTasksCancelled event) {
+        try {
+            ObjectNode envelope = objectMapper.createObjectNode();
+            envelope.put("eventId", event.eventId().toString());
+            envelope.put("eventType", "ProjectTasksCancelled");
+            envelope.put("tenantId", event.tenantId().toString());
+            envelope.put("occurredAt", event.occurredAt().toString());
+            ObjectNode payload = objectMapper.createObjectNode();
+            payload.put("projectId", event.projectId().toString());
+            payload.put("cancelledCount", event.cancelledCount());
+            envelope.set("payload", payload);
+            return objectMapper.writeValueAsString(envelope);
+        } catch (JsonProcessingException e) {
+            throw new IllegalStateException("Failed to serialize ProjectTasksCancelled event", e);
         }
     }
 }

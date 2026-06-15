@@ -23,4 +23,21 @@ public interface TaskRepository {
     List<Task> findSubtasksByParentId(UUID parentTaskId, UUID tenantId);
 
     void deleteByIdAndTenantId(UUID id, UUID tenantId);
+
+    /**
+     * Bulk-cancels all non-cancelled tasks in the given project (for cascade on archive).
+     * Returns the count of rows updated.
+     *
+     * <p>This is a single bulk UPDATE — no N+1. Does NOT emit per-task domain events;
+     * callers should emit one aggregate {@code ProjectTasksCancelled} event instead.
+     */
+    int bulkCancelByProjectId(UUID projectId, UUID tenantId);
+
+    /**
+     * Bulk-deletes all subtasks of the given parent task.
+     *
+     * <p>This is a single bulk DELETE — no N+1. Child deletion is implied by the
+     * root {@code TaskDeleted} event; no per-child events are emitted.
+     */
+    void bulkDeleteSubtasks(UUID parentTaskId, UUID tenantId);
 }

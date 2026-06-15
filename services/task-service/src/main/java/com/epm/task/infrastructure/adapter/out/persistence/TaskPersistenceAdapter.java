@@ -96,6 +96,18 @@ public class TaskPersistenceAdapter implements TaskRepository, ActivityLogReposi
         taskJpaRepo.deleteByIdAndTenantId(id, tenantId);
     }
 
+    @Override
+    @Transactional
+    public int bulkCancelByProjectId(UUID projectId, UUID tenantId) {
+        return taskJpaRepo.bulkCancelByProjectId(projectId, tenantId, Instant.now());
+    }
+
+    @Override
+    @Transactional
+    public void bulkDeleteSubtasks(UUID parentTaskId, UUID tenantId) {
+        taskJpaRepo.bulkDeleteSubtasks(parentTaskId, tenantId);
+    }
+
     // ── ActivityLogRepository ─────────────────────────────────────────────────
 
     @Override

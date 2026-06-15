@@ -2,22 +2,19 @@ package com.epm.task.application;
 
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
-import java.time.Instant;
-import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
 import com.epm.task.application.usecase.DeleteTaskUseCaseImpl;
 import com.epm.task.domain.exception.TaskNotFoundException;
-import com.epm.task.domain.model.ActivityLog;
 import com.epm.task.domain.model.Task;
 import com.epm.task.domain.model.TaskPriority;
-import com.epm.task.domain.model.TaskStatus;
 import com.epm.task.domain.port.in.command.CreateTaskCommand;
+import com.epm.task.domain.port.out.ProjectMembershipPort;
 import com.epm.task.domain.port.out.TaskRepository;
 import com.epm.task.domain.port.out.TransactionalOutboxWriter;
 import org.junit.jupiter.api.BeforeEach;
@@ -28,50 +25,56 @@ import org.mockito.junit.jupiter.MockitoExtension;
 
 /**
  * Unit tests for DeleteTaskUseCaseImpl.
+ *
+ * <p>Key invariant verified: the use case must delegate ALL of
+ * bulk-delete-subtasks + outbox-publish + root-delete to
+ * {@link TransactionalOutboxWriter#publishAndDeleteWithSubtasks(Task)} in ONE call,
+ * ensuring atomicity is owned by the writer (infrastructure boundary), not the use case.
  */
 @ExtendWith(MockitoExtension.class)
 class DeleteTaskUseCaseImplTest {
 
     @Mock TaskRepository taskRepository;
     @Mock TransactionalOutboxWriter outboxWriter;
+    @Mock ProjectMembershipPort membershipPort;
 
     DeleteTaskUseCaseImpl useCase;
 
     @BeforeEach
     void setUp() {
-        useCase = new DeleteTaskUseCaseImpl(taskRepository, outboxWriter);
+        useCase = new DeleteTaskUseCaseImpl(taskRepository, outboxWriter, membershipPort);
     }
 
+    /**
+     * Happy path: the use case must call {@code publishAndDeleteWithSubtasks} (atomic writer)
+     * and must NOT call {@code bulkDeleteSubtasks} directly (split-brain prevention).
+     */
     @Test
-    void execute_rootTaskWithSubtasks_cancelsSubtasksAndDeletesRoot() {
+    void execute_rootTask_delegatesAtomicDeleteToWriter() {
         UUID tenantId = UUID.randomUUID();
         UUID projectId = UUID.randomUUID();
+        UUID callerId = UUID.randomUUID();
         Task rootTask = Task.create(new CreateTaskCommand(
-                tenantId, projectId, UUID.randomUUID(), "Root", null, TaskPriority.HIGH, null, null));
+                tenantId, projectId, callerId, "Root", null, TaskPriority.HIGH, null, null));
         rootTask.pullDomainEvents();
-
-        Task subtask1 = Task.reconstitute(
-                UUID.randomUUID(), tenantId, projectId, rootTask.getId(),
-                "Subtask 1", null, TaskStatus.TODO, TaskPriority.LOW,
-                null, null, Instant.now(), Instant.now());
-        Task subtask2 = Task.reconstitute(
-                UUID.randomUUID(), tenantId, projectId, rootTask.getId(),
-                "Subtask 2", null, TaskStatus.IN_PROGRESS, TaskPriority.MEDIUM,
-                null, null, Instant.now(), Instant.now());
 
         when(taskRepository.findByIdAndTenantId(rootTask.getId(), tenantId))
                 .thenReturn(Optional.of(rootTask));
-        when(taskRepository.findSubtasksByParentId(rootTask.getId(), tenantId))
-                .thenReturn(List.of(subtask1, subtask2));
-        when(outboxWriter.saveAndPublish(any(Task.class), any(ActivityLog.class)))
-                .thenAnswer(inv -> inv.getArgument(0));
+        when(membershipPort.isMember(any(), any(), any())).thenReturn(true);
 
-        useCase.execute(rootTask.getId(), tenantId);
+        useCase.execute(rootTask.getId(), tenantId, callerId);
 
-        // Both subtasks cancelled via saveAndPublish
-        verify(outboxWriter, times(2)).saveAndPublish(any(Task.class), any(ActivityLog.class));
-        // Root deleted via publishAndDelete
-        verify(outboxWriter).publishAndDelete(rootTask);
+        // MUST delegate to the atomic writer — subtask delete + event publish + root delete
+        // all happen in ONE transaction inside the writer.
+        verify(outboxWriter).publishAndDeleteWithSubtasks(rootTask);
+
+        // MUST NOT call bulkDeleteSubtasks directly — that would be a separate committed
+        // transaction and break atomicity (split-brain: subtasks gone but root still exists
+        // if publishAndDeleteWithSubtasks subsequently fails).
+        verify(taskRepository, never()).bulkDeleteSubtasks(any(), any());
+
+        // saveAndPublish is for create/update flows — never called on delete.
+        verify(outboxWriter, never()).saveAndPublish(any(), any());
     }
 
     @Test
@@ -80,7 +83,7 @@ class DeleteTaskUseCaseImplTest {
         UUID taskId = UUID.randomUUID();
         when(taskRepository.findByIdAndTenantId(taskId, tenantId)).thenReturn(Optional.empty());
 
-        assertThatThrownBy(() -> useCase.execute(taskId, tenantId))
+        assertThatThrownBy(() -> useCase.execute(taskId, tenantId, UUID.randomUUID()))
                 .isInstanceOf(TaskNotFoundException.class);
     }
 }

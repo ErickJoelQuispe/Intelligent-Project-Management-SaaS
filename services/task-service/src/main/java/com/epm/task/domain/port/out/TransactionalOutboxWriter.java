@@ -28,13 +28,23 @@ public interface TransactionalOutboxWriter {
     Task saveAndPublish(Task task, ActivityLog activityLog);
 
     /**
-     * Publishes the task's pending domain events to the outbox and then deletes
-     * the task aggregate — all within one transaction.
+     * Atomically bulk-deletes the root task's subtasks, publishes the root's pending
+     * domain events to the outbox, and deletes the root task row — ALL in one transaction.
      *
-     * <p>Used for the delete flow where the task is marked deleted (events are raised)
-     * but the row must be removed rather than updated.
+     * <p>Because everything happens inside a single {@code @Transactional} boundary on the
+     * infrastructure implementation, a failure in any step rolls back all operations.
+     * This prevents split-brain states where subtasks are deleted but the root task still
+     * exists (or vice versa) because a subsequent step failed after a prior committed tx.
      *
-     * @param task the aggregate whose events are to be published before deletion
+     * <p>Callers (use cases) must NOT call {@code TaskRepository.bulkDeleteSubtasks} directly
+     * before invoking this method — doing so would create a separate committed transaction
+     * and break the atomicity guarantee.
+     *
+     * <p>The implementation should pull domain events from the aggregate BEFORE the
+     * bulk-delete to ensure event data is captured within the same transaction.
+     *
+     * @param root the root task aggregate (with pending domain events raised by
+     *             {@link Task#markDeleted()}) whose subtasks and row are to be deleted
      */
-    void publishAndDelete(Task task);
+    void publishAndDeleteWithSubtasks(Task root);
 }

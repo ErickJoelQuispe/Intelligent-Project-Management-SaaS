@@ -1,15 +1,16 @@
 package com.epm.task.infrastructure.adapter.in.messaging;
 
+import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
 
-import com.epm.task.domain.model.Task;
-import com.epm.task.domain.port.out.ActivityLogRepository;
+import com.epm.task.domain.event.ProjectTasksCancelled;
 import com.epm.task.domain.port.out.DomainEventPublisher;
 import com.epm.task.domain.port.out.TaskRepository;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.github.f4b6a3.uuid.UuidCreator;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.kafka.annotation.KafkaListener;
@@ -19,9 +20,22 @@ import org.springframework.transaction.annotation.Transactional;
 /**
  * Kafka consumer for {@code project.project.archived} events.
  *
- * <p>Cancels all tasks in the archived project. Uses the two-bean idempotency pattern
- * ({@link IdempotencyGuard} + {@link ProcessedEventClaimer}) to prevent TOCTOU races
- * when the same event is delivered concurrently.
+ * <p>Bulk-cancels all tasks in the archived project via a single UPDATE (no N+1).
+ * Uses the two-bean idempotency pattern ({@link IdempotencyGuard} +
+ * {@link ProcessedEventClaimer}) to prevent TOCTOU races when the same event is
+ * delivered concurrently.
+ *
+ * <p><strong>Cascade semantics</strong>: instead of emitting one {@code TaskStatusChanged}
+ * event per task (which could be thousands), a single aggregate
+ * {@link ProjectTasksCancelled} event is emitted after the bulk cancel, inserted into
+ * the outbox in the SAME transaction. Downstream consumers (Kanban) refresh on schedule
+ * and do not require per-task events.
+ *
+ * <p><strong>Transaction boundary</strong>: the idempotency claim runs in its own
+ * {@code REQUIRES_NEW} transaction (via {@link IdempotencyGuard}). The business logic
+ * (bulk cancel + aggregate event outbox insert) runs in this bean's {@code @Transactional}
+ * boundary — these are separate so that the claim commit is visible to concurrent consumers
+ * before the business work begins.
  *
  * <p>Parsing is up-front and typed — missing required fields throw
  * {@link MalformedEventException} which is caught and logged (poison-skip) without
@@ -34,18 +48,15 @@ public class ProjectArchivedConsumer {
     private static final String TOPIC = "project.project.archived";
 
     private final TaskRepository taskRepository;
-    private final ActivityLogRepository activityLogRepository;
     private final DomainEventPublisher eventPublisher;
     private final IdempotencyGuard idempotencyGuard;
     private final ObjectMapper objectMapper;
 
     public ProjectArchivedConsumer(TaskRepository taskRepository,
-            ActivityLogRepository activityLogRepository,
             DomainEventPublisher eventPublisher,
             IdempotencyGuard idempotencyGuard,
             ObjectMapper objectMapper) {
         this.taskRepository = taskRepository;
-        this.activityLogRepository = activityLogRepository;
         this.eventPublisher = eventPublisher;
         this.idempotencyGuard = idempotencyGuard;
         this.objectMapper = objectMapper;
@@ -86,18 +97,21 @@ public class ProjectArchivedConsumer {
             return;
         }
 
-        // ── Business logic ────────────────────────────────────────────────────
-        List<Task> tasks = taskRepository.findAllByProjectId(projectId, tenantId);
-        for (Task task : tasks) {
-            if (task.getStatus() != com.epm.task.domain.model.TaskStatus.CANCELLED) {
-                task.cancel();
-                taskRepository.save(task);
-                eventPublisher.publish(task.pullDomainEvents());
-            }
-        }
+        // ── Business logic: bulk cancel + single aggregate outbox event ────────
+        // Single bulk UPDATE — no N+1. Does not emit per-task events; a single
+        // ProjectTasksCancelled aggregate event is emitted into the outbox instead.
+        int cancelledCount = taskRepository.bulkCancelByProjectId(projectId, tenantId);
 
-        log.info("Processed ProjectArchived for projectId={}, {} tasks cancelled",
-                projectId, tasks.size());
+        ProjectTasksCancelled aggregateEvent = new ProjectTasksCancelled(
+                UuidCreator.getTimeOrderedEpoch(),
+                projectId,
+                tenantId,
+                cancelledCount,
+                Instant.now());
+        eventPublisher.publish(List.of(aggregateEvent));
+
+        log.info("Processed ProjectArchived for projectId={}, {} tasks bulk-cancelled",
+                projectId, cancelledCount);
     }
 
     // ── Helpers ───────────────────────────────────────────────────────────────
