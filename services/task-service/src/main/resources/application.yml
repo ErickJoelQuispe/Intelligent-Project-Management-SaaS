@@ -6,7 +6,7 @@ spring:
   datasource:
     url: jdbc:postgresql://localhost:5432/task_db
     username: task_user
-    password: task_pass
+    password: ${DB_PASSWORD}
     driver-class-name: org.postgresql.Driver
   jpa:
     hibernate:
@@ -27,6 +27,22 @@ spring:
       resourceserver:
         jwt:
           jwks-uri: http://localhost:8180/realms/epm/protocol/openid-connect/certs
+  cloud:
+    openfeign:
+      client:
+        config:
+          # Per-client timeout for project-service Feign calls.
+          # A 2-second read timeout guarantees that a hung project-service causes a
+          # SocketTimeoutException → the Resilience4j circuit breaker counts it as a
+          # failure and opens after reaching the failure-rate threshold. Without this,
+          # a hanging call blocks a thread indefinitely and the CB never opens.
+          #
+          # The key MUST match @FeignClient(name = "project-service"). The legacy
+          # `feign.client.config` namespace (Spring Cloud Netflix) is no longer bound
+          # in Spring Cloud 2025.x; config must live under spring.cloud.openfeign.
+          project-service:
+            connectTimeout: 2000
+            readTimeout: 2000
 
 server:
   port: 8084
