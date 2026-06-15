@@ -6,6 +6,7 @@ import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatCode;
 
 import java.util.List;
 import java.util.UUID;
@@ -15,6 +16,7 @@ import com.epm.task.domain.port.in.CreateTaskUseCase;
 import com.epm.task.domain.port.in.command.CreateTaskCommand;
 import com.epm.task.infrastructure.adapter.in.messaging.AiEventConsumer;
 import com.epm.task.infrastructure.adapter.in.messaging.IdempotencyGuard;
+import com.epm.task.infrastructure.adapter.in.messaging.ProcessedEventClaimer;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import org.junit.jupiter.api.BeforeEach;
@@ -38,13 +40,16 @@ class AiEventConsumerTest {
     @Mock
     private IdempotencyGuard idempotencyGuard;
 
+    @Mock
+    private ProcessedEventClaimer processedEventClaimer;
+
     private AiEventConsumer consumer;
 
     @BeforeEach
     void setUp() {
         ObjectMapper objectMapper = new ObjectMapper();
         objectMapper.registerModule(new JavaTimeModule());
-        consumer = new AiEventConsumer(createTaskUseCase, idempotencyGuard, objectMapper);
+        consumer = new AiEventConsumer(createTaskUseCase, idempotencyGuard, processedEventClaimer, objectMapper);
     }
 
     // ── Scenario: valid batch creates N tasks ──────────────────────────────────
@@ -204,6 +209,47 @@ class AiEventConsumerTest {
 
         // Only the valid draft should be created
         verify(createTaskUseCase, times(1)).execute(org.mockito.ArgumentMatchers.any());
+    }
+
+    // ── Scenario: DataIntegrityViolationException is a per-draft business skip ──
+    //
+    // DataIntegrityViolationException extends NonTransientDataAccessException — it is thrown
+    // for DATA problems (a draft value violating a DB CHECK / length / not-null constraint).
+    // It must NOT be classified as a transient infrastructure failure: doing so would release
+    // the idempotency claim and rethrow, causing Kafka to redeliver, re-classify as infra
+    // again, and spin in an infinite poison loop (re-creating the earlier drafts each cycle).
+    // Instead it must be treated like any other per-draft business error: log + skip + continue.
+
+    @Test
+    void consume_dataIntegrityViolationOnOneDraft_isPerDraftSkip_noRethrow_claimNotReleased() {
+        UUID eventId = UUID.randomUUID();
+        UUID projectId = UUID.randomUUID();
+        UUID tenantId = UUID.randomUUID();
+        UUID generatedBy = UUID.randomUUID();
+
+        String message = buildAiTasksGeneratedMessage(eventId, projectId, tenantId, generatedBy,
+                List.of(
+                        new TaskDraftSpec("Bad draft", "Violates a DB constraint", "MEDIUM"),
+                        new TaskDraftSpec("Good draft", "Valid", "LOW")));
+
+        when(idempotencyGuard.claim(eventId.toString(), "ai.events")).thenReturn(true);
+
+        // First draft trips a DB constraint (non-transient); second draft succeeds.
+        org.mockito.Mockito.doThrow(
+                        new org.springframework.dao.DataIntegrityViolationException("CHECK constraint violated"))
+                .doReturn(null)
+                .when(createTaskUseCase).execute(org.mockito.ArgumentMatchers.any());
+
+        // The consumer must NOT rethrow — a constraint violation is a per-draft business skip.
+        assertThatCode(() -> consumer.consume(message))
+                .as("DataIntegrityViolationException must be a per-draft skip, not an infra rethrow")
+                .doesNotThrowAnyException();
+
+        // Both drafts were attempted (batch continued past the failing draft).
+        verify(createTaskUseCase, times(2)).execute(org.mockito.ArgumentMatchers.any());
+
+        // The idempotency claim must NOT be released — this is not an infrastructure failure.
+        verify(processedEventClaimer, never()).releaseClaim(org.mockito.ArgumentMatchers.any());
     }
 
     // ── Helpers ───────────────────────────────────────────────────────────────
