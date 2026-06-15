@@ -20,6 +20,7 @@ import com.epm.task.domain.model.TaskStatus;
 import com.epm.task.domain.port.in.command.CreateSubtaskCommand;
 import com.epm.task.domain.port.in.command.CreateTaskCommand;
 import com.epm.task.domain.port.in.result.TaskResult;
+import com.epm.task.domain.port.out.ProjectMembershipPort;
 import com.epm.task.domain.port.out.TaskRepository;
 import com.epm.task.domain.port.out.TransactionalOutboxWriter;
 import org.junit.jupiter.api.BeforeEach;
@@ -36,12 +37,13 @@ class CreateSubtaskUseCaseImplTest {
 
     @Mock TaskRepository taskRepository;
     @Mock TransactionalOutboxWriter outboxWriter;
+    @Mock ProjectMembershipPort membershipPort;
 
     CreateSubtaskUseCaseImpl useCase;
 
     @BeforeEach
     void setUp() {
-        useCase = new CreateSubtaskUseCaseImpl(taskRepository, outboxWriter);
+        useCase = new CreateSubtaskUseCaseImpl(taskRepository, outboxWriter, membershipPort);
     }
 
     @Test
@@ -54,6 +56,7 @@ class CreateSubtaskUseCaseImplTest {
 
         when(taskRepository.findByIdAndTenantId(rootTask.getId(), tenantId))
                 .thenReturn(Optional.of(rootTask));
+        when(membershipPort.isMember(any(), any(), any())).thenReturn(true);
         when(outboxWriter.saveAndPublish(any(Task.class), any(ActivityLog.class)))
                 .thenAnswer(inv -> inv.getArgument(0));
 

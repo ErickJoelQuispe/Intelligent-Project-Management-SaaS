@@ -20,6 +20,7 @@ import com.epm.task.domain.model.TaskStatus;
 import com.epm.task.domain.port.in.command.ChangeStatusCommand;
 import com.epm.task.domain.port.in.command.CreateTaskCommand;
 import com.epm.task.domain.port.in.result.TaskResult;
+import com.epm.task.domain.port.out.ProjectMembershipPort;
 import com.epm.task.domain.port.out.TaskRepository;
 import com.epm.task.domain.port.out.TransactionalOutboxWriter;
 import org.junit.jupiter.api.BeforeEach;
@@ -36,12 +37,13 @@ class ChangeTaskStatusUseCaseImplTest {
 
     @Mock TaskRepository taskRepository;
     @Mock TransactionalOutboxWriter outboxWriter;
+    @Mock ProjectMembershipPort membershipPort;
 
     ChangeTaskStatusUseCaseImpl useCase;
 
     @BeforeEach
     void setUp() {
-        useCase = new ChangeTaskStatusUseCaseImpl(taskRepository, outboxWriter);
+        useCase = new ChangeTaskStatusUseCaseImpl(taskRepository, outboxWriter, membershipPort);
     }
 
     @Test
@@ -54,6 +56,7 @@ class ChangeTaskStatusUseCaseImplTest {
 
         when(taskRepository.findByIdAndTenantId(task.getId(), tenantId))
                 .thenReturn(Optional.of(task));
+        when(membershipPort.isMember(any(), any(), any())).thenReturn(true);
         when(outboxWriter.saveAndPublish(any(Task.class), any(ActivityLog.class)))
                 .thenAnswer(inv -> inv.getArgument(0));
 
@@ -90,6 +93,7 @@ class ChangeTaskStatusUseCaseImplTest {
 
         when(taskRepository.findByIdAndTenantId(task.getId(), tenantId))
                 .thenReturn(Optional.of(task));
+        when(membershipPort.isMember(any(), any(), any())).thenReturn(true);
 
         // DONE → CANCELLED is not in the FSM
         ChangeStatusCommand command = new ChangeStatusCommand(
@@ -111,6 +115,7 @@ class ChangeTaskStatusUseCaseImplTest {
 
         when(taskRepository.findByIdAndTenantId(task.getId(), tenantId))
                 .thenReturn(Optional.of(task));
+        when(membershipPort.isMember(any(), any(), any())).thenReturn(true);
 
         // TODO → TODO is a no-op
         ChangeStatusCommand command = new ChangeStatusCommand(

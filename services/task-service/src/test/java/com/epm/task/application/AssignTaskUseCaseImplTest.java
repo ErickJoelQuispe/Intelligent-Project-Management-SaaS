@@ -19,6 +19,7 @@ import com.epm.task.domain.model.TaskStatus;
 import com.epm.task.domain.port.in.command.AssignTaskCommand;
 import com.epm.task.domain.port.in.command.CreateTaskCommand;
 import com.epm.task.domain.port.in.result.TaskResult;
+import com.epm.task.domain.port.out.ProjectMembershipPort;
 import com.epm.task.domain.port.out.TaskRepository;
 import com.epm.task.domain.port.out.TransactionalOutboxWriter;
 import org.junit.jupiter.api.BeforeEach;
@@ -35,12 +36,13 @@ class AssignTaskUseCaseImplTest {
 
     @Mock TaskRepository taskRepository;
     @Mock TransactionalOutboxWriter outboxWriter;
+    @Mock ProjectMembershipPort membershipPort;
 
     AssignTaskUseCaseImpl useCase;
 
     @BeforeEach
     void setUp() {
-        useCase = new AssignTaskUseCaseImpl(taskRepository, outboxWriter);
+        useCase = new AssignTaskUseCaseImpl(taskRepository, outboxWriter, membershipPort);
     }
 
     @Test
@@ -54,6 +56,7 @@ class AssignTaskUseCaseImplTest {
 
         when(taskRepository.findByIdAndTenantId(task.getId(), tenantId))
                 .thenReturn(Optional.of(task));
+        when(membershipPort.isMember(any(), any(), any())).thenReturn(true);
         when(outboxWriter.saveAndPublish(any(Task.class), any(ActivityLog.class)))
                 .thenAnswer(inv -> inv.getArgument(0));
 
@@ -77,6 +80,7 @@ class AssignTaskUseCaseImplTest {
 
         when(taskRepository.findByIdAndTenantId(task.getId(), tenantId))
                 .thenReturn(Optional.of(task));
+        when(membershipPort.isMember(any(), any(), any())).thenReturn(true);
         when(outboxWriter.saveAndPublish(any(Task.class), any(ActivityLog.class)))
                 .thenAnswer(inv -> inv.getArgument(0));
 

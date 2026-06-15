@@ -8,10 +8,12 @@ import com.epm.task.domain.exception.ProjectMembershipRequiredException;
 import com.epm.task.domain.exception.ProjectServiceUnavailableException;
 import com.epm.task.domain.exception.TaskNotFoundException;
 import com.epm.task.domain.exception.TenantRequiredException;
+import jakarta.validation.ConstraintViolationException;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ProblemDetail;
 import org.springframework.http.ResponseEntity;
+import org.springframework.orm.ObjectOptimisticLockingFailureException;
 import org.springframework.validation.FieldError;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
@@ -107,7 +109,18 @@ public class GlobalExceptionHandler {
         return problem;
     }
 
-    /** 400 Bad Request — bean validation failure. */
+    /** 409 Conflict — optimistic locking failure (concurrent update). */
+    @ExceptionHandler(ObjectOptimisticLockingFailureException.class)
+    public ProblemDetail handleOptimisticLock(ObjectOptimisticLockingFailureException ex) {
+        ProblemDetail problem = ProblemDetail.forStatus(HttpStatus.CONFLICT);
+        problem.setType(URI.create("https://api.epm.com/errors/conflict"));
+        problem.setTitle("Conflict");
+        problem.setDetail("The resource was modified concurrently. Please retry.");
+        problem.setProperty("errorCode", "OPTIMISTIC_LOCK_CONFLICT");
+        return problem;
+    }
+
+    /** 400 Bad Request — bean validation failure (request body). */
     @ExceptionHandler(MethodArgumentNotValidException.class)
     public ProblemDetail handleValidation(MethodArgumentNotValidException ex) {
         ProblemDetail problem = ProblemDetail.forStatus(HttpStatus.BAD_REQUEST);
@@ -115,6 +128,21 @@ public class GlobalExceptionHandler {
         problem.setTitle("Validation Failed");
         String detail = ex.getBindingResult().getFieldErrors().stream()
                 .map(FieldError::getDefaultMessage)
+                .findFirst()
+                .orElse("Validation failed");
+        problem.setDetail(detail);
+        problem.setProperty("errorCode", "VALIDATION_FAILED");
+        return problem;
+    }
+
+    /** 400 Bad Request — constraint violation (query params via {@code @Validated}). */
+    @ExceptionHandler(ConstraintViolationException.class)
+    public ProblemDetail handleConstraintViolation(ConstraintViolationException ex) {
+        ProblemDetail problem = ProblemDetail.forStatus(HttpStatus.BAD_REQUEST);
+        problem.setType(URI.create("https://api.epm.com/errors/validation-failed"));
+        problem.setTitle("Validation Failed");
+        String detail = ex.getConstraintViolations().stream()
+                .map(v -> v.getPropertyPath() + ": " + v.getMessage())
                 .findFirst()
                 .orElse("Validation failed");
         problem.setDetail(detail);

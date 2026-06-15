@@ -190,8 +190,9 @@ public class TaskController {
     public void deleteTask(
             @AuthenticationPrincipal Jwt jwt,
             @PathVariable UUID id) {
+        UUID callerId = jwtClaimsExtractor.getUserId(jwt);
         UUID tenantId = jwtClaimsExtractor.getTenantId(jwt);
-        deleteTaskUseCase.execute(id, tenantId);
+        deleteTaskUseCase.execute(id, tenantId, callerId);
     }
 
     // ── Helpers ──────────────────────────────────────────────────────────────

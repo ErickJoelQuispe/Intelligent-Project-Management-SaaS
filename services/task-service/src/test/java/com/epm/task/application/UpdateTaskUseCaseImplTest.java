@@ -17,6 +17,7 @@ import com.epm.task.domain.model.TaskPriority;
 import com.epm.task.domain.port.in.command.CreateTaskCommand;
 import com.epm.task.domain.port.in.command.UpdateTaskCommand;
 import com.epm.task.domain.port.in.result.TaskResult;
+import com.epm.task.domain.port.out.ProjectMembershipPort;
 import com.epm.task.domain.port.out.TaskRepository;
 import com.epm.task.domain.port.out.TransactionalOutboxWriter;
 import org.junit.jupiter.api.BeforeEach;
@@ -24,6 +25,9 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.when;
 
 /**
  * Unit tests for UpdateTaskUseCaseImpl.
@@ -33,12 +37,13 @@ class UpdateTaskUseCaseImplTest {
 
     @Mock TaskRepository taskRepository;
     @Mock TransactionalOutboxWriter outboxWriter;
+    @Mock ProjectMembershipPort membershipPort;
 
     UpdateTaskUseCaseImpl useCase;
 
     @BeforeEach
     void setUp() {
-        useCase = new UpdateTaskUseCaseImpl(taskRepository, outboxWriter);
+        useCase = new UpdateTaskUseCaseImpl(taskRepository, outboxWriter, membershipPort);
     }
 
     @Test
@@ -51,6 +56,7 @@ class UpdateTaskUseCaseImplTest {
 
         when(taskRepository.findByIdAndTenantId(task.getId(), tenantId))
                 .thenReturn(Optional.of(task));
+        when(membershipPort.isMember(any(), any(), any())).thenReturn(true);
         when(outboxWriter.saveAndPublish(any(Task.class), any(ActivityLog.class)))
                 .thenAnswer(inv -> inv.getArgument(0));
 

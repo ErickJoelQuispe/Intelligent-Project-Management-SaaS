@@ -13,8 +13,11 @@ import com.epm.task.domain.port.in.ListTasksByProjectUseCase;
 import com.epm.task.domain.port.in.result.KanbanResult;
 import com.epm.task.domain.port.in.result.TaskResult;
 import com.epm.task.domain.port.out.KanbanTaskRow;
+import jakarta.validation.constraints.Max;
+import jakarta.validation.constraints.Min;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.oauth2.jwt.Jwt;
+import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -23,7 +26,12 @@ import org.springframework.web.bind.annotation.RestController;
 
 /**
  * REST adapter for project-scoped task queries: list (paginated) and Kanban board.
+ *
+ * <p><strong>Kanban staleness</strong>: the Kanban board data is refreshed every 5 s by
+ * a background scheduler ({@code KanbanViewRefresher}). Board reads may be up to 5 s stale
+ * after a task mutation — acceptable for a Kanban board.
  */
+@Validated
 @RestController
 @RequestMapping("/api/v1/projects/{projectId}/tasks")
 public class KanbanController {
@@ -46,8 +54,8 @@ public class KanbanController {
     public PageResult<TaskResponse> listTasksByProject(
             @AuthenticationPrincipal Jwt jwt,
             @PathVariable UUID projectId,
-            @RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "20") int size) {
+            @RequestParam(defaultValue = "0") @Min(0) int page,
+            @RequestParam(defaultValue = "20") @Min(1) @Max(100) int size) {
         UUID tenantId = jwtClaimsExtractor.getTenantId(jwt);
         return listTasksByProjectUseCase.execute(projectId, tenantId, page, size).map(TaskResponse::from);
     }
