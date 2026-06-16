@@ -7,9 +7,9 @@ import java.util.UUID;
 
 import com.epm.notification.application.usecase.NotificationApplicationService;
 import com.epm.notification.domain.model.NotificationType;
-import com.epm.notification.infrastructure.adapter.out.persistence.ProcessedEventJpaEntity;
 import com.epm.notification.infrastructure.adapter.out.persistence.ProcessedEventJpaRepository;
 import com.epm.notification.infrastructure.messaging.tracing.KafkaTracingSupport;
+import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.opentelemetry.context.Context;
@@ -25,8 +25,20 @@ import org.springframework.transaction.annotation.Transactional;
  * Kafka consumer for {@code project.events} topic.
  *
  * <p>Dispatches by {@code eventType} field in the JSON envelope and creates
- * in-app notifications for relevant project domain events. Uses {@code processed_events}
- * table for idempotency — duplicate events are skipped.
+ * in-app notifications for relevant project domain events.
+ *
+ * <p><strong>Idempotency</strong>: uses an atomic {@code INSERT ... ON CONFLICT DO NOTHING}
+ * ({@link ProcessedEventJpaRepository#claimEvent}) executed in the SAME transaction as the
+ * business dispatch. {@code rows == 1} means this delivery won the claim and proceeds;
+ * {@code rows == 0} means the event was already processed and is skipped. Because the claim
+ * shares the consumer's transaction, a dispatch failure rolls the marker back too, so a Kafka
+ * redelivery re-processes the event instead of permanently losing the notification.
+ *
+ * <p><strong>Poison-message handling (M1)</strong>: required fields are validated
+ * up-front via {@link #requiredText} and {@link #requiredUuid}. A malformed payload
+ * throws {@link MalformedEventException} which is caught here — the event is logged
+ * and discarded (no retry, no infinite loop). The idempotency claim is NOT made for
+ * poison messages; a later valid redelivery (if ever) must not be silently skipped.
  *
  * <p>Handled event types:
  * <ul>
@@ -42,14 +54,14 @@ public class ProjectEventConsumer {
     private static final String TOPIC = "project.events";
 
     private final NotificationApplicationService notificationService;
-    private final ProcessedEventJpaRepository processedEventRepo;
+    private final ProcessedEventJpaRepository processedEventRepository;
     private final ObjectMapper objectMapper;
 
     public ProjectEventConsumer(NotificationApplicationService notificationService,
-            ProcessedEventJpaRepository processedEventRepo,
+            ProcessedEventJpaRepository processedEventRepository,
             ObjectMapper objectMapper) {
         this.notificationService = notificationService;
-        this.processedEventRepo = processedEventRepo;
+        this.processedEventRepository = processedEventRepository;
         this.objectMapper = objectMapper;
     }
 
@@ -63,28 +75,46 @@ public class ProjectEventConsumer {
     }
 
     private void processRecord(String message) {
+        // ── Up-front parse (M1 poison guard) ─────────────────────────────────
+        JsonNode root;
         try {
-            JsonNode root = objectMapper.readTree(message);
-            String eventId = root.get("eventId").asText();
+            root = objectMapper.readTree(message);
+        } catch (JsonProcessingException e) {
+            log.error("Malformed JSON on topic {} — discarding (poison)", TOPIC, e);
+            return;
+        }
 
-            // Idempotency check
-            if (processedEventRepo.existsByEventId(eventId)) {
-                log.warn("Skipping duplicate project event: eventId={}", eventId);
-                return;
+        String eventId;
+        String eventType;
+        UUID tenantId;
+        UUID projectId;
+        JsonNode payload;
+        try {
+            eventId = requiredText(root, "eventId");
+            eventType = requiredText(root, "eventType");
+            tenantId = requiredUuid(root, "tenantId");
+            payload = root.get("payload");
+            if (payload == null || payload.isNull()) {
+                throw new MalformedEventException("Missing required field: payload");
             }
+            projectId = requiredUuid(payload, "projectId");
+        } catch (MalformedEventException | IllegalArgumentException e) {
+            log.error("Malformed project event on topic {} — discarding (poison): {}", TOPIC, e.getMessage());
+            return;
+        }
 
-            String eventType = root.get("eventType").asText();
-            UUID tenantId = UUID.fromString(root.get("tenantId").asText());
-            JsonNode payload = root.get("payload");
-            UUID projectId = UUID.fromString(payload.get("projectId").asText());
+        // ── Atomic idempotency claim (same transaction as dispatch) ────────────
+        if (processedEventRepository.claimEvent(eventId, TOPIC, Instant.now()) == 0) {
+            log.debug("Skipping duplicate project event: eventId={}", eventId);
+            return;
+        }
 
+        // ── Business dispatch ──────────────────────────────────────────────────
+        try {
             dispatch(eventType, tenantId, projectId, payload);
-
-            processedEventRepo.save(new ProcessedEventJpaEntity(eventId, TOPIC, Instant.now()));
             log.info("Processed project event: eventId={}, type={}", eventId, eventType);
-
         } catch (Exception e) {
-            log.error("Failed to process project event: {}", e.getMessage(), e);
+            log.error("Failed to dispatch project event eventId={}: {}", eventId, e.getMessage(), e);
             throw new RuntimeException("Failed to process project event", e);
         }
     }
@@ -121,24 +151,79 @@ public class ProjectEventConsumer {
         }
     }
 
+    /**
+     * Parses the {@code memberIds} array into UUIDs.
+     *
+     * <p><strong>FIX D (poison-loop guard):</strong> a malformed member id is SKIPPED (logged at
+     * WARN), never fatal. Previously an unguarded {@code UUID.fromString} threw
+     * {@link IllegalArgumentException}; called from {@link #dispatch} inside the catch that rethrows
+     * as {@code RuntimeException}, the Kafka offset was never committed → infinite redelivery
+     * (poison loop) on a single bad member id. Skipping the bad entry keeps the valid members'
+     * notifications intact while removing the infinite-retry hazard — consistent with this
+     * consumer's poison-handling convention (bad data is discarded, never retried forever).
+     */
     private List<UUID> parseMemberIds(JsonNode payload) {
         List<UUID> result = new ArrayList<>();
         if (payload.has("memberIds") && payload.get("memberIds").isArray()) {
             for (JsonNode node : payload.get("memberIds")) {
                 String val = node.asText();
-                if (!val.isBlank() && !val.equals("null")) {
+                if (val.isBlank() || val.equals("null")) {
+                    continue;
+                }
+                try {
                     result.add(UUID.fromString(val));
+                } catch (IllegalArgumentException e) {
+                    log.warn("Skipping malformed member id in TeamAssignedToProject payload on topic {}: '{}'",
+                            TOPIC, val);
                 }
             }
         }
         return result;
     }
 
+    // ── Field helpers (M1 poison guard) ──────────────────────────────────────
+
+    /**
+     * Extracts a required non-blank text field from a JSON node.
+     *
+     * @throws MalformedEventException if the field is absent, null, or blank
+     */
+    private static String requiredText(JsonNode node, String field) {
+        JsonNode value = node.get(field);
+        if (value == null || value.isNull()) {
+            throw new MalformedEventException("Missing required field: " + field);
+        }
+        String text = value.asText(null);
+        if (text == null || text.isBlank()) {
+            throw new MalformedEventException("Empty required field: " + field);
+        }
+        return text;
+    }
+
+    /**
+     * Extracts a required UUID field from a JSON node.
+     *
+     * @throws MalformedEventException if the field is absent, null, blank, or not a valid UUID
+     */
+    private static UUID requiredUuid(JsonNode node, String field) {
+        String text = requiredText(node, field);
+        try {
+            return UUID.fromString(text);
+        } catch (IllegalArgumentException e) {
+            throw new MalformedEventException("Invalid UUID for field " + field + ": " + text, e);
+        }
+    }
+
     private UUID uuidOrNull(JsonNode node, String field) {
         if (node.has(field) && !node.get(field).isNull()) {
             String value = node.get(field).asText();
             if (!value.isBlank() && !value.equals("null")) {
-                return UUID.fromString(value);
+                try {
+                    return UUID.fromString(value);
+                } catch (IllegalArgumentException e) {
+                    log.warn("Skipping malformed UUID for field '{}': {}", field, value);
+                    return null;
+                }
             }
         }
         return null;
