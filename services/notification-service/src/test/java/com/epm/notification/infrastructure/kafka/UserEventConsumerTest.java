@@ -6,15 +6,14 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import java.time.Instant;
 import java.util.UUID;
 
-import com.epm.notification.application.usecase.CacheUserEmailService;
 import com.epm.notification.application.usecase.NotificationApplicationService;
 import com.epm.notification.domain.model.Notification;
 import com.epm.notification.domain.model.NotificationType;
 import com.epm.notification.domain.port.in.CacheUserEmailUseCase;
 import com.epm.notification.infrastructure.adapter.in.messaging.UserEventConsumer;
-import com.epm.notification.infrastructure.adapter.out.persistence.ProcessedEventJpaEntity;
 import com.epm.notification.infrastructure.adapter.out.persistence.ProcessedEventJpaRepository;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
@@ -26,9 +25,16 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 /**
- * Unit tests for UserEventConsumer (TDD — Strict RED→GREEN→REFACTOR).
+ * Unit tests for UserEventConsumer — guard-based idempotency + poison-message handling.
  *
  * <p>All dependencies mocked — no Kafka broker or Spring context required.
+ *
+ * <p>Tests cover:
+ * <ul>
+ *   <li>Normal dispatch (UserRegistered, MemberJoinedTeam, MemberLeftTeam)</li>
+ *   <li>Duplicate event skip via {@link ProcessedEventJpaRepository#claimEvent} returning {@code 0}</li>
+ *   <li>Poison messages (missing required fields) — discarded, no NPE, no retry (FIX 5)</li>
+ * </ul>
  */
 @ExtendWith(MockitoExtension.class)
 class UserEventConsumerTest {
@@ -40,7 +46,7 @@ class UserEventConsumerTest {
     private CacheUserEmailUseCase cacheUserEmailUseCase;
 
     @Mock
-    private ProcessedEventJpaRepository processedEventRepo;
+    private ProcessedEventJpaRepository processedEventRepository;
 
     private UserEventConsumer consumer;
     private ObjectMapper objectMapper;
@@ -50,7 +56,7 @@ class UserEventConsumerTest {
         objectMapper = new ObjectMapper();
         objectMapper.findAndRegisterModules();
         consumer = new UserEventConsumer(notificationService, cacheUserEmailUseCase,
-                processedEventRepo, objectMapper);
+                processedEventRepository, objectMapper);
     }
 
     // ── UserRegistered → cacheUserEmail ────────────────────────────────────
@@ -64,12 +70,11 @@ class UserEventConsumerTest {
         String message = buildUserEvent(eventId.toString(), "UserRegistered", tenantId.toString(),
                 userId.toString(), "john@example.com", null, null, null);
 
-        when(processedEventRepo.existsByEventId(eventId.toString())).thenReturn(false);
+        when(processedEventRepository.claimEvent(eq(eventId.toString()), eq("user.events"), any(Instant.class))).thenReturn(1);
 
         consumer.consume(toRecord(message));
 
         verify(cacheUserEmailUseCase).cacheUserEmail(userId, tenantId, "john@example.com");
-        verify(processedEventRepo).save(any(ProcessedEventJpaEntity.class));
     }
 
     @Test
@@ -81,7 +86,7 @@ class UserEventConsumerTest {
         String message = buildUserEvent(eventId.toString(), "UserRegistered", tenantId.toString(),
                 userId.toString(), "jane@example.com", null, null, null);
 
-        when(processedEventRepo.existsByEventId(eventId.toString())).thenReturn(false);
+        when(processedEventRepository.claimEvent(eq(eventId.toString()), eq("user.events"), any(Instant.class))).thenReturn(1);
 
         consumer.consume(toRecord(message));
 
@@ -99,7 +104,7 @@ class UserEventConsumerTest {
         String message = buildUserEvent(eventId.toString(), "MemberJoinedTeam", tenantId.toString(),
                 userId.toString(), null, "Backend Team", "Alpha Project", null);
 
-        when(processedEventRepo.existsByEventId(eventId.toString())).thenReturn(false);
+        when(processedEventRepository.claimEvent(eq(eventId.toString()), eq("user.events"), any(Instant.class))).thenReturn(1);
         Notification mockNotif = Notification.create(tenantId, userId,
                 NotificationType.MEMBER_JOINED_TEAM, UUID.randomUUID(), "You joined a team");
         when(notificationService.create(any(), any(), eq(NotificationType.MEMBER_JOINED_TEAM), any(), any()))
@@ -110,7 +115,6 @@ class UserEventConsumerTest {
         verify(notificationService).create(
                 eq(tenantId), eq(userId),
                 eq(NotificationType.MEMBER_JOINED_TEAM), any(), any());
-        verify(processedEventRepo).save(any(ProcessedEventJpaEntity.class));
     }
 
     // ── MemberLeftTeam → MEMBER_LEFT_TEAM notification ────────────────────
@@ -124,7 +128,7 @@ class UserEventConsumerTest {
         String message = buildUserEvent(eventId.toString(), "MemberLeftTeam", tenantId.toString(),
                 userId.toString(), null, "Backend Team", "Alpha Project", null);
 
-        when(processedEventRepo.existsByEventId(eventId.toString())).thenReturn(false);
+        when(processedEventRepository.claimEvent(eq(eventId.toString()), eq("user.events"), any(Instant.class))).thenReturn(1);
         Notification mockNotif = Notification.create(tenantId, userId,
                 NotificationType.MEMBER_LEFT_TEAM, UUID.randomUUID(), "You left a team");
         when(notificationService.create(any(), any(), eq(NotificationType.MEMBER_LEFT_TEAM), any(), any()))
@@ -135,10 +139,9 @@ class UserEventConsumerTest {
         verify(notificationService).create(
                 eq(tenantId), eq(userId),
                 eq(NotificationType.MEMBER_LEFT_TEAM), any(), any());
-        verify(processedEventRepo).save(any(ProcessedEventJpaEntity.class));
     }
 
-    // ── Idempotency — duplicate event is skipped ───────────────────────────
+    // ── Idempotency — guard returns false → duplicate skipped ───────────────
 
     @Test
     void consume_duplicateEvent_skipsProcessing() throws Exception {
@@ -149,15 +152,14 @@ class UserEventConsumerTest {
         String message = buildUserEvent(eventId.toString(), "UserRegistered", tenantId.toString(),
                 userId.toString(), "dup@example.com", null, null, null);
 
-        when(processedEventRepo.existsByEventId(eventId.toString())).thenReturn(true);
+        when(processedEventRepository.claimEvent(eq(eventId.toString()), eq("user.events"), any(Instant.class))).thenReturn(0);
 
         consumer.consume(toRecord(message));
 
         verify(cacheUserEmailUseCase, never()).cacheUserEmail(any(), any(), any());
-        verify(processedEventRepo, never()).save(any());
     }
 
-    // ── Unknown eventType → WARN logged, no exception ─────────────────────
+    // ── Unknown eventType → no notification, no exception ────────────────
 
     @Test
     void consume_unknownEventType_logsWarnAndDoesNotThrow() throws Exception {
@@ -168,7 +170,7 @@ class UserEventConsumerTest {
         String message = buildUserEvent(eventId.toString(), "UserPasswordChanged", tenantId.toString(),
                 userId.toString(), null, null, null, null);
 
-        when(processedEventRepo.existsByEventId(eventId.toString())).thenReturn(false);
+        when(processedEventRepository.claimEvent(eq(eventId.toString()), eq("user.events"), any(Instant.class))).thenReturn(1);
 
         // Should not throw
         consumer.consume(toRecord(message));
@@ -176,8 +178,60 @@ class UserEventConsumerTest {
         // Neither cache nor notification should be invoked for unknown types
         verify(cacheUserEmailUseCase, never()).cacheUserEmail(any(), any(), any());
         verify(notificationService, never()).create(any(), any(), any(), any(), any());
-        // processed_events IS still saved to prevent log spam on re-delivery
-        verify(processedEventRepo).save(any(ProcessedEventJpaEntity.class));
+    }
+
+    // ── FIX 5 (M1): poison message — missing userId → discarded, no NPE ─────
+    //
+    // RED: before adding up-front requiredUuid guard, payload.get("userId").asText()
+    //      throws NullPointerException (caught, rethrown as RuntimeException).
+    //      The test expects NO exception and NO guard.claim() call — it FAILS.
+    // GREEN: with the guard, MalformedEventException is caught before claim() — clean discard.
+
+    @Test
+    void consume_missingUserId_isDiscardedWithoutNPE() throws Exception {
+        UUID eventId = UUID.randomUUID();
+        UUID tenantId = UUID.randomUUID();
+
+        // Payload missing userId — poison message
+        String message = "{\"eventId\":\"" + eventId + "\""
+                + ",\"eventType\":\"UserRegistered\""
+                + ",\"tenantId\":\"" + tenantId + "\""
+                + ",\"payload\":{"
+                + "\"email\":\"missing@example.com\""
+                + "}}";
+
+        // Should not throw, should not call claim, should not create notification
+        consumer.consume(toRecord(message));
+
+        verify(processedEventRepository, never()).claimEvent(any(), any(), any());
+        verify(cacheUserEmailUseCase, never()).cacheUserEmail(any(), any(), any());
+        verify(notificationService, never()).create(any(), any(), any(), any(), any());
+    }
+
+    // ── FIX 5 (M1): UserRegistered missing email → discarded after claim ─────
+    //
+    // The email is dispatched in dispatch(), AFTER the idempotency claim. Missing email
+    // is a dispatch-level poison — claim happens, but dispatch detects missing email
+    // and discards cleanly without retrying or throwing.
+
+    @Test
+    void consume_userRegisteredMissingEmail_isDiscardedWithoutNPE() throws Exception {
+        UUID eventId = UUID.randomUUID();
+        UUID userId = UUID.randomUUID();
+        UUID tenantId = UUID.randomUUID();
+
+        // email field missing — poison for UserRegistered
+        String message = "{\"eventId\":\"" + eventId + "\""
+                + ",\"eventType\":\"UserRegistered\""
+                + ",\"tenantId\":\"" + tenantId + "\""
+                + ",\"payload\":{\"userId\":\"" + userId + "\"}}";
+
+        when(processedEventRepository.claimEvent(eq(eventId.toString()), eq("user.events"), any(Instant.class))).thenReturn(1);
+
+        // Should not throw, should not call cacheUserEmail
+        consumer.consume(toRecord(message));
+
+        verify(cacheUserEmailUseCase, never()).cacheUserEmail(any(), any(), any());
     }
 
     // ── Helper ────────────────────────────────────────────────────────────────
