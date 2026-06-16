@@ -7,6 +7,8 @@ import java.util.stream.Collectors;
 
 import com.epm.notification.domain.model.Notification;
 import com.epm.notification.domain.port.out.NotificationRepository;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -41,6 +43,17 @@ public class NotificationRepositoryAdapter implements NotificationRepository {
     public List<Notification> findByTenantIdAndRecipientUserId(UUID tenantId, UUID recipientUserId) {
         return jpaRepository
                 .findByTenantIdAndRecipientUserIdOrderByCreatedAtDesc(tenantId, recipientUserId)
+                .stream()
+                .map(this::toDomain)
+                .collect(Collectors.toList());
+    }
+
+    @Override
+    public List<Notification> findByTenantIdAndRecipientUserIdPaged(
+            UUID tenantId, UUID recipientUserId, int page, int size) {
+        PageRequest pageRequest = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "createdAt"));
+        return jpaRepository
+                .findByTenantIdAndRecipientUserIdOrderByCreatedAtDesc(tenantId, recipientUserId, pageRequest)
                 .stream()
                 .map(this::toDomain)
                 .collect(Collectors.toList());

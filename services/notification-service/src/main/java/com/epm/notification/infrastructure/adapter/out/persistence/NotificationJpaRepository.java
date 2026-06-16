@@ -3,6 +3,8 @@ package com.epm.notification.infrastructure.adapter.out.persistence;
 import java.util.List;
 import java.util.UUID;
 
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
@@ -15,6 +17,17 @@ public interface NotificationJpaRepository extends JpaRepository<NotificationJpa
 
     List<NotificationJpaEntity> findByTenantIdAndRecipientUserIdOrderByCreatedAtDesc(
             UUID tenantId, UUID recipientUserId);
+
+    /**
+     * Returns a page of notifications for the given user in the given tenant, newest first.
+     *
+     * @param tenantId        the tenant ID
+     * @param recipientUserId the recipient user ID
+     * @param pageable        page request (offset + limit)
+     * @return paged list of notifications
+     */
+    List<NotificationJpaEntity> findByTenantIdAndRecipientUserIdOrderByCreatedAtDesc(
+            UUID tenantId, UUID recipientUserId, Pageable pageable);
 
     List<NotificationJpaEntity> findByTenantIdAndRecipientUserIdAndReadFalseOrderByCreatedAtDesc(
             UUID tenantId, UUID recipientUserId);

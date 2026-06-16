@@ -39,6 +39,18 @@ public interface NotificationRepository {
     List<Notification> findByTenantIdAndRecipientUserId(UUID tenantId, UUID recipientUserId);
 
     /**
+     * Finds a page of notifications for a given user in a given tenant, newest first.
+     *
+     * @param tenantId        the tenant ID
+     * @param recipientUserId the recipient user ID
+     * @param page            zero-based page index
+     * @param size            page size
+     * @return list of notifications for the requested page
+     */
+    List<Notification> findByTenantIdAndRecipientUserIdPaged(UUID tenantId, UUID recipientUserId,
+            int page, int size);
+
+    /**
      * Finds unread notifications for a given user in a given tenant.
      *
      * @param tenantId        the tenant ID

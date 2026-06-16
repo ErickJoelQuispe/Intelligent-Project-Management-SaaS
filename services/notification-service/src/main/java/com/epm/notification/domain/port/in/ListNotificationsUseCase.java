@@ -18,4 +18,18 @@ public interface ListNotificationsUseCase {
      * @return list of notifications
      */
     List<Notification> listForUser(UUID tenantId, UUID recipientUserId);
+
+    /**
+     * Returns a page of notifications for the given user in the given tenant, newest first.
+     *
+     * <p>The caller is responsible for clamping {@code page} and {@code size} to valid
+     * ranges before invoking this method ({@code page >= 0}, {@code 1 <= size <= 100}).
+     *
+     * @param tenantId        the tenant ID
+     * @param recipientUserId the recipient user ID
+     * @param page            zero-based page index (must be >= 0)
+     * @param size            page size (must be between 1 and 100)
+     * @return list of notifications for the requested page
+     */
+    List<Notification> listForUserPaged(UUID tenantId, UUID recipientUserId, int page, int size);
 }

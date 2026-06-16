@@ -98,6 +98,11 @@ public class NotificationApplicationService
         return notificationRepository.findByTenantIdAndRecipientUserId(tenantId, recipientUserId);
     }
 
+    @Override
+    public List<Notification> listForUserPaged(UUID tenantId, UUID recipientUserId, int page, int size) {
+        return notificationRepository.findByTenantIdAndRecipientUserIdPaged(tenantId, recipientUserId, page, size);
+    }
+
     // ── MarkAsReadUseCase ─────────────────────────────────────────────────
 
     @Override
