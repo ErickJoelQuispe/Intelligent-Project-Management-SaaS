@@ -49,6 +49,14 @@ public class OutboxEventJpaEntity {
     @Column(columnDefinition = "TEXT")
     private String error;
 
+    /** Number of publish attempts (incremented on every send, success or failure). */
+    @Column(nullable = false)
+    private int attempts = 0;
+
+    /** True once the event exceeded MAX_ATTEMPTS and was parked (poison event). */
+    @Column(nullable = false)
+    private boolean parked = false;
+
     // ── Getters & Setters ────────────────────────────────────────────────────
 
     public UUID getId() { return id; }
@@ -80,4 +88,10 @@ public class OutboxEventJpaEntity {
 
     public String getError() { return error; }
     public void setError(String error) { this.error = error; }
+
+    public int getAttempts() { return attempts; }
+    public void setAttempts(int attempts) { this.attempts = attempts; }
+
+    public boolean isParked() { return parked; }
+    public void setParked(boolean parked) { this.parked = parked; }
 }
