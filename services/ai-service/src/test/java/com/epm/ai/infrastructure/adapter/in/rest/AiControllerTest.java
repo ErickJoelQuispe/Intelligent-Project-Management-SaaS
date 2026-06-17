@@ -181,4 +181,52 @@ class AiControllerTest {
                                 """.formatted(PROJECT_ID)))
                 .andExpect(status().isBadRequest());
     }
+
+    // ── 400: oversized prompt inputs (C2 — @Size(max = 4000)) ─────────────────
+
+    @Test
+    void chat_returns400_whenMessageExceedsMaxLength() throws Exception {
+        String hugeMessage = "x".repeat(4001);
+        mockMvc.perform(post("/api/v1/ai/chat")
+                        .with(jwt().jwt(j -> j
+                                .subject(USER_ID)
+                                .claim("tenant_id", TENANT_ID)))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"projectId":"%s","message":"%s"}
+                                """.formatted(PROJECT_ID, hugeMessage)))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    void generateTasks_returns400_whenDescriptionExceedsMaxLength() throws Exception {
+        String hugeDescription = "y".repeat(4001);
+        mockMvc.perform(post("/api/v1/ai/tasks/generate")
+                        .with(jwt().jwt(j -> j
+                                .subject(USER_ID)
+                                .claim("tenant_id", TENANT_ID)))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"projectId":"%s","description":"%s"}
+                                """.formatted(PROJECT_ID, hugeDescription)))
+                .andExpect(status().isBadRequest());
+    }
+
+    // ── H4: /chat/stream must accept POST (GET + body is broken) ──────────────
+
+    @Test
+    void chatStream_acceptsPost_andStartsAsync() throws Exception {
+        when(chatWithProjectUseCase.executeStream(anyString(), anyString(), anyString(), anyString()))
+                .thenReturn(List.of("hello").iterator());
+
+        mockMvc.perform(post("/api/v1/ai/chat/stream")
+                        .with(jwt().jwt(j -> j
+                                .subject(USER_ID)
+                                .claim("tenant_id", TENANT_ID)))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"projectId":"%s","message":"How is the project?"}
+                                """.formatted(PROJECT_ID)))
+                .andExpect(status().isOk());
+    }
 }

@@ -20,7 +20,6 @@ import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.oauth2.jwt.Jwt;
-import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -112,10 +111,10 @@ public class AiController {
     }
 
     /**
-     * GET /api/v1/ai/chat/stream
+     * POST /api/v1/ai/chat/stream
      * SSE streaming chat endpoint. Returns tokens as they arrive from DeepSeek.
      */
-    @GetMapping("/chat/stream")
+    @PostMapping("/chat/stream")
     public SseEmitter chatStream(
             @AuthenticationPrincipal Jwt jwt,
             @Valid @RequestBody ChatRequest request) {
