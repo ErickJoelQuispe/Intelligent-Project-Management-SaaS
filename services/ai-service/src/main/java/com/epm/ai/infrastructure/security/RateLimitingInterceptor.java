@@ -8,7 +8,12 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.scheduling.annotation.Scheduled;
+import org.springframework.security.authentication.AnonymousAuthenticationToken;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Component;
 import org.springframework.web.servlet.HandlerInterceptor;
 
@@ -25,12 +30,34 @@ public class RateLimitingInterceptor implements HandlerInterceptor {
     private static final long WINDOW_MS = 60_000L; // 1 minute
 
     private final int maxRequests;
+    private final long windowMs;
 
     /** userId → (windowStartEpoch, count) */
     private final Map<String, WindowCounter> counters = new ConcurrentHashMap<>();
 
+    @Autowired
     public RateLimitingInterceptor(@Value("${ai.rate-limit.default:20}") int maxRequests) {
+        this(maxRequests, WINDOW_MS);
+    }
+
+    RateLimitingInterceptor(int maxRequests, long windowMs) {
         this.maxRequests = maxRequests;
+        this.windowMs = windowMs;
+    }
+
+    /**
+     * Removes counter entries whose window has expired, preventing unbounded growth
+     * of the {@code counters} map for one-off / inactive users.
+     */
+    @Scheduled(fixedDelay = 300_000)
+    public void evictExpiredCounters() {
+        long now = System.currentTimeMillis();
+        counters.entrySet().removeIf(e -> (now - e.getValue().windowStart()) > windowMs);
+    }
+
+    /** Test-visibility hook: number of tracked user counters. */
+    int trackedCounters() {
+        return counters.size();
     }
 
     @Override
@@ -42,8 +69,17 @@ public class RateLimitingInterceptor implements HandlerInterceptor {
             return true;
         }
 
-        // Extract user from header (set by JwtTokenFilter)
-        String userId = request.getHeader("X-User-Id");
+        // Derive the user from the authenticated JWT principal, NOT from a
+        // client-controllable header. auth.getName() is the JWT 'sub' claim.
+        // AnonymousAuthenticationToken.isAuthenticated() returns true but represents
+        // an unauthenticated user — pass through and let security handle it.
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        if (auth == null || !auth.isAuthenticated()
+                || auth instanceof AnonymousAuthenticationToken
+                || auth.getPrincipal() == null) {
+            return true; // unauthenticated — let security handle it
+        }
+        String userId = auth.getName();
         if (userId == null || userId.isBlank()) {
             return true; // No user context — let security handle it
         }
@@ -64,7 +100,7 @@ public class RateLimitingInterceptor implements HandlerInterceptor {
     private boolean isRateLimited(String userId) {
         long now = System.currentTimeMillis();
         WindowCounter counter = counters.compute(userId, (key, existing) -> {
-            if (existing == null || (now - existing.windowStart) > WINDOW_MS) {
+            if (existing == null || (now - existing.windowStart) > windowMs) {
                 return new WindowCounter(now, new AtomicInteger(1));
             }
             existing.count.incrementAndGet();
