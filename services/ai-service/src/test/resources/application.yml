@@ -29,6 +29,20 @@ spring:
 server:
   port: 0
 
+# Sensitive circuit breaker config so context-loading tests open/recover fast.
+resilience4j:
+  circuitbreaker:
+    configs:
+      default:
+        slidingWindowSize: 2
+        minimumNumberOfCalls: 2
+        failureRateThreshold: 50
+        waitDurationInOpenState: 100ms
+        permittedNumberOfCallsInHalfOpenState: 1
+    instances:
+      deepseek:
+        baseConfig: default
+
 eureka:
   client:
     enabled: false

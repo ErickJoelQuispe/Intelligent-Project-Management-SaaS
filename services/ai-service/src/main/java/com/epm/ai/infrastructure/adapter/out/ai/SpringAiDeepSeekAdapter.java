@@ -1,11 +1,15 @@
 package com.epm.ai.infrastructure.adapter.out.ai;
 
 import java.util.Iterator;
+import java.util.List;
 
 import com.epm.ai.domain.model.AiRequest;
 import com.epm.ai.domain.model.AiResponse;
 import com.epm.ai.domain.port.out.AiModelPort;
 import com.epm.ai.domain.port.out.AiTokenTracker;
+import io.github.resilience4j.circuitbreaker.CallNotPermittedException;
+import io.github.resilience4j.circuitbreaker.CircuitBreaker;
+import io.github.resilience4j.circuitbreaker.CircuitBreakerRegistry;
 import io.micrometer.core.instrument.MeterRegistry;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -26,17 +30,21 @@ public class SpringAiDeepSeekAdapter implements AiModelPort {
     private static final Logger log = LoggerFactory.getLogger(SpringAiDeepSeekAdapter.class);
     private static final String MODEL_NAME = "deepseek-chat";
     private static final String FALLBACK_CONTENT = "AI service is currently unavailable. Please try again later.";
+    private static final String CIRCUIT_BREAKER_NAME = "deepseek";
 
     private final ChatClient chatClient;
     private final AiTokenTracker tokenTracker;
     private final MeterRegistry meterRegistry;
+    private final CircuitBreaker circuitBreaker;
 
     public SpringAiDeepSeekAdapter(ChatClient.Builder chatClientBuilder,
                                    AiTokenTracker tokenTracker,
-                                   MeterRegistry meterRegistry) {
+                                   MeterRegistry meterRegistry,
+                                   CircuitBreakerRegistry circuitBreakerRegistry) {
         this.chatClient = chatClientBuilder.build();
         this.tokenTracker = tokenTracker;
         this.meterRegistry = meterRegistry;
+        this.circuitBreaker = circuitBreakerRegistry.circuitBreaker(CIRCUIT_BREAKER_NAME);
     }
 
     private static final String SYSTEM_PROMPT =
@@ -47,14 +55,19 @@ public class SpringAiDeepSeekAdapter implements AiModelPort {
     @Override
     public AiResponse generate(AiRequest request) {
         try {
-            ChatResponse chatResponse = chatClient.prompt()
-                    .system(SYSTEM_PROMPT)
-                    .user(request.prompt())
-                    .call()
-                    .chatResponse();
-
-            return extractResponse(chatResponse, request);
-        } catch (Exception ex) {
+            return circuitBreaker.executeCheckedSupplier(() -> {
+                ChatResponse chatResponse = chatClient.prompt()
+                        .system(SYSTEM_PROMPT)
+                        .user(request.prompt())
+                        .call()
+                        .chatResponse();
+                return extractResponse(chatResponse, request);
+            });
+        } catch (CallNotPermittedException ex) {
+            log.warn("Circuit breaker open for DeepSeek, returning fallback");
+            return generateFallback(request, ex);
+        } catch (Throwable ex) {
+            // CB already recorded this as a failure before rethrowing.
             log.warn("DeepSeek generate failed, returning fallback: {}", ex.getMessage());
             return generateFallback(request, ex);
         }
@@ -63,13 +76,18 @@ public class SpringAiDeepSeekAdapter implements AiModelPort {
     @Override
     public AiResponse chat(AiRequest request) {
         try {
-            ChatResponse chatResponse = chatClient.prompt()
-                    .user(request.prompt())
-                    .call()
-                    .chatResponse();
-
-            return extractResponse(chatResponse, request);
-        } catch (Exception ex) {
+            return circuitBreaker.executeCheckedSupplier(() -> {
+                ChatResponse chatResponse = chatClient.prompt()
+                        .user(request.prompt())
+                        .call()
+                        .chatResponse();
+                return extractResponse(chatResponse, request);
+            });
+        } catch (CallNotPermittedException ex) {
+            log.warn("Circuit breaker open for DeepSeek, returning fallback");
+            return chatFallback(request, ex);
+        } catch (Throwable ex) {
+            // CB already recorded this as a failure before rethrowing.
             log.warn("DeepSeek chat failed, returning fallback: {}", ex.getMessage());
             return chatFallback(request, ex);
         }
@@ -78,15 +96,19 @@ public class SpringAiDeepSeekAdapter implements AiModelPort {
     @Override
     public Iterator<String> chatStream(AiRequest request) {
         try {
-            return chatClient.prompt()
+            return circuitBreaker.executeCheckedSupplier(() -> chatClient.prompt()
                     .user(request.prompt())
                     .stream()
                     .content()
                     .toIterable()
-                    .iterator();
-        } catch (Exception ex) {
+                    .iterator());
+        } catch (CallNotPermittedException ex) {
+            log.warn("Circuit breaker open for DeepSeek, returning fallback");
+            return List.of(FALLBACK_CONTENT).iterator();
+        } catch (Throwable ex) {
+            // CB already recorded this as a failure before rethrowing.
             log.warn("DeepSeek chatStream failed, returning fallback: {}", ex.getMessage());
-            return java.util.List.of(FALLBACK_CONTENT).iterator();
+            return List.of(FALLBACK_CONTENT).iterator();
         }
     }
 
