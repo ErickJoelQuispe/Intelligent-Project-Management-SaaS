@@ -56,28 +56,48 @@ jobs:
           done
           echo "Keycloak is ready"
 
-      - name: Wait for Keycloak setup
+      - name: Configure Keycloak (grant manage-users)
         run: |
-          echo "Waiting for keycloak-setup to complete..."
-          timeout=120
-          elapsed=0
-          until [ "$(docker inspect --format='{{.State.Status}}' epm-keycloak-setup 2>/dev/null)" = "exited" ]; do
-            if [ $elapsed -ge $timeout ]; then
-              echo "keycloak-setup did not complete within ${timeout}s"
-              docker compose logs keycloak-setup
-              exit 1
-            fi
-            sleep 5
-            elapsed=$((elapsed + 5))
-          done
-          EXIT_CODE=$(docker inspect --format='{{.State.ExitCode}}' epm-keycloak-setup)
-          echo "keycloak-setup logs:"
-          docker compose logs keycloak-setup
-          if [ "$EXIT_CODE" != "0" ]; then
-            echo "keycloak-setup failed with exit code $EXIT_CODE"
-            exit 1
-          fi
-          echo "Keycloak setup complete"
+          echo "=== Authenticating to Keycloak Admin API ==="
+          docker exec epm-keycloak /opt/keycloak/bin/kcadm.sh config credentials \
+            --server http://localhost:8080 \
+            --realm master \
+            --user admin \
+            --password admin
+
+          echo ""
+          echo "=== Fetching epm-backend client UUID ==="
+          CLIENT_UUID=$(docker exec epm-keycloak /opt/keycloak/bin/kcadm.sh get clients -r epm --fields id,clientId \
+            | grep -B1 '"clientId" : "epm-backend"' \
+            | grep '"id"' \
+            | sed 's/.*"id" : "\([^"]*\)".*/\1/')
+          echo "epm-backend client UUID: $CLIENT_UUID"
+
+          echo ""
+          echo "=== Fetching service account user ID ==="
+          SA_ID=$(docker exec epm-keycloak /opt/keycloak/bin/kcadm.sh get "clients/$CLIENT_UUID/service-account-user" -r epm --fields id \
+            | grep '"id"' \
+            | sed 's/.*"id" : "\([^"]*\)".*/\1/')
+          echo "Service account user ID: $SA_ID"
+
+          echo ""
+          echo "=== Granting realm-management/manage-users role ==="
+          docker exec epm-keycloak /opt/keycloak/bin/kcadm.sh add-roles -r epm \
+            --uid "$SA_ID" \
+            --cclientid realm-management \
+            --rolename manage-users 2>&1 \
+            && echo "SUCCESS: manage-users role granted" \
+            || echo "NOTE: maybe already assigned (or failed)"
+
+          echo ""
+          echo "=== Verifying role assignment ==="
+          docker exec epm-keycloak /opt/keycloak/bin/kcadm.sh get-roles -r epm \
+            --uid "$SA_ID" \
+            --cclientid realm-management \
+            | grep manage-users \
+            && echo "VERIFIED: manage-users is present" \
+            || echo "WARNING: could not verify manage-users"
+
 
       - name: Wait for auth route via gateway
         run: |
