@@ -40,6 +40,22 @@ jobs:
           done
           echo "api-gateway is healthy"
 
+      - name: Wait for Keycloak
+        run: |
+          echo "Waiting for Keycloak to be ready..."
+          timeout=180
+          elapsed=0
+          until curl -sf http://localhost:9000/health/ready > /dev/null 2>&1; do
+            if [ $elapsed -ge $timeout ]; then
+              echo "Keycloak did not become ready within ${timeout}s"
+              docker compose logs keycloak
+              exit 1
+            fi
+            sleep 5
+            elapsed=$((elapsed + 5))
+          done
+          echo "Keycloak is ready"
+
       - name: Wait for auth-service
         run: |
           echo "Waiting for auth-service to be healthy..."
