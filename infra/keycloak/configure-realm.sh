@@ -117,25 +117,38 @@ create_user_if_not_exists() {
 # ---------------------------------------------------------------------------
 echo "Granting manage-users role to service-account-epm-backend..."
 
-SA_ID=$($KCADM get users -r "$REALM" \
-  -q "username=service-account-epm-backend" --fields id \
+# Get the epm-backend client UUID first
+BACKEND_CLIENT_UUID=$($KCADM get clients -r "$REALM" --fields id,clientId \
+  | grep -B1 '"clientId" : "epm-backend"' \
+  | grep '"id"' \
+  | sed 's/.*"id" : "\([^"]*\)".*/\1/')
+
+echo "epm-backend client UUID: [$BACKEND_CLIENT_UUID]"
+
+if [ -z "$BACKEND_CLIENT_UUID" ]; then
+  echo "ERROR: epm-backend client not found in realm $REALM"
+  exit 1
+fi
+
+# Get service account user ID via the dedicated service-account endpoint
+SA_ID=$($KCADM get "clients/$BACKEND_CLIENT_UUID/service-account-user" -r "$REALM" --fields id \
   | grep '"id"' \
   | sed 's/.*"id" : "\([^"]*\)".*/\1/')
 
 echo "Service account user ID: [$SA_ID]"
 
 if [ -z "$SA_ID" ]; then
-  echo "ERROR: service-account-epm-backend not found in realm $REALM"
+  echo "ERROR: service account for epm-backend not found"
   exit 1
 fi
 
-# add-roles with --cclientid fails if role already assigned; suppress only that error
+# add-roles: || true so script doesn't exit if role already assigned
 $KCADM add-roles -r "$REALM" \
   --uid "$SA_ID" \
   --cclientid "realm-management" \
   --rolename "manage-users" \
   && echo "manage-users role granted to service-account-epm-backend" \
-  || echo "manage-users already assigned — skipping"
+  || echo "manage-users already assigned or add-roles failed — continuing"
 
 # ---------------------------------------------------------------------------
 # 5. Test user creation (idempotent)
