@@ -510,7 +510,12 @@
         "default-roles-epm"
       ],
       "notBefore": 0,
-      "groups": []
+      "groups": [],
+      "clientRoles": {
+        "realm-management": [
+          "manage-users"
+        ]
+      }
     }
   ],
   "scopeMappings": [
