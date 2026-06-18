@@ -81,13 +81,30 @@ jobs:
           echo "Service account user ID: $SA_ID"
 
           echo ""
-          echo "=== Granting realm-management/manage-users role ==="
+          echo "=== Granting realm-management/realm-admin (full admin) ==="
+          docker exec epm-keycloak /opt/keycloak/bin/kcadm.sh add-roles -r epm \
+            --uid "$SA_ID" \
+            --cclientid realm-management \
+            --rolename realm-admin 2>&1 \
+            && echo "SUCCESS: realm-admin role granted" \
+            || echo "NOTE: maybe already assigned"
+
+          echo ""
+          echo "=== Granting realm-management/manage-users (explicit) ==="
           docker exec epm-keycloak /opt/keycloak/bin/kcadm.sh add-roles -r epm \
             --uid "$SA_ID" \
             --cclientid realm-management \
             --rolename manage-users 2>&1 \
             && echo "SUCCESS: manage-users role granted" \
-            || echo "NOTE: maybe already assigned (or failed)"
+            || echo "NOTE: maybe already assigned"
+
+          echo ""
+          echo "=== Verifying ALL role assignments ==="
+          docker exec epm-keycloak /opt/keycloak/bin/kcadm.sh get-roles -r epm \
+            --uid "$SA_ID" \
+            --cclientid realm-management \
+            | grep '"name"' \
+            | sed 's/.*"name" : "\([^"]*\)".*/  - \1/'
 
           echo ""
           echo "=== Verifying role assignment ==="
