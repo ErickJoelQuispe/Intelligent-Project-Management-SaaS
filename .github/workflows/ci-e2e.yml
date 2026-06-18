@@ -134,6 +134,35 @@ jobs:
           fi
           echo "SUCCESS: User created via Keycloak Admin API!"
 
+          # NOW test from within the Docker network (simulate auth-service's network view)
+          echo ""
+          echo "=== Test from inside Docker network (alpine/curl container) ==="
+          AUTH_TOKEN=$(docker run --rm --network host curlimages/curl:8.6.0 sh -c '
+            curl -s -X POST "http://localhost:8180/realms/epm/protocol/openid-connect/token" \
+              -H "Content-Type: application/x-www-form-urlencoded" \
+              -d "client_id=epm-backend&client_secret=epm-backend-secret&grant_type=client_credentials"' \
+            | grep -o '"access_token":"[^"]*"' | cut -d'"' -f4)
+          echo "Token from Docker network: ${AUTH_TOKEN:0:20}..."
+
+          if [ -z "$AUTH_TOKEN" ]; then
+            echo "FATAL: Could not get token from inside Docker network"
+            exit 1
+          fi
+
+          AUTH_HTTP=$(docker run --rm --network host curlimages/curl:8.6.0 sh -c '
+            curl -s -o /dev/null -w "%{http_code}" -X POST \
+              "http://localhost:8180/admin/realms/epm/users" \
+              -H "Authorization: Bearer '"$AUTH_TOKEN"'" \
+              -H "Content-Type: application/json" \
+              -d "{\"username\":\"ci-probe-network\",\"enabled\":true}"')
+          echo "HTTP from Docker network: $AUTH_HTTP"
+
+          if [ "$AUTH_HTTP" != "201" ]; then
+            echo "FATAL: Cannot create user from Docker network ($AUTH_HTTP)"
+            exit 1
+          fi
+          echo "SUCCESS: User created from inside Docker network!"
+
           # Clean up: extract user ID from Location header and delete
           LOCATION=$(curl -s -o /dev/null -w "%{redirect_url}" \
             -X POST "http://localhost:8180/admin/realms/epm/users" \
@@ -146,6 +175,23 @@ jobs:
               -H "Authorization: Bearer $TOKEN"
             echo "Cleanup: deleted probe user $USER_ID"
           fi
+
+      - name: Restart auth-service (invalidate CB + pick up fresh config)
+        run: |
+          echo "Restarting auth-service..."
+          docker compose restart auth-service
+          timeout=60
+          elapsed=0
+          until curl -sf http://localhost:8081/actuator/health > /dev/null 2>&1; do
+            if [ $elapsed -ge $timeout ]; then
+              echo "auth-service did not recover after restart"
+              docker compose logs auth-service | tail -30
+              exit 1
+            fi
+            sleep 3
+            elapsed=$((elapsed + 3))
+          done
+          echo "auth-service restarted and healthy"
 
       - name: Wait for auth route via gateway
         run: |
