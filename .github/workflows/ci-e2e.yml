@@ -95,7 +95,7 @@ jobs:
           echo "auth-service is healthy"
 
       - name: Run E2E tests
-        run: ./mvnw verify -Pe2e --batch-mode
+        run: ./mvnw verify -Pe2e -pl e2e-tests --batch-mode
 
       - name: Tear down stack
         if: always()
