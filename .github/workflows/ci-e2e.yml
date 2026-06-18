@@ -114,6 +114,36 @@ jobs:
           done
           echo "auth route is up (gateway returned $STATUS)"
 
+      - name: Wait for all services registered in Eureka
+        run: |
+          echo "Waiting for all microservices to register with Eureka..."
+          REQUIRED="AUTH-SERVICE USER-SERVICE PROJECT-SERVICE TASK-SERVICE AI-SERVICE NOTIFICATION-SERVICE API-GATEWAY"
+          timeout=180
+          elapsed=0
+          while true; do
+            APPS=$(curl -s -H "Accept: application/json" http://localhost:8761/eureka/apps 2>/dev/null \
+              | tr ',' '\n' | grep -oE '"name":"[^"]*"' | sed 's/"name":"//;s/"//' | sort -u)
+            MISSING=""
+            for svc in $REQUIRED; do
+              echo "$APPS" | grep -q "^$svc$" || MISSING="$MISSING $svc"
+            done
+            if [ -z "$MISSING" ]; then
+              echo "All services registered: $(echo $APPS | tr '\n' ' ')"
+              break
+            fi
+            echo "  still missing:$MISSING"
+            if [ $elapsed -ge $timeout ]; then
+              echo "Services not registered within ${timeout}s. Missing:$MISSING"
+              docker compose logs discovery-service | tail -30
+              exit 1
+            fi
+            sleep 5
+            elapsed=$((elapsed + 5))
+          done
+          # Give the gateway a moment to refresh its route cache from Eureka
+          sleep 10
+          echo "Eureka registration complete"
+
       - name: Run E2E tests
         run: ./mvnw verify -Pe2e -pl e2e-tests --batch-mode
 
