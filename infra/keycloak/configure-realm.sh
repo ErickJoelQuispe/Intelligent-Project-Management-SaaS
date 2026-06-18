@@ -118,29 +118,24 @@ create_user_if_not_exists() {
 echo "Granting manage-users role to service-account-epm-backend..."
 
 SA_ID=$($KCADM get users -r "$REALM" \
-  -q "username=service-account-epm-backend" --fields id 2>/dev/null \
+  -q "username=service-account-epm-backend" --fields id \
   | grep '"id"' \
   | sed 's/.*"id" : "\([^"]*\)".*/\1/')
 
-RM_CLIENT_ID=$($KCADM get clients -r "$REALM" \
-  --fields id,clientId 2>/dev/null \
-  | grep -B1 '"clientId" : "realm-management"' \
-  | grep '"id"' \
-  | sed 's/.*"id" : "\([^"]*\)".*/\1/')
+echo "Service account user ID: [$SA_ID]"
 
-echo "Service account user ID: $SA_ID"
-echo "realm-management client ID: $RM_CLIENT_ID"
-
-if [ -n "$SA_ID" ] && [ -n "$RM_CLIENT_ID" ]; then
-  $KCADM add-roles -r "$REALM" \
-    --uid "$SA_ID" \
-    --cclientid "realm-management" \
-    --rolename "manage-users" 2>/dev/null \
-    && echo "manage-users role granted to service-account-epm-backend" \
-    || echo "manage-users already assigned or failed — skipping"
-else
-  echo "WARNING: Could not find service account or realm-management client — skipping role grant"
+if [ -z "$SA_ID" ]; then
+  echo "ERROR: service-account-epm-backend not found in realm $REALM"
+  exit 1
 fi
+
+# add-roles with --cclientid fails if role already assigned; suppress only that error
+$KCADM add-roles -r "$REALM" \
+  --uid "$SA_ID" \
+  --cclientid "realm-management" \
+  --rolename "manage-users" \
+  && echo "manage-users role granted to service-account-epm-backend" \
+  || echo "manage-users already assigned — skipping"
 
 # ---------------------------------------------------------------------------
 # 5. Test user creation (idempotent)

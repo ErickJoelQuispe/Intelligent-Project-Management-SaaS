@@ -71,9 +71,10 @@ jobs:
             elapsed=$((elapsed + 5))
           done
           EXIT_CODE=$(docker inspect --format='{{.State.ExitCode}}' epm-keycloak-setup)
+          echo "keycloak-setup logs:"
+          docker compose logs keycloak-setup
           if [ "$EXIT_CODE" != "0" ]; then
             echo "keycloak-setup failed with exit code $EXIT_CODE"
-            docker compose logs keycloak-setup
             exit 1
           fi
           echo "Keycloak setup complete"
