@@ -95,6 +95,26 @@ services:
     restart: unless-stopped
 
   # ─────────────────────────────────────────────────────────────────
+  # Keycloak post-import setup: grants manage-users to epm-backend
+  # service account and creates seed users. Runs once after Keycloak
+  # is healthy, then exits (restart: no).
+  # ─────────────────────────────────────────────────────────────────
+  keycloak-setup:
+    image: quay.io/keycloak/keycloak:26.1.4
+    container_name: epm-keycloak-setup
+    entrypoint: ["bash", "/opt/keycloak/data/import/configure-realm.sh"]
+    environment:
+      KEYCLOAK_URL: "http://epm-keycloak:8080"
+      KEYCLOAK_ADMIN: admin
+      KEYCLOAK_ADMIN_PASSWORD: ${KEYCLOAK_ADMIN_PASSWORD:-admin}
+    volumes:
+      - ./infra/keycloak:/opt/keycloak/data/import
+    depends_on:
+      keycloak:
+        condition: service_healthy
+    restart: "no"
+
+  # ─────────────────────────────────────────────────────────────────
   # Redis 7.4 — cache de respuestas IA, rate limiting
   # No persiste en disco (no hay volumen): si cae, se reconstruye solo.
   # ─────────────────────────────────────────────────────────────────

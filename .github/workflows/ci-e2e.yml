@@ -56,6 +56,28 @@ jobs:
           done
           echo "Keycloak is ready"
 
+      - name: Wait for Keycloak setup
+        run: |
+          echo "Waiting for keycloak-setup to complete..."
+          timeout=120
+          elapsed=0
+          until [ "$(docker inspect --format='{{.State.Status}}' epm-keycloak-setup 2>/dev/null)" = "exited" ]; do
+            if [ $elapsed -ge $timeout ]; then
+              echo "keycloak-setup did not complete within ${timeout}s"
+              docker compose logs keycloak-setup
+              exit 1
+            fi
+            sleep 5
+            elapsed=$((elapsed + 5))
+          done
+          EXIT_CODE=$(docker inspect --format='{{.State.ExitCode}}' epm-keycloak-setup)
+          if [ "$EXIT_CODE" != "0" ]; then
+            echo "keycloak-setup failed with exit code $EXIT_CODE"
+            docker compose logs keycloak-setup
+            exit 1
+          fi
+          echo "Keycloak setup complete"
+
       - name: Wait for auth-service
         run: |
           echo "Waiting for auth-service to be healthy..."
