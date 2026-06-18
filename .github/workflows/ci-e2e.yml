@@ -99,6 +99,54 @@ jobs:
             || echo "WARNING: could not verify manage-users"
 
 
+      - name: Verify Keycloak works (service account can create user)
+        run: |
+          echo "=== Get token as epm-backend service account ==="
+          TOKEN_RESP=$(curl -s -X POST "http://localhost:8180/realms/epm/protocol/openid-connect/token" \
+            -H "Content-Type: application/x-www-form-urlencoded" \
+            -d "client_id=epm-backend" \
+            -d "client_secret=epm-backend-secret" \
+            -d "grant_type=client_credentials")
+          echo "Token response: $TOKEN_RESP"
+          TOKEN=$(echo "$TOKEN_RESP" | grep -o '"access_token":"[^"]*"' | cut -d'"' -f4)
+
+          if [ -z "$TOKEN" ]; then
+            echo "FATAL: Could not obtain access token for epm-backend"
+            exit 1
+          fi
+          echo "Token obtained OK (${#TOKEN} chars)"
+
+          echo ""
+          echo "=== Create test user via Keycloak Admin API ==="
+          HTTP_CODE=$(curl -s -o /tmp/kc-user-response.json -w "%{http_code}" \
+            -X POST "http://localhost:8180/admin/realms/epm/users" \
+            -H "Authorization: Bearer $TOKEN" \
+            -H "Content-Type: application/json" \
+            -d '{"username":"ci-probe-'"$RANDOM"'","email":"ci-probe@test.ci","enabled":true,"emailVerified":true}')
+          echo "HTTP status: $HTTP_CODE"
+          echo "Response body:"
+          cat /tmp/kc-user-response.json
+
+          if [ "$HTTP_CODE" != "201" ]; then
+            echo "FATAL: Keycloak refused user creation ($HTTP_CODE)."
+            echo "Service account is still missing manage-users or token is invalid."
+            exit 1
+          fi
+          echo "SUCCESS: User created via Keycloak Admin API!"
+
+          # Clean up: extract user ID from Location header and delete
+          LOCATION=$(curl -s -o /dev/null -w "%{redirect_url}" \
+            -X POST "http://localhost:8180/admin/realms/epm/users" \
+            -H "Authorization: Bearer $TOKEN" \
+            -H "Content-Type: application/json" \
+            -d '{"username":"ci-probe-delete","enabled":true}')
+          if [ -n "$LOCATION" ]; then
+            USER_ID=$(basename "$LOCATION")
+            curl -s -X DELETE "http://localhost:8180/admin/realms/epm/users/$USER_ID" \
+              -H "Authorization: Bearer $TOKEN"
+            echo "Cleanup: deleted probe user $USER_ID"
+          fi
+
       - name: Wait for auth route via gateway
         run: |
           echo "Waiting for auth-service to be reachable via api-gateway (Eureka propagation)..."
