@@ -11,6 +11,8 @@ import com.epm.user.domain.exception.TeamNotFoundException;
 import com.epm.user.domain.exception.UnauthorizedException;
 import com.epm.user.domain.exception.UserNotFoundException;
 import jakarta.validation.ConstraintViolationException;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ProblemDetail;
 import org.springframework.orm.ObjectOptimisticLockingFailureException;
@@ -27,6 +29,8 @@ import org.springframework.web.method.annotation.HandlerMethodValidationExceptio
  */
 @RestControllerAdvice
 public class GlobalExceptionHandler {
+
+    private static final Logger log = LoggerFactory.getLogger(GlobalExceptionHandler.class);
 
     /** 404 Not Found — profile not found. */
     @ExceptionHandler(ProfileNotFoundException.class)
@@ -189,6 +193,7 @@ public class GlobalExceptionHandler {
     /** 500 Internal Server Error — unexpected exception. */
     @ExceptionHandler(Exception.class)
     public ProblemDetail handleGeneric(Exception ex) {
+        log.error("Unhandled exception", ex);
         ProblemDetail problem = ProblemDetail.forStatus(HttpStatus.INTERNAL_SERVER_ERROR);
         problem.setType(URI.create("https://api.epm.com/errors/internal-error"));
         problem.setTitle("Internal Server Error");

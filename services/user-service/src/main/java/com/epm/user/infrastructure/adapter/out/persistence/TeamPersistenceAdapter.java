@@ -52,8 +52,13 @@ public class TeamPersistenceAdapter implements TeamRepository {
             membershipJpaRepository.save(membershipEntity);
         }
 
-        return findByIdAndTenantId(team.getId(), team.getTenantId())
-                .orElseThrow(() -> new IllegalStateException("Failed to reload team after save"));
+        // Reload by ID only — NOT through the soft-delete filter. On a delete, the team
+        // row now has deletedAt set, so findByIdAndTenantIdAndDeletedAtIsNull would return
+        // empty and wrongly throw. Reload the actual persisted row regardless of its state.
+        TeamJpaEntity reloaded = teamJpaRepository.findById(team.getId())
+                .orElseThrow(() -> new IllegalStateException(
+                        "Failed to reload team after save: " + team.getId()));
+        return reconstitute(reloaded);
     }
 
     /**
