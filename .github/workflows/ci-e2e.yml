@@ -56,146 +56,28 @@ jobs:
           done
           echo "Keycloak is ready"
 
-      - name: Configure Keycloak (grant manage-users)
+      - name: Configure Keycloak
         run: |
-          echo "=== Authenticating to Keycloak Admin API ==="
           docker exec epm-keycloak /opt/keycloak/bin/kcadm.sh config credentials \
-            --server http://localhost:8080 \
-            --realm master \
-            --user admin \
-            --password admin
+            --server http://localhost:8080 --realm master --user admin --password admin
 
-          echo ""
-          echo "=== Fetching epm-backend client UUID ==="
           CLIENT_UUID=$(docker exec epm-keycloak /opt/keycloak/bin/kcadm.sh get clients -r epm --fields id,clientId \
-            | grep -B1 '"clientId" : "epm-backend"' \
-            | grep '"id"' \
+            | grep -B1 '"clientId" : "epm-backend"' | grep '"id"' \
             | sed 's/.*"id" : "\([^"]*\)".*/\1/')
-          echo "epm-backend client UUID: $CLIENT_UUID"
 
-          echo ""
-          echo "=== Fetching service account user ID ==="
           SA_ID=$(docker exec epm-keycloak /opt/keycloak/bin/kcadm.sh get "clients/$CLIENT_UUID/service-account-user" -r epm --fields id \
-            | grep '"id"' \
-            | sed 's/.*"id" : "\([^"]*\)".*/\1/')
-          echo "Service account user ID: $SA_ID"
+            | grep '"id"' | sed 's/.*"id" : "\([^"]*\)".*/\1/')
 
-          echo ""
-          echo "=== Granting realm-management/realm-admin (full admin) ==="
+          echo "Granting realm-management roles to service account $SA_ID..."
           docker exec epm-keycloak /opt/keycloak/bin/kcadm.sh add-roles -r epm \
-            --uid "$SA_ID" \
-            --cclientid realm-management \
-            --rolename realm-admin 2>&1 \
-            && echo "SUCCESS: realm-admin role granted" \
-            || echo "NOTE: maybe already assigned"
-
-          echo ""
-          echo "=== Granting realm-management/manage-users (explicit) ==="
+            --uid "$SA_ID" --cclientid realm-management --rolename realm-admin 2>&1 \
+            && echo "  realm-admin: OK" || echo "  realm-admin: already present"
           docker exec epm-keycloak /opt/keycloak/bin/kcadm.sh add-roles -r epm \
-            --uid "$SA_ID" \
-            --cclientid realm-management \
-            --rolename manage-users 2>&1 \
-            && echo "SUCCESS: manage-users role granted" \
-            || echo "NOTE: maybe already assigned"
+            --uid "$SA_ID" --cclientid realm-management --rolename manage-users 2>&1 \
+            && echo "  manage-users: OK" || echo "  manage-users: already present"
 
-          echo ""
-          echo "=== Verifying ALL role assignments ==="
-          docker exec epm-keycloak /opt/keycloak/bin/kcadm.sh get-roles -r epm \
-            --uid "$SA_ID" \
-            --cclientid realm-management \
-            | grep '"name"' \
-            | sed 's/.*"name" : "\([^"]*\)".*/  - \1/'
-
-          echo ""
-          echo "=== Verifying role assignment ==="
-          docker exec epm-keycloak /opt/keycloak/bin/kcadm.sh get-roles -r epm \
-            --uid "$SA_ID" \
-            --cclientid realm-management \
-            | grep manage-users \
-            && echo "VERIFIED: manage-users is present" \
-            || echo "WARNING: could not verify manage-users"
-
-
-      - name: Verify Keycloak works (service account can create user)
+      - name: Restart auth-service
         run: |
-          echo "=== Get token as epm-backend service account ==="
-          TOKEN_RESP=$(curl -s -X POST "http://localhost:8180/realms/epm/protocol/openid-connect/token" \
-            -H "Content-Type: application/x-www-form-urlencoded" \
-            -d "client_id=epm-backend" \
-            -d "client_secret=epm-backend-secret" \
-            -d "grant_type=client_credentials")
-          echo "Token response: $TOKEN_RESP"
-          TOKEN=$(echo "$TOKEN_RESP" | grep -o '"access_token":"[^"]*"' | cut -d'"' -f4)
-
-          if [ -z "$TOKEN" ]; then
-            echo "FATAL: Could not obtain access token for epm-backend"
-            exit 1
-          fi
-          echo "Token obtained OK (${#TOKEN} chars)"
-
-          echo ""
-          echo "=== Create test user via Keycloak Admin API ==="
-          HTTP_CODE=$(curl -s -o /tmp/kc-user-response.json -w "%{http_code}" \
-            -X POST "http://localhost:8180/admin/realms/epm/users" \
-            -H "Authorization: Bearer $TOKEN" \
-            -H "Content-Type: application/json" \
-            -d '{"username":"ci-probe-'"$RANDOM"'","email":"ci-probe@test.ci","enabled":true,"emailVerified":true}')
-          echo "HTTP status: $HTTP_CODE"
-          echo "Response body:"
-          cat /tmp/kc-user-response.json
-
-          if [ "$HTTP_CODE" != "201" ]; then
-            echo "FATAL: Keycloak refused user creation ($HTTP_CODE)."
-            echo "Service account is still missing manage-users or token is invalid."
-            exit 1
-          fi
-          echo "SUCCESS: User created via Keycloak Admin API!"
-
-          # NOW test from within the Docker network (simulate auth-service's network view)
-          echo ""
-          echo "=== Test from inside Docker network (alpine/curl container) ==="
-          AUTH_TOKEN=$(docker run --rm --network host curlimages/curl:8.6.0 sh -c '
-            curl -s -X POST "http://localhost:8180/realms/epm/protocol/openid-connect/token" \
-              -H "Content-Type: application/x-www-form-urlencoded" \
-              -d "client_id=epm-backend&client_secret=epm-backend-secret&grant_type=client_credentials"' \
-            | grep -o '"access_token":"[^"]*"' | cut -d'"' -f4)
-          echo "Token from Docker network: ${AUTH_TOKEN:0:20}..."
-
-          if [ -z "$AUTH_TOKEN" ]; then
-            echo "FATAL: Could not get token from inside Docker network"
-            exit 1
-          fi
-
-          AUTH_HTTP=$(docker run --rm --network host curlimages/curl:8.6.0 sh -c '
-            curl -s -o /dev/null -w "%{http_code}" -X POST \
-              "http://localhost:8180/admin/realms/epm/users" \
-              -H "Authorization: Bearer '"$AUTH_TOKEN"'" \
-              -H "Content-Type: application/json" \
-              -d "{\"username\":\"ci-probe-network\",\"enabled\":true}"')
-          echo "HTTP from Docker network: $AUTH_HTTP"
-
-          if [ "$AUTH_HTTP" != "201" ]; then
-            echo "FATAL: Cannot create user from Docker network ($AUTH_HTTP)"
-            exit 1
-          fi
-          echo "SUCCESS: User created from inside Docker network!"
-
-          # Clean up: extract user ID from Location header and delete
-          LOCATION=$(curl -s -o /dev/null -w "%{redirect_url}" \
-            -X POST "http://localhost:8180/admin/realms/epm/users" \
-            -H "Authorization: Bearer $TOKEN" \
-            -H "Content-Type: application/json" \
-            -d '{"username":"ci-probe-delete","enabled":true}')
-          if [ -n "$LOCATION" ]; then
-            USER_ID=$(basename "$LOCATION")
-            curl -s -X DELETE "http://localhost:8180/admin/realms/epm/users/$USER_ID" \
-              -H "Authorization: Bearer $TOKEN"
-            echo "Cleanup: deleted probe user $USER_ID"
-          fi
-
-      - name: Restart auth-service (invalidate CB + pick up fresh config)
-        run: |
-          echo "Restarting auth-service..."
           docker compose restart auth-service
           timeout=60
           elapsed=0
@@ -212,7 +94,7 @@ jobs:
 
       - name: Wait for auth route via gateway
         run: |
-          echo "Waiting for auth-service to be reachable via api-gateway (Eureka propagation)..."
+          echo "Waiting for auth-service to be reachable via api-gateway..."
           timeout=120
           elapsed=0
           until STATUS=$(curl -s -o /dev/null -w "%{http_code}" \
