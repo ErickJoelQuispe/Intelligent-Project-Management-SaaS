@@ -201,7 +201,7 @@ services:
       EUREKA_CLIENT_ENABLED: "true"
       SPRING_KAFKA_BOOTSTRAP_SERVERS: "epm-kafka:9092"
       SPRING_PROFILES_ACTIVE: "docker"
-      KEYCLOAK_CLIENT_SECRET: "${KEYCLOAK_CLIENT_SECRET}"
+      KEYCLOAK_CLIENT_SECRET: "${KEYCLOAK_CLIENT_SECRET:-epm-backend-secret}"
       KEYCLOAK_SERVER_URL: "http://epm-keycloak:8080"
     depends_on:
       discovery-service:

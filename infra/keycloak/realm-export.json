@@ -735,7 +735,7 @@
       "enabled": true,
       "alwaysDisplayInConsole": false,
       "clientAuthenticatorType": "client-secret",
-      "secret": "**********",
+      "secret": "epm-backend-secret",
       "redirectUris": [
         "/*"
       ],
