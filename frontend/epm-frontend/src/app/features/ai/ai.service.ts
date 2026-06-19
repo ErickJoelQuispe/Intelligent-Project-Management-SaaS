@@ -49,11 +49,10 @@ export class AiService {
   /**
    * Blocking POST chat — returns a single ChatResponse.
    * Used as non-streaming fallback.
+   * projectId is required by the backend (@NotBlank).
    */
-  chat(message: string, projectId?: string): Observable<ChatResponse> {
-    const body: ChatRequest = projectId
-      ? { message, projectId }
-      : { message };
+  chat(message: string, projectId: string): Observable<ChatResponse> {
+    const body: ChatRequest = { message, projectId };
     return this.http.post<ChatResponse>(`${this.baseUrl}/chat`, body);
   }
 
@@ -67,17 +66,16 @@ export class AiService {
       const controller = new AbortController();
       const token      = this.oauth.getAccessToken();
 
-      const params = new URLSearchParams({ message });
-      if (projectId) params.set('projectId', projectId);
-
-      const url = `${this.baseUrl}/chat/stream?${params.toString()}`;
+      const url = `${this.baseUrl}/chat/stream`;
 
       fetch(url, {
-        method: 'GET',
+        method: 'POST',
         headers: {
           ...(token ? { Authorization: `Bearer ${token}` } : {}),
+          'Content-Type': 'application/json',
           Accept: 'text/event-stream',
         },
+        body: JSON.stringify({ message, projectId: projectId ?? '' }),
         signal: controller.signal,
       })
         .then(async (response) => {
@@ -100,8 +98,15 @@ export class AiService {
             for (const line of lines) {
               const trimmed = line.trim();
 
-              // Skip empty lines and [DONE] sentinel
-              if (!trimmed || trimmed === 'data: [DONE]' || trimmed === '[DONE]') {
+              // Skip empty lines, SSE event/id/retry metadata, and [DONE] sentinel
+              if (
+                !trimmed ||
+                trimmed === 'data: [DONE]' ||
+                trimmed === '[DONE]' ||
+                trimmed.startsWith('event:') ||
+                trimmed.startsWith('id:') ||
+                trimmed.startsWith('retry:')
+              ) {
                 continue;
               }
 

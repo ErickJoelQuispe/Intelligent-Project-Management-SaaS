@@ -6,7 +6,7 @@ export interface ChatMessage {
 
 export interface ChatRequest {
   message: string;
-  projectId?: string;
+  projectId: string;
 }
 
 export interface ChatResponse {

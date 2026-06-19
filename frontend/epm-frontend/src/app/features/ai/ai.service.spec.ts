@@ -80,20 +80,20 @@ describe('AiService', () => {
       expect(result?.reply).toBe('Hello from AI');
     });
 
-    it('sends POST without projectId when not provided', () => {
-      const mockResponse: ChatResponse = { reply: 'AI reply without project' };
+    it('always includes projectId in body (required by backend @NotBlank)', () => {
+      const mockResponse: ChatResponse = { reply: 'AI reply' };
       let result: ChatResponse | undefined;
 
-      service.chat('No project message').subscribe((res) => {
+      service.chat('Hello', 'proj-42').subscribe((res) => {
         result = res;
       });
 
       const req = httpMock.expectOne(`${BASE_URL}/chat`);
       expect(req.request.method).toBe('POST');
-      expect(req.request.body).toEqual({ message: 'No project message' });
+      expect(req.request.body).toEqual({ message: 'Hello', projectId: 'proj-42' });
       req.flush(mockResponse);
 
-      expect(result?.reply).toBe('AI reply without project');
+      expect(result?.reply).toBe('AI reply');
     });
   });
 
@@ -107,6 +107,55 @@ describe('AiService', () => {
 
     afterEach(() => {
       globalThis.fetch = originalFetch;
+    });
+
+    it('uses POST with JSON body (not GET with query params)', async () => {
+      let capturedMethod: string | undefined;
+      let capturedBody: string | undefined;
+      let capturedUrl: string | undefined;
+
+      const stream = new ReadableStream({ start(c) { c.close(); } });
+      globalThis.fetch = (url: RequestInfo | URL, init?: RequestInit) => {
+        capturedUrl    = url.toString();
+        capturedMethod = init?.method;
+        capturedBody   = init?.body as string;
+        return Promise.resolve({ ok: true, body: stream } as Response);
+      };
+
+      await new Promise<void>((resolve) => {
+        service.streamChat('test', 'proj-1').subscribe({ complete: resolve, error: resolve });
+      });
+
+      expect(capturedMethod).toBe('POST');
+      expect(capturedUrl).not.toContain('?');
+      const body = JSON.parse(capturedBody ?? '{}');
+      expect(body['message']).toBe('test');
+      expect(body['projectId']).toBe('proj-1');
+    });
+
+    it('skips event: and id: SSE metadata lines', async () => {
+      const encoder = new TextEncoder();
+      const stream = new ReadableStream({
+        start(controller) {
+          controller.enqueue(encoder.encode('event: message\ndata: Hello\n\n'));
+          controller.enqueue(encoder.encode('id: 1\ndata: World\n\n'));
+          controller.enqueue(encoder.encode('retry: 3000\n\n'));
+          controller.close();
+        },
+      });
+
+      globalThis.fetch = () => Promise.resolve({ ok: true, body: stream } as Response);
+
+      const tokens: string[] = [];
+      await new Promise<void>((resolve, reject) => {
+        service.streamChat('test', 'proj-1').subscribe({
+          next: (t) => tokens.push(t),
+          complete: resolve,
+          error: reject,
+        });
+      });
+
+      expect(tokens).toEqual(['Hello', 'World']);
     });
 
     it('emits tokens from SSE data: lines', async () => {
