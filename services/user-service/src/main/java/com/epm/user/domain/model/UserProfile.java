@@ -113,6 +113,7 @@ public class UserProfile {
                 UuidCreator.getTimeOrderedEpoch(),
                 this.id,
                 this.tenantId,
+                this.email,
                 this.firstName,
                 this.lastName,
                 this.bio,

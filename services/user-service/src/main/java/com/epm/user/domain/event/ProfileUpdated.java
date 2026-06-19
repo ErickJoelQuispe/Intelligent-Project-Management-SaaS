@@ -10,6 +10,7 @@ public record ProfileUpdated(
         UUID eventId,
         UUID userId,
         UUID tenantId,
+        String email,
         String firstName,
         String lastName,
         String bio,

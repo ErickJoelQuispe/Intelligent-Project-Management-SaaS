@@ -97,6 +97,7 @@ public class OutboxDomainEventPublisher implements DomainEventPublisher {
             envelope.put("occurredAt", event.occurredAt().toString());
             ObjectNode payload = objectMapper.createObjectNode();
             payload.put("userId", event.userId().toString());
+            payload.put("email", event.email());
             payload.put("firstName", event.firstName());
             payload.put("lastName", event.lastName());
             if (event.bio() != null) payload.put("bio", event.bio());
