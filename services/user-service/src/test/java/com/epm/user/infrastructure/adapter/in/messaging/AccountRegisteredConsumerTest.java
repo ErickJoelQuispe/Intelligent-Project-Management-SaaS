@@ -146,6 +146,7 @@ class AccountRegisteredConsumerTest {
                 {
                   "eventId": "%s",
                   "eventType": "AccountRegistered",
+                  "eventVersion": 1,
                   "tenantId": "%s",
                   "payload": {
                     "accountId": "%s",

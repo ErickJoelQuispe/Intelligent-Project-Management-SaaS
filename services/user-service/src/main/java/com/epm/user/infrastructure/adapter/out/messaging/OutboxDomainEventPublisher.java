@@ -93,6 +93,7 @@ public class OutboxDomainEventPublisher implements DomainEventPublisher {
             ObjectNode envelope = objectMapper.createObjectNode();
             envelope.put("eventId", event.eventId().toString());
             envelope.put("eventType", "ProfileUpdated");
+            envelope.put("eventVersion", 1);
             envelope.put("tenantId", event.tenantId().toString());
             envelope.put("occurredAt", event.occurredAt().toString());
             ObjectNode payload = objectMapper.createObjectNode();
@@ -114,6 +115,7 @@ public class OutboxDomainEventPublisher implements DomainEventPublisher {
             ObjectNode envelope = objectMapper.createObjectNode();
             envelope.put("eventId", event.eventId().toString());
             envelope.put("eventType", "TeamCreated");
+            envelope.put("eventVersion", 1);
             envelope.put("tenantId", event.tenantId().toString());
             envelope.put("occurredAt", event.occurredAt().toString());
             ObjectNode payload = objectMapper.createObjectNode();
@@ -132,6 +134,7 @@ public class OutboxDomainEventPublisher implements DomainEventPublisher {
             ObjectNode envelope = objectMapper.createObjectNode();
             envelope.put("eventId", event.eventId().toString());
             envelope.put("eventType", "TeamDeleted");
+            envelope.put("eventVersion", 1);
             envelope.put("tenantId", event.tenantId().toString());
             envelope.put("occurredAt", event.occurredAt().toString());
             ObjectNode payload = objectMapper.createObjectNode();
@@ -148,6 +151,7 @@ public class OutboxDomainEventPublisher implements DomainEventPublisher {
             ObjectNode envelope = objectMapper.createObjectNode();
             envelope.put("eventId", event.eventId().toString());
             envelope.put("eventType", "TeamMemberJoined");
+            envelope.put("eventVersion", 1);
             envelope.put("tenantId", event.tenantId().toString());
             envelope.put("occurredAt", event.occurredAt().toString());
             ObjectNode payload = objectMapper.createObjectNode();
@@ -167,6 +171,7 @@ public class OutboxDomainEventPublisher implements DomainEventPublisher {
             ObjectNode envelope = objectMapper.createObjectNode();
             envelope.put("eventId", event.eventId().toString());
             envelope.put("eventType", "TeamMemberLeft");
+            envelope.put("eventVersion", 1);
             envelope.put("tenantId", event.tenantId().toString());
             envelope.put("occurredAt", event.occurredAt().toString());
             ObjectNode payload = objectMapper.createObjectNode();

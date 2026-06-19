@@ -161,6 +161,7 @@ class ProjectArchivedConsumerTest extends AbstractPostgresIT {
                 {
                   "eventId": "%s",
                   "eventType": "ProjectArchived",
+                  "eventVersion": 1,
                   "tenantId": "%s",
                   "occurredAt": "%s",
                   "payload": {

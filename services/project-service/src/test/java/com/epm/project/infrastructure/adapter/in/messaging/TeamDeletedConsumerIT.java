@@ -205,6 +205,7 @@ class TeamDeletedConsumerIT extends AbstractPostgresIT {
                 {
                   "eventId": "%s",
                   "eventType": "TeamDeleted",
+                  "eventVersion": 1,
                   "tenantId": "%s",
                   "occurredAt": "%s",
                   "payload": {

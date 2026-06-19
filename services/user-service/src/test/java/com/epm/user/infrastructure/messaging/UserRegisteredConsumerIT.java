@@ -268,6 +268,7 @@ class UserRegisteredConsumerIT extends AbstractPostgresIT {
         ObjectNode envelope = objectMapper.createObjectNode();
         envelope.put("eventId", eventId.toString());
         envelope.put("eventType", "AccountRegistered");
+        envelope.put("eventVersion", 1);
         envelope.put("tenantId", UUID.randomUUID().toString());
         // Intentionally NO payload — structurally invalid (poison).
         String poison = objectMapper.writeValueAsString(envelope);

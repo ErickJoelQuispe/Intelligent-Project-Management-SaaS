@@ -237,6 +237,7 @@ class TaskEventConsumerTest {
         StringBuilder sb = new StringBuilder();
         sb.append("{\"eventId\":\"").append(eventId).append("\"");
         sb.append(",\"eventType\":\"").append(eventType).append("\"");
+        sb.append(",\"eventVersion\":1");
         sb.append(",\"tenantId\":\"").append(tenantId).append("\"");
         sb.append(",\"occurredAt\":\"2026-06-04T10:00:00Z\"");
         sb.append(",\"payload\":{");

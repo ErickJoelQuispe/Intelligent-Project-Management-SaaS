@@ -66,6 +66,7 @@ public class OutboxAiEventPublisher implements AiEventPublisher {
             String eventId = rawId != null ? rawId.toString() : UuidCreator.getTimeOrderedEpoch().toString();
             envelope.put("eventId", eventId);
             envelope.put("eventType", "AiTasksGenerated");
+            envelope.put("eventVersion", 1);
             envelope.put("tenantId", event.tenantId());
             String occurredAt = event.occurredAt() != null ? event.occurredAt().toString() : Instant.now().toString();
             envelope.put("occurredAt", occurredAt);

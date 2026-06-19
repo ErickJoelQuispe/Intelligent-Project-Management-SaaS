@@ -190,6 +190,7 @@ class AiEventConsumerTest {
                 {
                   "eventId": "%s",
                   "eventType": "AiTasksGenerated",
+                  "eventVersion": 1,
                   "tenantId": "%s",
                   "occurredAt": "2026-06-15T12:00:00Z",
                   "payload": {
@@ -279,6 +280,7 @@ class AiEventConsumerTest {
                 {
                   "eventId": "%s",
                   "eventType": "AiTasksGenerated",
+                  "eventVersion": 1,
                   "tenantId": "%s",
                   "occurredAt": "2026-06-05T12:00:00Z",
                   "payload": {

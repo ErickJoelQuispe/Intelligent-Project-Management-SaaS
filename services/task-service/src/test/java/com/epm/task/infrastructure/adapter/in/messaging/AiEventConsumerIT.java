@@ -306,6 +306,7 @@ class AiEventConsumerIT extends AbstractPostgresIT {
                 {
                   "eventId": "%s",
                   "eventType": "AiTasksGenerated",
+                  "eventVersion": 1,
                   "tenantId": "%s",
                   "occurredAt": "%s",
                   "payload": {
