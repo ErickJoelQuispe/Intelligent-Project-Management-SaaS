@@ -5,7 +5,6 @@ import java.util.UUID;
 
 import com.epm.notification.application.usecase.NotificationApplicationService;
 import com.epm.notification.domain.model.NotificationType;
-import com.epm.notification.domain.port.in.CacheUserEmailUseCase;
 import com.epm.notification.infrastructure.adapter.out.persistence.ProcessedEventJpaRepository;
 import com.epm.notification.infrastructure.messaging.tracing.KafkaTracingSupport;
 import com.fasterxml.jackson.core.JsonProcessingException;
@@ -21,18 +20,28 @@ import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
 /**
- * Kafka consumer for {@code user.events} topic.
+ * Kafka consumer for user team membership topics.
+ *
+ * <p>Listens to:
+ * <ul>
+ *   <li>{@code user.team.member-joined} — eventType: {@code TeamMemberJoined}</li>
+ *   <li>{@code user.team.member-left} — eventType: {@code TeamMemberLeft}</li>
+ * </ul>
  *
  * <p>Handles:
  * <ul>
- *   <li>{@code UserRegistered} → populates {@code user_email_cache} via {@link CacheUserEmailUseCase}</li>
- *   <li>{@code MemberJoinedTeam} → creates {@code MEMBER_JOINED_TEAM} notification</li>
- *   <li>{@code MemberLeftTeam} → creates {@code MEMBER_LEFT_TEAM} notification</li>
+ *   <li>{@code TeamMemberJoined} → creates {@code MEMBER_JOINED_TEAM} notification</li>
+ *   <li>{@code TeamMemberLeft} → creates {@code MEMBER_LEFT_TEAM} notification</li>
  * </ul>
+ *
+ * <p>Email caching on account registration is handled by {@link AccountRegisteredConsumer}
+ * which consumes from {@code auth.account.registered}.
  *
  * <p><strong>Idempotency</strong>: uses an atomic {@code INSERT ... ON CONFLICT DO NOTHING}
  * ({@link ProcessedEventJpaRepository#claimEvent}) executed in the SAME transaction as the
- * business dispatch. {@code rows == 1} proceeds; {@code rows == 0} skips a duplicate. Because the
+ * business dispatch. The claim uses {@code record.topic()} (the actual topic from the
+ * {@link ConsumerRecord}) so that events from different topics are tracked independently.
+ * {@code rows == 1} proceeds; {@code rows == 0} skips a duplicate. Because the
  * claim shares the consumer's transaction, a dispatch failure rolls the marker back too, so a
  * Kafka redelivery re-processes the event instead of permanently losing the notification.
  *
@@ -47,39 +56,37 @@ import org.springframework.transaction.annotation.Transactional;
 public class UserEventConsumer {
 
     private static final Logger log = LoggerFactory.getLogger(UserEventConsumer.class);
-    private static final String TOPIC = "user.events";
+    private static final String TOPIC_MEMBER_JOINED = "user.team.member-joined";
+    private static final String TOPIC_MEMBER_LEFT = "user.team.member-left";
 
     private final NotificationApplicationService notificationService;
-    private final CacheUserEmailUseCase cacheUserEmailUseCase;
     private final ProcessedEventJpaRepository processedEventRepository;
     private final ObjectMapper objectMapper;
 
     public UserEventConsumer(NotificationApplicationService notificationService,
-            CacheUserEmailUseCase cacheUserEmailUseCase,
             ProcessedEventJpaRepository processedEventRepository,
             ObjectMapper objectMapper) {
         this.notificationService = notificationService;
-        this.cacheUserEmailUseCase = cacheUserEmailUseCase;
         this.processedEventRepository = processedEventRepository;
         this.objectMapper = objectMapper;
     }
 
-    @KafkaListener(topics = TOPIC, groupId = "notification-group")
+    @KafkaListener(topics = {TOPIC_MEMBER_JOINED, TOPIC_MEMBER_LEFT}, groupId = "notification-group")
     @Transactional
     public void consume(ConsumerRecord<String, String> record) {
         Context traceContext = KafkaTracingSupport.extractTraceContext(record.headers());
         try (Scope ignored = traceContext.makeCurrent()) {
-            processRecord(record.value());
+            processRecord(record.topic(), record.value());
         }
     }
 
-    private void processRecord(String message) {
+    private void processRecord(String topic, String message) {
         // ── Up-front parse (M1 poison guard) ─────────────────────────────────
         JsonNode root;
         try {
             root = objectMapper.readTree(message);
         } catch (JsonProcessingException e) {
-            log.error("Malformed JSON on topic {} — discarding (poison)", TOPIC, e);
+            log.error("Malformed JSON on topic {} — discarding (poison)", topic, e);
             return;
         }
 
@@ -98,12 +105,13 @@ public class UserEventConsumer {
             }
             userId = requiredUuid(payload, "userId");
         } catch (MalformedEventException | IllegalArgumentException e) {
-            log.error("Malformed user event on topic {} — discarding (poison): {}", TOPIC, e.getMessage());
+            log.error("Malformed user event on topic {} — discarding (poison): {}", topic, e.getMessage());
             return;
         }
 
         // ── Atomic idempotency claim (same transaction as dispatch) ────────────
-        if (processedEventRepository.claimEvent(eventId, TOPIC, Instant.now()) == 0) {
+        // Uses record.topic() so events from member-joined and member-left are tracked independently
+        if (processedEventRepository.claimEvent(eventId, topic, Instant.now()) == 0) {
             log.debug("Skipping duplicate user event: eventId={}", eventId);
             return;
         }
@@ -111,7 +119,7 @@ public class UserEventConsumer {
         // ── Business dispatch ──────────────────────────────────────────────────
         try {
             dispatch(eventType, tenantId, userId, payload);
-            log.info("Processed user event: eventId={}, type={}", eventId, eventType);
+            log.info("Processed user event: eventId={}, type={}, topic={}", eventId, eventType, topic);
         } catch (Exception e) {
             log.error("Failed to dispatch user event eventId={}: {}", eventId, e.getMessage(), e);
             throw new RuntimeException("Failed to process user event", e);
@@ -120,25 +128,13 @@ public class UserEventConsumer {
 
     private void dispatch(String eventType, UUID tenantId, UUID userId, JsonNode payload) {
         switch (eventType) {
-            case "UserRegistered" -> {
-                // email is a required field for UserRegistered — extract safely
-                String email;
-                try {
-                    email = requiredText(payload, "email");
-                } catch (MalformedEventException e) {
-                    log.error("UserRegistered event missing 'email' field — discarding (poison): {}",
-                            e.getMessage());
-                    return;
-                }
-                cacheUserEmailUseCase.cacheUserEmail(userId, tenantId, email);
-            }
-            case "MemberJoinedTeam" -> {
+            case "TeamMemberJoined" -> {
                 String teamName = textOrDefault(payload, "teamName", "a team");
                 notificationService.create(tenantId, userId,
                         NotificationType.MEMBER_JOINED_TEAM, userId,
                         "You joined " + teamName);
             }
-            case "MemberLeftTeam" -> {
+            case "TeamMemberLeft" -> {
                 String teamName = textOrDefault(payload, "teamName", "a team");
                 notificationService.create(tenantId, userId,
                         NotificationType.MEMBER_LEFT_TEAM, userId,
