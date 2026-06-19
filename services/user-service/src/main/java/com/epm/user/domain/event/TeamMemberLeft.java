@@ -11,5 +11,6 @@ public record TeamMemberLeft(
         UUID teamId,
         UUID tenantId,
         UUID userId,
+        String teamName,
         Instant occurredAt) {
 }

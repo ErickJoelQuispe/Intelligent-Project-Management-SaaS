@@ -100,7 +100,7 @@ public class Team {
         TeamMembership membership = TeamMembership.create(id, userId, role);
         memberships.add(membership);
         domainEvents.add(new TeamMemberJoined(
-                UuidCreator.getTimeOrderedEpoch(), id, tenantId, userId, role, Instant.now()));
+                UuidCreator.getTimeOrderedEpoch(), id, tenantId, userId, role, this.name, Instant.now()));
     }
 
     /**
@@ -127,7 +127,7 @@ public class Team {
         target.remove();
         this.updatedAt = Instant.now();
         domainEvents.add(new TeamMemberLeft(
-                UuidCreator.getTimeOrderedEpoch(), id, tenantId, userId, Instant.now()));
+                UuidCreator.getTimeOrderedEpoch(), id, tenantId, userId, this.name, Instant.now()));
     }
 
     /**

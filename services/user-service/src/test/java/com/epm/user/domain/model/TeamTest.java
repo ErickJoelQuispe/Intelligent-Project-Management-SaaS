@@ -8,6 +8,7 @@ import java.util.UUID;
 
 import com.epm.user.domain.event.TeamCreated;
 import com.epm.user.domain.event.TeamDeleted;
+import com.epm.user.domain.event.TeamMemberJoined;
 import com.epm.user.domain.event.TeamMemberLeft;
 import com.epm.user.domain.exception.DuplicateMemberException;
 import com.epm.user.domain.exception.LastOwnerException;
@@ -136,5 +137,36 @@ class TeamTest {
         assertThat(team.getDeletedAt()).isNull();
         team.delete();
         assertThat(team.getDeletedAt()).isNotNull();
+    }
+
+    @Test
+    void addMember_emitsTeamMemberJoined_withTeamName() {
+        UUID ownerId = UUID.randomUUID();
+        UUID memberId = UUID.randomUUID();
+        Team team = Team.create(UUID.randomUUID(), ownerId, "Engineering", null);
+        team.pullDomainEvents(); // clear creation events
+
+        team.addMember(memberId, TeamRole.MEMBER);
+
+        List<Object> events = team.pullDomainEvents();
+        assertThat(events).hasSize(1);
+        TeamMemberJoined event = (TeamMemberJoined) events.get(0);
+        assertThat(event.teamName()).isEqualTo("Engineering");
+    }
+
+    @Test
+    void removeMember_emitsTeamMemberLeft_withTeamName() {
+        UUID ownerId = UUID.randomUUID();
+        UUID memberId = UUID.randomUUID();
+        Team team = Team.create(UUID.randomUUID(), ownerId, "Design Guild", null);
+        team.addMember(memberId, TeamRole.MEMBER);
+        team.pullDomainEvents(); // clear prior events
+
+        team.removeMember(memberId);
+
+        List<Object> events = team.pullDomainEvents();
+        assertThat(events).hasSize(1);
+        TeamMemberLeft event = (TeamMemberLeft) events.get(0);
+        assertThat(event.teamName()).isEqualTo("Design Guild");
     }
 }

@@ -14,5 +14,6 @@ public record TeamMemberJoined(
         UUID tenantId,
         UUID userId,
         TeamRole role,
+        String teamName,
         Instant occurredAt) {
 }
