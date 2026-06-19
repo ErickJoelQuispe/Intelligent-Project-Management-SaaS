@@ -9,6 +9,7 @@ import {
 import { FormBuilder, ReactiveFormsModule } from '@angular/forms';
 import { MatSlideToggleModule, MatSlideToggleChange } from '@angular/material/slide-toggle';
 import { OAuthService } from 'angular-oauth2-oidc';
+import { AuthService } from '../../core/auth/auth.service';
 import { NotificationPreferencesStore } from '../notifications/store/notification-preferences.store';
 import { ProfileStore } from './store/profile.store';
 import { UpdateProfileRequest } from '../../core/models/user-profile.model';
@@ -434,7 +435,8 @@ type SettingsSection = 'profile' | 'notifications' | 'appearance';
   `,
 })
 export class SettingsComponent implements OnInit {
-  private readonly oauth   = inject(OAuthService);
+  private readonly oauth       = inject(OAuthService);
+  private readonly authService = inject(AuthService);
   private readonly fb      = inject(FormBuilder);
   readonly prefStore       = inject(NotificationPreferencesStore);
   readonly profileStore    = inject(ProfileStore);
@@ -545,6 +547,6 @@ export class SettingsComponent implements OnInit {
   }
 
   logout(): void {
-    this.oauth.logOut();
+    this.authService.logout();
   }
 }

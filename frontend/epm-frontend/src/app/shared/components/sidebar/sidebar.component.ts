@@ -1,6 +1,7 @@
 import { Component, ChangeDetectionStrategy, inject, signal, computed } from '@angular/core';
 import { Router, RouterLink, RouterLinkActive } from '@angular/router';
 import { OAuthService } from 'angular-oauth2-oidc';
+import { AuthService } from '../../../core/auth/auth.service';
 import { NotificationBellComponent } from '../../../features/notifications/components/notification-bell/notification-bell.component';
 
 interface NavItem {
@@ -164,8 +165,9 @@ interface NavItem {
   `,
 })
 export class SidebarComponent {
-  private readonly oauth  = inject(OAuthService);
-  private readonly router = inject(Router);
+  private readonly authService = inject(AuthService);
+  private readonly oauth       = inject(OAuthService);
+  private readonly router      = inject(Router);
 
   collapsed = signal(false);
 
@@ -183,5 +185,5 @@ export class SidebarComponent {
   userInitial = computed(() => this.userName().charAt(0).toUpperCase());
 
   toggleCollapse(): void { this.collapsed.update(v => !v); }
-  logout(): void         { this.oauth.logOut(); }
+  logout(): void         { this.authService.logout(); }
 }
