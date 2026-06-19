@@ -29,15 +29,29 @@ import org.mockito.junit.jupiter.MockitoExtension;
  *
  * <p>All dependencies mocked — no Kafka broker or Spring context required.
  *
+ * <p>Consumer listens to the real granular project-service topics:
+ * <ul>
+ *   <li>{@code project.project.created}</li>
+ *   <li>{@code project.project.archived}</li>
+ *   <li>{@code project.team.assigned}</li>
+ * </ul>
+ *
  * <p>Tests cover:
  * <ul>
- *   <li>Normal dispatch (ProjectCreated, TeamAssignedToProject, ProjectArchived)</li>
+ *   <li>Normal dispatch on correct topic (ProjectCreated, TeamAssignedToProject, ProjectArchived)</li>
+ *   <li>ProjectArchived payload includes ownerId and name</li>
+ *   <li>TeamAssignedToProject payload includes memberIds</li>
+ *   <li>Idempotency claim uses record.topic() (not a hardcoded constant)</li>
  *   <li>Duplicate event skip via {@link ProcessedEventJpaRepository#claimEvent} returning {@code 0}</li>
- *   <li>Poison messages (missing required fields) — discarded, no NPE, no retry (FIX 5)</li>
+ *   <li>Poison messages (missing required fields) — discarded, no NPE, no retry</li>
  * </ul>
  */
 @ExtendWith(MockitoExtension.class)
 class ProjectEventConsumerTest {
+
+    private static final String TOPIC_PROJECT_CREATED  = "project.project.created";
+    private static final String TOPIC_PROJECT_ARCHIVED = "project.project.archived";
+    private static final String TOPIC_TEAM_ASSIGNED    = "project.team.assigned";
 
     @Mock
     private NotificationApplicationService notificationService;
@@ -55,10 +69,10 @@ class ProjectEventConsumerTest {
         consumer = new ProjectEventConsumer(notificationService, processedEventRepository, objectMapper);
     }
 
-    // ── ProjectCreated → PROJECT_CREATED notification for ownerId ─────────
+    // ── ProjectCreated on project.project.created ─────────────────────────
 
     @Test
-    void consume_projectCreated_createsNotificationForOwner() throws Exception {
+    void consume_projectCreated_onCorrectTopic_createsNotificationForOwner() {
         UUID eventId = UUID.randomUUID();
         UUID tenantId = UUID.randomUUID();
         UUID ownerId = UUID.randomUUID();
@@ -68,24 +82,79 @@ class ProjectEventConsumerTest {
                 tenantId.toString(), projectId.toString(),
                 ownerId.toString(), null, null, "My Project");
 
-        when(processedEventRepository.claimEvent(eq(eventId.toString()), eq("project.events"), any(Instant.class))).thenReturn(1);
+        when(processedEventRepository.claimEvent(
+                eq(eventId.toString()), eq(TOPIC_PROJECT_CREATED), any(Instant.class)))
+                .thenReturn(1);
         Notification mockNotif = Notification.create(tenantId, ownerId,
                 NotificationType.PROJECT_CREATED, projectId, "Project 'My Project' was created");
         when(notificationService.create(any(), eq(ownerId),
                 eq(NotificationType.PROJECT_CREATED), any(), any()))
                 .thenReturn(mockNotif);
 
-        consumer.consume(toRecord(message));
+        consumer.consume(toRecord(TOPIC_PROJECT_CREATED, message));
 
+        verify(processedEventRepository).claimEvent(
+                eq(eventId.toString()), eq(TOPIC_PROJECT_CREATED), any(Instant.class));
         verify(notificationService).create(
                 eq(tenantId), eq(ownerId),
                 eq(NotificationType.PROJECT_CREATED), any(), any());
     }
 
-    // ── TeamAssignedToProject → TEAM_ASSIGNED_TO_PROJECT for each member ──
+    // ── ProjectArchived on project.project.archived — payload has ownerId+name ──
 
     @Test
-    void consume_teamAssignedToProject_createsNotificationForEachMember() throws Exception {
+    void consume_projectArchived_onCorrectTopic_createsNotificationForOwner() {
+        UUID eventId = UUID.randomUUID();
+        UUID tenantId = UUID.randomUUID();
+        UUID ownerId = UUID.randomUUID();
+        UUID projectId = UUID.randomUUID();
+
+        String message = buildProjectEvent(eventId.toString(), "ProjectArchived",
+                tenantId.toString(), projectId.toString(),
+                ownerId.toString(), null, null, "Archived Project");
+
+        when(processedEventRepository.claimEvent(
+                eq(eventId.toString()), eq(TOPIC_PROJECT_ARCHIVED), any(Instant.class)))
+                .thenReturn(1);
+        Notification mockNotif = Notification.create(tenantId, ownerId,
+                NotificationType.PROJECT_ARCHIVED, projectId, "Project 'Archived Project' was archived");
+        when(notificationService.create(any(), eq(ownerId),
+                eq(NotificationType.PROJECT_ARCHIVED), any(), any()))
+                .thenReturn(mockNotif);
+
+        consumer.consume(toRecord(TOPIC_PROJECT_ARCHIVED, message));
+
+        verify(processedEventRepository).claimEvent(
+                eq(eventId.toString()), eq(TOPIC_PROJECT_ARCHIVED), any(Instant.class));
+        verify(notificationService).create(
+                eq(tenantId), eq(ownerId),
+                eq(NotificationType.PROJECT_ARCHIVED), any(), any());
+    }
+
+    @Test
+    void consume_projectArchived_withoutOwnerId_skipsNotification() {
+        UUID eventId = UUID.randomUUID();
+        UUID tenantId = UUID.randomUUID();
+        UUID projectId = UUID.randomUUID();
+
+        // Payload without ownerId (legacy or partial payload) — must not throw
+        String message = buildProjectEvent(eventId.toString(), "ProjectArchived",
+                tenantId.toString(), projectId.toString(),
+                null, null, null, "No Owner Project");
+
+        when(processedEventRepository.claimEvent(
+                eq(eventId.toString()), eq(TOPIC_PROJECT_ARCHIVED), any(Instant.class)))
+                .thenReturn(1);
+
+        consumer.consume(toRecord(TOPIC_PROJECT_ARCHIVED, message));
+
+        verify(notificationService, never()).create(any(), any(), any(), any(), any());
+    }
+
+    // ── TeamAssignedToProject on project.team.assigned — memberIds array ──
+
+    @Test
+    void consume_teamAssignedToProject_onCorrectTopic_createsNotificationForEachMember() {
         UUID eventId = UUID.randomUUID();
         UUID tenantId = UUID.randomUUID();
         UUID projectId = UUID.randomUUID();
@@ -96,51 +165,53 @@ class ProjectEventConsumerTest {
         String message = buildTeamAssignedEvent(eventId.toString(), tenantId.toString(),
                 projectId.toString(), memberIds);
 
-        when(processedEventRepository.claimEvent(eq(eventId.toString()), eq("project.events"), any(Instant.class))).thenReturn(1);
+        when(processedEventRepository.claimEvent(
+                eq(eventId.toString()), eq(TOPIC_TEAM_ASSIGNED), any(Instant.class)))
+                .thenReturn(1);
         Notification mockNotif = Notification.create(tenantId, member1,
                 NotificationType.TEAM_ASSIGNED_TO_PROJECT, projectId, "You have been assigned to a project");
         when(notificationService.create(any(), any(),
                 eq(NotificationType.TEAM_ASSIGNED_TO_PROJECT), any(), any()))
                 .thenReturn(mockNotif);
 
-        consumer.consume(toRecord(message));
+        consumer.consume(toRecord(TOPIC_TEAM_ASSIGNED, message));
 
+        verify(processedEventRepository).claimEvent(
+                eq(eventId.toString()), eq(TOPIC_TEAM_ASSIGNED), any(Instant.class));
         verify(notificationService, times(2)).create(
                 eq(tenantId), any(),
                 eq(NotificationType.TEAM_ASSIGNED_TO_PROJECT), any(), any());
     }
 
-    // ── ProjectArchived → PROJECT_ARCHIVED notification for ownerId ────────
+    // ── Idempotency: topic from record is used, not a hardcoded constant ──
 
     @Test
-    void consume_projectArchived_createsNotificationForOwner() throws Exception {
+    void consume_idempotencyClaimUses_recordTopic() {
         UUID eventId = UUID.randomUUID();
         UUID tenantId = UUID.randomUUID();
         UUID ownerId = UUID.randomUUID();
         UUID projectId = UUID.randomUUID();
 
-        String message = buildProjectEvent(eventId.toString(), "ProjectArchived",
+        String message = buildProjectEvent(eventId.toString(), "ProjectCreated",
                 tenantId.toString(), projectId.toString(),
-                ownerId.toString(), null, null, "Archived Project");
+                ownerId.toString(), null, null, "Topic Check");
 
-        when(processedEventRepository.claimEvent(eq(eventId.toString()), eq("project.events"), any(Instant.class))).thenReturn(1);
-        Notification mockNotif = Notification.create(tenantId, ownerId,
-                NotificationType.PROJECT_ARCHIVED, projectId, "Project 'Archived Project' was archived");
-        when(notificationService.create(any(), eq(ownerId),
-                eq(NotificationType.PROJECT_ARCHIVED), any(), any()))
-                .thenReturn(mockNotif);
+        when(processedEventRepository.claimEvent(
+                eq(eventId.toString()), eq(TOPIC_PROJECT_CREATED), any(Instant.class)))
+                .thenReturn(0); // duplicate
 
-        consumer.consume(toRecord(message));
+        consumer.consume(toRecord(TOPIC_PROJECT_CREATED, message));
 
-        verify(notificationService).create(
-                eq(tenantId), eq(ownerId),
-                eq(NotificationType.PROJECT_ARCHIVED), any(), any());
+        // Claim was made with the actual record topic, not a hardcoded "project.events"
+        verify(processedEventRepository).claimEvent(
+                eq(eventId.toString()), eq(TOPIC_PROJECT_CREATED), any(Instant.class));
+        verify(notificationService, never()).create(any(), any(), any(), any(), any());
     }
 
-    // ── Duplicate event → guard returns false → business skipped ─────────
+    // ── Duplicate event → skip ────────────────────────────────────────────
 
     @Test
-    void consume_duplicateEvent_skipsProcessing() throws Exception {
+    void consume_duplicateEvent_skipsProcessing() {
         UUID eventId = UUID.randomUUID();
         UUID tenantId = UUID.randomUUID();
         UUID ownerId = UUID.randomUUID();
@@ -150,9 +221,11 @@ class ProjectEventConsumerTest {
                 tenantId.toString(), projectId.toString(),
                 ownerId.toString(), null, null, "Dup Project");
 
-        when(processedEventRepository.claimEvent(eq(eventId.toString()), eq("project.events"), any(Instant.class))).thenReturn(0);
+        when(processedEventRepository.claimEvent(
+                eq(eventId.toString()), eq(TOPIC_PROJECT_CREATED), any(Instant.class)))
+                .thenReturn(0);
 
-        consumer.consume(toRecord(message));
+        consumer.consume(toRecord(TOPIC_PROJECT_CREATED, message));
 
         verify(notificationService, never()).create(any(), any(), any(), any(), any());
     }
@@ -160,7 +233,7 @@ class ProjectEventConsumerTest {
     // ── Unknown eventType → no notification, no exception ────────────────
 
     @Test
-    void consume_unknownEventType_logsWarnAndDoesNotThrow() throws Exception {
+    void consume_unknownEventType_logsWarnAndDoesNotThrow() {
         UUID eventId = UUID.randomUUID();
         UUID tenantId = UUID.randomUUID();
         UUID projectId = UUID.randomUUID();
@@ -169,27 +242,22 @@ class ProjectEventConsumerTest {
                 tenantId.toString(), projectId.toString(),
                 UUID.randomUUID().toString(), null, null, "Some Project");
 
-        when(processedEventRepository.claimEvent(eq(eventId.toString()), eq("project.events"), any(Instant.class))).thenReturn(1);
+        when(processedEventRepository.claimEvent(
+                eq(eventId.toString()), eq(TOPIC_PROJECT_CREATED), any(Instant.class)))
+                .thenReturn(1);
 
-        // Should NOT throw
-        consumer.consume(toRecord(message));
+        consumer.consume(toRecord(TOPIC_PROJECT_CREATED, message));
 
         verify(notificationService, never()).create(any(), any(), any(), any(), any());
     }
 
-    // ── FIX 5 (M1): poison message — missing projectId → discarded, no NPE ──
-    //
-    // RED: before adding up-front requiredUuid guard, payload.get("projectId").asText()
-    //      throws NullPointerException (wrapped in RuntimeException and rethrown).
-    //      The test expects NO exception and NO guard.claim() call — it FAILS.
-    // GREEN: with the guard, MalformedEventException is caught before claim() — clean discard.
+    // ── Poison: missing projectId → discarded, no claim ──────────────────
 
     @Test
-    void consume_missingProjectId_isDiscardedWithoutNPE() throws Exception {
+    void consume_missingProjectId_isDiscardedWithoutNPE() {
         UUID eventId = UUID.randomUUID();
         UUID tenantId = UUID.randomUUID();
 
-        // Payload missing projectId — poison message
         String message = "{\"eventId\":\"" + eventId + "\""
                 + ",\"eventType\":\"ProjectCreated\""
                 + ",\"tenantId\":\"" + tenantId + "\""
@@ -197,41 +265,42 @@ class ProjectEventConsumerTest {
                 + "\"ownerId\":\"" + UUID.randomUUID() + "\""
                 + "}}";
 
-        // Should not throw, should not call claim, should not create notification
-        consumer.consume(toRecord(message));
+        consumer.consume(toRecord(TOPIC_PROJECT_CREATED, message));
 
         verify(processedEventRepository, never()).claimEvent(any(), any(), any());
         verify(notificationService, never()).create(any(), any(), any(), any(), any());
     }
 
-    // ── FIX D (poison loop): malformed member UUID must NOT throw / NOT retry ──
-    //
-    // parseMemberIds did `UUID.fromString(val)` unguarded. Called from dispatch() inside the
-    // inner try that rethrows as RuntimeException → Kafka offset NOT committed → infinite
-    // redelivery (poison loop) on ONE malformed member id.
-    //
-    // Strategy: SKIP the bad member id (log WARN), still process the valid ones. A single bad
-    // member must not poison the whole event nor discard notifications for the valid members.
-    //
-    // RED before the guard: UUID.fromString("not-a-uuid") throws IllegalArgumentException →
-    //   wrapped in RuntimeException by dispatch's catch → propagates out of consume() →
-    //   `consumer.consume(...)` THROWS → the test (which expects no throw) FAILS.
-    // GREEN after the guard: the bad entry is skipped, the two valid members are notified.
+    // ── Poison: missing eventId → discarded without claim ────────────────
 
     @Test
-    void consume_teamAssigned_withOneMalformedMemberId_skipsBadEntry_andNotifiesValidMembers() throws Exception {
+    void consume_missingEventId_isDiscardedWithoutNPE() {
+        String message = "{\"eventType\":\"ProjectCreated\""
+                + ",\"tenantId\":\"" + UUID.randomUUID() + "\""
+                + ",\"payload\":{\"projectId\":\"" + UUID.randomUUID() + "\"}}";
+
+        consumer.consume(toRecord(TOPIC_PROJECT_CREATED, message));
+
+        verify(processedEventRepository, never()).claimEvent(any(), any(), any());
+        verify(notificationService, never()).create(any(), any(), any(), any(), any());
+    }
+
+    // ── Poison loop guard: malformed member UUID skipped, valid ones notified ──
+
+    @Test
+    void consume_teamAssigned_withOneMalformedMemberId_skipsBadEntry_andNotifiesValidMembers() {
         UUID eventId = UUID.randomUUID();
         UUID tenantId = UUID.randomUUID();
         UUID projectId = UUID.randomUUID();
         UUID validMember1 = UUID.randomUUID();
         UUID validMember2 = UUID.randomUUID();
 
-        // memberIds = [valid, "not-a-uuid", valid] — one poison entry in the middle.
         String memberIds = "[\"" + validMember1 + "\",\"not-a-uuid\",\"" + validMember2 + "\"]";
         String message = buildTeamAssignedEvent(eventId.toString(), tenantId.toString(),
                 projectId.toString(), memberIds);
 
-        when(processedEventRepository.claimEvent(eq(eventId.toString()), eq("project.events"), any(Instant.class)))
+        when(processedEventRepository.claimEvent(
+                eq(eventId.toString()), eq(TOPIC_TEAM_ASSIGNED), any(Instant.class)))
                 .thenReturn(1);
         Notification mockNotif = Notification.create(tenantId, validMember1,
                 NotificationType.TEAM_ASSIGNED_TO_PROJECT, projectId, "You have been assigned to a project");
@@ -239,10 +308,8 @@ class ProjectEventConsumerTest {
                 eq(NotificationType.TEAM_ASSIGNED_TO_PROJECT), any(), any()))
                 .thenReturn(mockNotif);
 
-        // Must NOT throw (no poison loop). A throw here is the RED signal.
-        consumer.consume(toRecord(message));
+        consumer.consume(toRecord(TOPIC_TEAM_ASSIGNED, message));
 
-        // The two valid members are still notified; the malformed entry is silently skipped.
         verify(notificationService, times(2)).create(
                 eq(tenantId), any(),
                 eq(NotificationType.TEAM_ASSIGNED_TO_PROJECT), any(), any());
@@ -252,25 +319,38 @@ class ProjectEventConsumerTest {
                 eq(NotificationType.TEAM_ASSIGNED_TO_PROJECT), any(), any());
     }
 
-    // ── FIX 5 (M1): missing eventId → discarded without NPE or claim ──────
+    // ── Malformed ownerId is skipped (warn-and-null), no infinite retry ──
 
     @Test
-    void consume_missingEventId_isDiscardedWithoutNPE() throws Exception {
-        String message = "{\"eventType\":\"ProjectCreated\""
-                + ",\"tenantId\":\"" + UUID.randomUUID() + "\""
-                + ",\"payload\":{\"projectId\":\"" + UUID.randomUUID() + "\"}}";
+    void consume_malformedOwnerId_isSkippedWithoutThrowingRuntimeException() {
+        String eventId = UUID.randomUUID().toString();
+        String tenantId = UUID.randomUUID().toString();
+        String projectId = UUID.randomUUID().toString();
+        String message = "{\"eventId\":\"" + eventId + "\""
+                + ",\"eventType\":\"ProjectCreated\""
+                + ",\"tenantId\":\"" + tenantId + "\""
+                + ",\"occurredAt\":\"2026-06-04T10:00:00Z\""
+                + ",\"payload\":{"
+                + "\"projectId\":\"" + projectId + "\""
+                + ",\"name\":\"Test Project\""
+                + ",\"ownerId\":\"not-a-uuid\""
+                + "}}";
 
-        consumer.consume(toRecord(message));
+        when(processedEventRepository.claimEvent(eq(eventId), any(), any())).thenReturn(1);
 
-        verify(processedEventRepository, never()).claimEvent(any(), any(), any());
+        org.junit.jupiter.api.Assertions.assertDoesNotThrow(
+                () -> consumer.consume(toRecord(TOPIC_PROJECT_CREATED, message)));
+
+        verify(processedEventRepository).claimEvent(eq(eventId), any(), any());
         verify(notificationService, never()).create(any(), any(), any(), any(), any());
     }
 
     // ── Helpers ───────────────────────────────────────────────────────────────
 
-    private ConsumerRecord<String, String> toRecord(String value) {
-        return new ConsumerRecord<>("project.events", 0, 0L,
-                ConsumerRecord.NO_TIMESTAMP, org.apache.kafka.common.record.TimestampType.NO_TIMESTAMP_TYPE,
+    private ConsumerRecord<String, String> toRecord(String topic, String value) {
+        return new ConsumerRecord<>(topic, 0, 0L,
+                ConsumerRecord.NO_TIMESTAMP,
+                org.apache.kafka.common.record.TimestampType.NO_TIMESTAMP_TYPE,
                 ConsumerRecord.NULL_SIZE, ConsumerRecord.NULL_SIZE,
                 null, value, new RecordHeaders(), java.util.Optional.empty());
     }
@@ -304,37 +384,5 @@ class ProjectEventConsumerTest {
                 + "\"projectId\":\"" + projectId + "\""
                 + ",\"memberIds\":" + memberIds
                 + "}}";
-    }
-
-    // ── FIX D (round 3): uuidOrNull malformed value → skip-and-warn, no infinite retry ──
-
-    @Test
-    void consume_malformedOwnerId_isSkippedWithoutThrowingRuntimeException() throws Exception {
-        // A syntactically present but non-UUID ownerId must NOT throw out of processRecord.
-        // Previously UUID.fromString("not-a-uuid") inside uuidOrNull() threw IAE in dispatch()
-        // → caught by outer catch → rethrown as RuntimeException → Kafka offset not committed
-        // → infinite redelivery (poison loop). This test must be RED without the try/catch guard.
-        String eventId = UUID.randomUUID().toString();
-        String tenantId = UUID.randomUUID().toString();
-        String projectId = UUID.randomUUID().toString();
-        String message = "{\"eventId\":\"" + eventId + "\""
-                + ",\"eventType\":\"ProjectCreated\""
-                + ",\"tenantId\":\"" + tenantId + "\""
-                + ",\"occurredAt\":\"2026-06-04T10:00:00Z\""
-                + ",\"payload\":{"
-                + "\"projectId\":\"" + projectId + "\""
-                + ",\"name\":\"Test Project\""
-                + ",\"ownerId\":\"not-a-uuid\""
-                + "}}";
-
-        when(processedEventRepository.claimEvent(eq(eventId), any(), any())).thenReturn(1);
-
-        // Must NOT throw — malformed optional UUID is skipped (warn-and-null), event proceeds
-        org.junit.jupiter.api.Assertions.assertDoesNotThrow(() -> consumer.consume(toRecord(message)));
-
-        // claimEvent was called (event cleared idempotency gate)
-        verify(processedEventRepository).claimEvent(eq(eventId), any(), any());
-        // notificationService.create is NOT called when ownerId is null for ProjectCreated
-        verify(notificationService, never()).create(any(), any(), any(), any(), any());
     }
 }

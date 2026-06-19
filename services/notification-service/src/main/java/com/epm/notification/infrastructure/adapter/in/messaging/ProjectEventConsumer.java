@@ -22,14 +22,23 @@ import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
 /**
- * Kafka consumer for {@code project.events} topic.
+ * Kafka consumer for project domain event topics.
+ *
+ * <p>Listens to the granular topics published by project-service:
+ * <ul>
+ *   <li>{@code project.project.created} — eventType: {@code ProjectCreated}</li>
+ *   <li>{@code project.project.archived} — eventType: {@code ProjectArchived}</li>
+ *   <li>{@code project.team.assigned} — eventType: {@code TeamAssignedToProject}</li>
+ * </ul>
  *
  * <p>Dispatches by {@code eventType} field in the JSON envelope and creates
  * in-app notifications for relevant project domain events.
  *
  * <p><strong>Idempotency</strong>: uses an atomic {@code INSERT ... ON CONFLICT DO NOTHING}
  * ({@link ProcessedEventJpaRepository#claimEvent}) executed in the SAME transaction as the
- * business dispatch. {@code rows == 1} means this delivery won the claim and proceeds;
+ * business dispatch. The claim uses {@code record.topic()} (the actual topic from the
+ * {@link ConsumerRecord}) so that events from different topics are tracked independently.
+ * {@code rows == 1} means this delivery won the claim and proceeds;
  * {@code rows == 0} means the event was already processed and is skipped. Because the claim
  * shares the consumer's transaction, a dispatch failure rolls the marker back too, so a Kafka
  * redelivery re-processes the event instead of permanently losing the notification.
@@ -51,7 +60,9 @@ import org.springframework.transaction.annotation.Transactional;
 public class ProjectEventConsumer {
 
     private static final Logger log = LoggerFactory.getLogger(ProjectEventConsumer.class);
-    private static final String TOPIC = "project.events";
+    private static final String TOPIC_PROJECT_CREATED  = "project.project.created";
+    private static final String TOPIC_PROJECT_ARCHIVED = "project.project.archived";
+    private static final String TOPIC_TEAM_ASSIGNED    = "project.team.assigned";
 
     private final NotificationApplicationService notificationService;
     private final ProcessedEventJpaRepository processedEventRepository;
@@ -65,22 +76,23 @@ public class ProjectEventConsumer {
         this.objectMapper = objectMapper;
     }
 
-    @KafkaListener(topics = TOPIC, groupId = "notification-group")
+    @KafkaListener(topics = {TOPIC_PROJECT_CREATED, TOPIC_PROJECT_ARCHIVED, TOPIC_TEAM_ASSIGNED},
+            groupId = "notification-group")
     @Transactional
     public void consume(ConsumerRecord<String, String> record) {
         Context traceContext = KafkaTracingSupport.extractTraceContext(record.headers());
         try (Scope ignored = traceContext.makeCurrent()) {
-            processRecord(record.value());
+            processRecord(record.topic(), record.value());
         }
     }
 
-    private void processRecord(String message) {
+    private void processRecord(String topic, String message) {
         // ── Up-front parse (M1 poison guard) ─────────────────────────────────
         JsonNode root;
         try {
             root = objectMapper.readTree(message);
         } catch (JsonProcessingException e) {
-            log.error("Malformed JSON on topic {} — discarding (poison)", TOPIC, e);
+            log.error("Malformed JSON on topic {} — discarding (poison)", topic, e);
             return;
         }
 
@@ -99,12 +111,13 @@ public class ProjectEventConsumer {
             }
             projectId = requiredUuid(payload, "projectId");
         } catch (MalformedEventException | IllegalArgumentException e) {
-            log.error("Malformed project event on topic {} — discarding (poison): {}", TOPIC, e.getMessage());
+            log.error("Malformed project event on topic {} — discarding (poison): {}", topic, e.getMessage());
             return;
         }
 
         // ── Atomic idempotency claim (same transaction as dispatch) ────────────
-        if (processedEventRepository.claimEvent(eventId, TOPIC, Instant.now()) == 0) {
+        // Uses the actual record topic so events from different topics are tracked independently
+        if (processedEventRepository.claimEvent(eventId, topic, Instant.now()) == 0) {
             log.debug("Skipping duplicate project event: eventId={}", eventId);
             return;
         }
@@ -112,7 +125,7 @@ public class ProjectEventConsumer {
         // ── Business dispatch ──────────────────────────────────────────────────
         try {
             dispatch(eventType, tenantId, projectId, payload);
-            log.info("Processed project event: eventId={}, type={}", eventId, eventType);
+            log.info("Processed project event: eventId={}, type={}, topic={}", eventId, eventType, topic);
         } catch (Exception e) {
             log.error("Failed to dispatch project event eventId={}: {}", eventId, e.getMessage(), e);
             throw new RuntimeException("Failed to process project event", e);
@@ -174,7 +187,7 @@ public class ProjectEventConsumer {
                     result.add(UUID.fromString(val));
                 } catch (IllegalArgumentException e) {
                     log.warn("Skipping malformed member id in TeamAssignedToProject payload on topic {}: '{}'",
-                            TOPIC, val);
+                            TOPIC_TEAM_ASSIGNED, val);
                 }
             }
         }
