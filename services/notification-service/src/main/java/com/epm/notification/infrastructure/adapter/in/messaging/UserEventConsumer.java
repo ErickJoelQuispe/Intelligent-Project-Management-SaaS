@@ -5,6 +5,7 @@ import java.util.UUID;
 
 import com.epm.notification.application.usecase.NotificationApplicationService;
 import com.epm.notification.domain.model.NotificationType;
+import com.epm.notification.domain.port.in.CacheUserEmailUseCase;
 import com.epm.notification.infrastructure.adapter.out.persistence.ProcessedEventJpaRepository;
 import com.epm.notification.infrastructure.messaging.tracing.KafkaTracingSupport;
 import com.fasterxml.jackson.core.JsonProcessingException;
@@ -20,18 +21,20 @@ import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
 /**
- * Kafka consumer for user team membership topics.
+ * Kafka consumer for user domain event topics.
  *
  * <p>Listens to:
  * <ul>
  *   <li>{@code user.team.member-joined} — eventType: {@code TeamMemberJoined}</li>
  *   <li>{@code user.team.member-left} — eventType: {@code TeamMemberLeft}</li>
+ *   <li>{@code user.profile.updated} — eventType: {@code ProfileUpdated}</li>
  * </ul>
  *
  * <p>Handles:
  * <ul>
  *   <li>{@code TeamMemberJoined} → creates {@code MEMBER_JOINED_TEAM} notification</li>
  *   <li>{@code TeamMemberLeft} → creates {@code MEMBER_LEFT_TEAM} notification</li>
+ *   <li>{@code ProfileUpdated} → updates {@code user_email_cache} when email is present in payload</li>
  * </ul>
  *
  * <p>Email caching on account registration is handled by {@link AccountRegisteredConsumer}
@@ -56,22 +59,27 @@ import org.springframework.transaction.annotation.Transactional;
 public class UserEventConsumer {
 
     private static final Logger log = LoggerFactory.getLogger(UserEventConsumer.class);
-    private static final String TOPIC_MEMBER_JOINED = "user.team.member-joined";
-    private static final String TOPIC_MEMBER_LEFT = "user.team.member-left";
+    private static final String TOPIC_MEMBER_JOINED   = "user.team.member-joined";
+    private static final String TOPIC_MEMBER_LEFT     = "user.team.member-left";
+    private static final String TOPIC_PROFILE_UPDATED = "user.profile.updated";
 
     private final NotificationApplicationService notificationService;
     private final ProcessedEventJpaRepository processedEventRepository;
+    private final CacheUserEmailUseCase cacheUserEmailUseCase;
     private final ObjectMapper objectMapper;
 
     public UserEventConsumer(NotificationApplicationService notificationService,
             ProcessedEventJpaRepository processedEventRepository,
+            CacheUserEmailUseCase cacheUserEmailUseCase,
             ObjectMapper objectMapper) {
         this.notificationService = notificationService;
         this.processedEventRepository = processedEventRepository;
+        this.cacheUserEmailUseCase = cacheUserEmailUseCase;
         this.objectMapper = objectMapper;
     }
 
-    @KafkaListener(topics = {TOPIC_MEMBER_JOINED, TOPIC_MEMBER_LEFT}, groupId = "notification-group")
+    @KafkaListener(topics = {TOPIC_MEMBER_JOINED, TOPIC_MEMBER_LEFT, TOPIC_PROFILE_UPDATED},
+            groupId = "notification-group")
     @Transactional
     public void consume(ConsumerRecord<String, String> record) {
         Context traceContext = KafkaTracingSupport.extractTraceContext(record.headers());
@@ -140,6 +148,14 @@ public class UserEventConsumer {
                         NotificationType.MEMBER_LEFT_TEAM, userId,
                         "You left " + teamName);
             }
+            case "ProfileUpdated" -> {
+                String email = textOrNull(payload, "email");
+                if (email != null) {
+                    cacheUserEmailUseCase.cacheUserEmail(userId, tenantId, email);
+                } else {
+                    log.debug("ProfileUpdated event has no email field — skipping cache update: userId={}", userId);
+                }
+            }
             default -> log.warn("Unknown user event type — skipping: eventType={}", eventType);
         }
     }
@@ -182,5 +198,18 @@ public class UserEventConsumer {
             return node.get(field).asText();
         }
         return defaultValue;
+    }
+
+    /**
+     * Extracts an optional text field from a JSON node; returns {@code null} if absent or null.
+     */
+    private String textOrNull(JsonNode node, String field) {
+        if (node.has(field) && !node.get(field).isNull()) {
+            String text = node.get(field).asText(null);
+            if (text != null && !text.isBlank()) {
+                return text;
+            }
+        }
+        return null;
     }
 }

@@ -11,6 +11,7 @@ import static org.hamcrest.Matchers.containsString;
 import java.time.Instant;
 import java.util.UUID;
 
+import com.epm.notification.domain.port.in.CacheUserEmailUseCase;
 import com.epm.notification.application.usecase.NotificationApplicationService;
 import com.epm.notification.domain.model.Notification;
 import com.epm.notification.domain.model.NotificationType;
@@ -50,6 +51,9 @@ class UserEventConsumerTest {
     @Mock
     private ProcessedEventJpaRepository processedEventRepository;
 
+    @Mock
+    private CacheUserEmailUseCase cacheUserEmailUseCase;
+
     private UserEventConsumer consumer;
     private ObjectMapper objectMapper;
 
@@ -57,7 +61,8 @@ class UserEventConsumerTest {
     void setUp() {
         objectMapper = new ObjectMapper();
         objectMapper.findAndRegisterModules();
-        consumer = new UserEventConsumer(notificationService, processedEventRepository, objectMapper);
+        consumer = new UserEventConsumer(notificationService, processedEventRepository,
+                cacheUserEmailUseCase, objectMapper);
     }
 
     // ── TeamMemberJoined → MEMBER_JOINED_TEAM notification ────────────────
@@ -248,6 +253,66 @@ class UserEventConsumerTest {
         verify(notificationService, never()).create(any(), any(), any(), any(), any());
     }
 
+    // ── ProfileUpdated → cache email when email field present ─────────────
+
+    @Test
+    void consume_profileUpdated_withEmail_callsCacheUserEmail() {
+        UUID eventId = UUID.randomUUID();
+        UUID userId = UUID.randomUUID();
+        UUID tenantId = UUID.randomUUID();
+        String email = "user@example.com";
+
+        String message = buildProfileUpdatedEvent(eventId.toString(), tenantId.toString(),
+                userId.toString(), email);
+
+        when(processedEventRepository.claimEvent(
+                eq(eventId.toString()), eq("user.profile.updated"), any(Instant.class)))
+                .thenReturn(1);
+
+        consumer.consume(toRecord("user.profile.updated", message));
+
+        verify(cacheUserEmailUseCase).cacheUserEmail(eq(userId), eq(tenantId), eq(email));
+        verify(notificationService, never()).create(any(), any(), any(), any(), any());
+    }
+
+    @Test
+    void consume_profileUpdated_withoutEmail_skipsGracefully() {
+        UUID eventId = UUID.randomUUID();
+        UUID userId = UUID.randomUUID();
+        UUID tenantId = UUID.randomUUID();
+
+        // Payload without email — profile update without email change is valid
+        String message = buildProfileUpdatedEvent(eventId.toString(), tenantId.toString(),
+                userId.toString(), null);
+
+        when(processedEventRepository.claimEvent(
+                eq(eventId.toString()), eq("user.profile.updated"), any(Instant.class)))
+                .thenReturn(1);
+
+        consumer.consume(toRecord("user.profile.updated", message));
+
+        verify(cacheUserEmailUseCase, never()).cacheUserEmail(any(), any(), any());
+        verify(notificationService, never()).create(any(), any(), any(), any(), any());
+    }
+
+    @Test
+    void consume_profileUpdated_duplicate_skipsProcessing() {
+        UUID eventId = UUID.randomUUID();
+        UUID userId = UUID.randomUUID();
+        UUID tenantId = UUID.randomUUID();
+
+        String message = buildProfileUpdatedEvent(eventId.toString(), tenantId.toString(),
+                userId.toString(), "dup@example.com");
+
+        when(processedEventRepository.claimEvent(
+                eq(eventId.toString()), eq("user.profile.updated"), any(Instant.class)))
+                .thenReturn(0);
+
+        consumer.consume(toRecord("user.profile.updated", message));
+
+        verify(cacheUserEmailUseCase, never()).cacheUserEmail(any(), any(), any());
+    }
+
     // ── Helper ────────────────────────────────────────────────────────────────
 
     private ConsumerRecord<String, String> toRecord(String topic, String value) {
@@ -269,6 +334,24 @@ class UserEventConsumerTest {
         sb.append("\"userId\":\"").append(userId).append("\"");
         if (teamName != null) {
             sb.append(",\"teamName\":\"").append(teamName).append("\"");
+        }
+        sb.append("}}");
+        return sb.toString();
+    }
+
+    private String buildProfileUpdatedEvent(String eventId, String tenantId,
+            String userId, String email) {
+        StringBuilder sb = new StringBuilder();
+        sb.append("{\"eventId\":\"").append(eventId).append("\"");
+        sb.append(",\"eventType\":\"ProfileUpdated\"");
+        sb.append(",\"tenantId\":\"").append(tenantId).append("\"");
+        sb.append(",\"occurredAt\":\"2026-06-04T10:00:00Z\"");
+        sb.append(",\"payload\":{");
+        sb.append("\"userId\":\"").append(userId).append("\"");
+        sb.append(",\"firstName\":\"John\"");
+        sb.append(",\"lastName\":\"Doe\"");
+        if (email != null) {
+            sb.append(",\"email\":\"").append(email).append("\"");
         }
         sb.append("}}");
         return sb.toString();
