@@ -6,22 +6,22 @@ import { Component, ChangeDetectionStrategy, input } from '@angular/core';
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <div class="relative animate-fade-up"
-         style="border-bottom: 1px solid oklch(0.22 0.020 268 / 0.6);">
+         style="border-bottom: 1px solid color-mix(in oklch, var(--color-border) 60%, transparent);">
 
       <!-- Línea gradiente arriba -->
       <div class="absolute top-0 left-0 right-0 h-px"
-           style="background: linear-gradient(90deg, oklch(0.65 0.26 285 / 0.4) 0%, oklch(0.78 0.18 200 / 0.3) 50%, transparent 100%);">
+           style="background: linear-gradient(90deg, color-mix(in oklch, var(--color-accent) 40%, transparent) 0%, color-mix(in oklch, var(--color-cyan) 30%, transparent) 50%, transparent 100%);">
       </div>
 
       <div class="flex items-start justify-between gap-4 px-6 py-5">
 
         <div class="flex flex-col gap-1 min-w-0">
           <h1 class="font-semibold text-xl leading-tight truncate"
-              style="font-family: 'Outfit', sans-serif; color: oklch(0.96 0.006 268);">
+              style="font-family: 'Outfit', sans-serif; color: var(--color-text-primary);">
             {{ title() }}
           </h1>
           @if (description()) {
-            <p class="text-sm" style="color: oklch(0.55 0.015 268);">
+            <p class="text-sm" style="color: var(--color-text-secondary);">
               {{ description() }}
             </p>
           }

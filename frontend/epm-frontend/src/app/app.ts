@@ -10,13 +10,13 @@ import { NotificationStore } from './features/notifications/store/notification.s
   changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [RouterOutlet, SidebarComponent],
   template: `
-    <div class="flex h-screen overflow-hidden" style="background: oklch(0.07 0.02 268);">
+    <div class="flex h-screen overflow-hidden" style="background: var(--color-bg-base);">
       <app-sidebar />
       <main class="relative flex-1 overflow-y-auto">
         <div class="pointer-events-none fixed inset-0 left-60"
              style="background:
-               radial-gradient(ellipse 60% 40% at 70% 0%, oklch(0.65 0.26 285 / 0.06) 0%, transparent 60%),
-               radial-gradient(ellipse 40% 30% at 100% 100%, oklch(0.78 0.18 200 / 0.04) 0%, transparent 50%);
+               radial-gradient(ellipse 60% 40% at 70% 0%, color-mix(in oklch, var(--color-accent) 6%, transparent) 0%, transparent 60%),
+               radial-gradient(ellipse 40% 30% at 100% 100%, color-mix(in oklch, var(--color-cyan) 4%, transparent) 0%, transparent 50%);
              z-index: 0; pointer-events: none;">
         </div>
         <div class="relative" style="z-index: 1;">

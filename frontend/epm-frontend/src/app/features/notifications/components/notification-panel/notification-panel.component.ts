@@ -25,10 +25,10 @@ import { SpinnerComponent } from '../../../../shared/components/spinner/spinner.
       <div
         data-testid="notification-panel"
         class="w-96 rounded-xl overflow-hidden animate-fade-up"
-        style="background: oklch(0.13 0.025 268);
-               border: 1px solid oklch(0.28 0.022 268);
+        style="background: var(--color-bg-surface);
+               border: 1px solid var(--color-border-strong);
                box-shadow: 0 8px 32px oklch(0 0 0 / 0.7),
-                           0 0 0 1px oklch(0.65 0.26 285 / 0.08);"
+                           0 0 0 1px color-mix(in oklch, var(--color-accent) 8%, transparent);"
       >
 
       <!-- Header del panel -->

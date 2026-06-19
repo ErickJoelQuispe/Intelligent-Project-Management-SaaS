@@ -68,7 +68,7 @@ type SettingsSection = 'profile' | 'notifications' | 'appearance';
 
       <!-- ── Sidebar de secciones ── -->
       <nav class="w-56 shrink-0 border-r p-4 flex flex-col gap-1"
-           style="border-color: oklch(0.22 0.020 268 / 0.6); min-height: calc(100vh - 73px);">
+           style="border-color: color-mix(in oklch, var(--color-border) 60%, transparent); min-height: calc(100vh - 73px);">
 
         @for (section of sections; track section.id) {
           <button
@@ -76,15 +76,15 @@ type SettingsSection = 'profile' | 'notifications' | 'appearance';
             class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm
                    font-medium text-left w-full transition-all duration-150 cursor-pointer"
             [style.background]="activeSection() === section.id
-              ? 'oklch(0.65 0.26 285 / 0.12)'
+              ? 'color-mix(in oklch, var(--color-accent) 12%, transparent)'
               : 'transparent'"
             [style.color]="activeSection() === section.id
-              ? 'oklch(0.88 0.015 268)'
-              : 'oklch(0.60 0.015 268)'"
+              ? 'var(--color-text-primary)'
+              : 'var(--color-text-secondary)'"
           >
             <span class="material-symbols-rounded text-lg"
                   [style.color]="activeSection() === section.id
-                    ? 'oklch(0.65 0.26 285)'
+                    ? 'var(--color-accent)'
                     : 'inherit'">
               {{ section.icon }}
             </span>
@@ -141,7 +141,7 @@ type SettingsSection = 'profile' | 'notifications' | 'appearance';
                       target="_blank"
                       rel="noopener noreferrer"
                       class="text-xs truncate"
-                      style="color: oklch(0.65 0.26 285);"
+                      style="color: var(--color-accent);"
                     >
                       {{ profileStore.profile()!.avatarUrl }}
                     </a>
@@ -167,83 +167,75 @@ type SettingsSection = 'profile' | 'notifications' | 'appearance';
                     <!-- First name -->
                     <div class="flex flex-col gap-2">
                       <label class="text-sm font-semibold" for="firstName"
-                             style="color: oklch(0.72 0.015 268);">
+                             style="color: var(--color-text-secondary);">
                         First name
-                        <span class="font-normal text-xs ml-1" style="color: oklch(0.42 0.012 268);">optional</span>
+                        <span class="font-normal text-xs ml-1" style="color: var(--color-text-muted);">optional</span>
                       </label>
                       <input
                         id="firstName" type="text" formControlName="firstName"
                         placeholder="Jane"
-                        class="w-full px-4 py-3 rounded-xl text-sm transition-all duration-200 focus:outline-none"
-                        style="background: oklch(0.11 0.025 268);
-                               border: 1px solid oklch(0.22 0.020 268);
-                               color: oklch(0.96 0.006 268);
+                        class="w-full px-4 py-3 rounded-xl text-sm transition-all duration-200 focus:outline-none settings-field"
+                        style="background: var(--color-bg-surface);
+                               border: 1px solid var(--color-border);
+                               color: var(--color-text-primary);
                                font-family: 'Outfit', sans-serif;"
-                        onfocus="this.style.borderColor='oklch(0.65 0.26 285)';this.style.boxShadow='0 0 0 3px oklch(0.65 0.26 285 / 0.15), 0 0 16px oklch(0.65 0.26 285 / 0.1)'"
-                        onblur="this.style.borderColor='oklch(0.22 0.020 268)';this.style.boxShadow='none'"
                       />
                     </div>
 
                     <!-- Last name -->
                     <div class="flex flex-col gap-2">
                       <label class="text-sm font-semibold" for="lastName"
-                             style="color: oklch(0.72 0.015 268);">
+                             style="color: var(--color-text-secondary);">
                         Last name
-                        <span class="font-normal text-xs ml-1" style="color: oklch(0.42 0.012 268);">optional</span>
+                        <span class="font-normal text-xs ml-1" style="color: var(--color-text-muted);">optional</span>
                       </label>
                       <input
                         id="lastName" type="text" formControlName="lastName"
                         placeholder="Doe"
-                        class="w-full px-4 py-3 rounded-xl text-sm transition-all duration-200 focus:outline-none"
-                        style="background: oklch(0.11 0.025 268);
-                               border: 1px solid oklch(0.22 0.020 268);
-                               color: oklch(0.96 0.006 268);
+                        class="w-full px-4 py-3 rounded-xl text-sm transition-all duration-200 focus:outline-none settings-field"
+                        style="background: var(--color-bg-surface);
+                               border: 1px solid var(--color-border);
+                               color: var(--color-text-primary);
                                font-family: 'Outfit', sans-serif;"
-                        onfocus="this.style.borderColor='oklch(0.65 0.26 285)';this.style.boxShadow='0 0 0 3px oklch(0.65 0.26 285 / 0.15), 0 0 16px oklch(0.65 0.26 285 / 0.1)'"
-                        onblur="this.style.borderColor='oklch(0.22 0.020 268)';this.style.boxShadow='none'"
                       />
                     </div>
                   </div>
 
                   <!-- Bio -->
                   <div class="flex flex-col gap-2">
-                    <label class="text-sm font-semibold" for="bio"
-                           style="color: oklch(0.72 0.015 268);">
-                      Bio
-                      <span class="font-normal text-xs ml-1" style="color: oklch(0.42 0.012 268);">optional</span>
-                    </label>
-                    <textarea
-                      id="bio" formControlName="bio" rows="3"
-                      placeholder="Tell us a bit about yourself..."
-                      maxlength="2000"
-                      class="w-full px-4 py-3 rounded-xl text-sm resize-none transition-all duration-200 focus:outline-none"
-                      style="background: oklch(0.11 0.025 268);
-                             border: 1px solid oklch(0.22 0.020 268);
-                             color: oklch(0.96 0.006 268);
-                             font-family: 'Outfit', sans-serif;"
-                      onfocus="this.style.borderColor='oklch(0.65 0.26 285)';this.style.boxShadow='0 0 0 3px oklch(0.65 0.26 285 / 0.15)'"
-                      onblur="this.style.borderColor='oklch(0.22 0.020 268)';this.style.boxShadow='none'"
-                    ></textarea>
+                      <label class="text-sm font-semibold" for="bio"
+                             style="color: var(--color-text-secondary);">
+                        Bio
+                        <span class="font-normal text-xs ml-1" style="color: var(--color-text-muted);">optional</span>
+                      </label>
+                      <textarea
+                        id="bio" formControlName="bio" rows="3"
+                        placeholder="Tell us a bit about yourself..."
+                        maxlength="2000"
+                        class="w-full px-4 py-3 rounded-xl text-sm resize-none transition-all duration-200 focus:outline-none settings-field"
+                        style="background: var(--color-bg-surface);
+                               border: 1px solid var(--color-border);
+                               color: var(--color-text-primary);
+                               font-family: 'Outfit', sans-serif;"
+                      ></textarea>
                   </div>
 
                   <!-- Avatar URL -->
                   <div class="flex flex-col gap-2">
-                    <label class="text-sm font-semibold" for="avatarUrl"
-                           style="color: oklch(0.72 0.015 268);">
-                      Avatar URL
-                      <span class="font-normal text-xs ml-1" style="color: oklch(0.42 0.012 268);">optional</span>
-                    </label>
-                    <input
-                      id="avatarUrl" type="url" formControlName="avatarUrl"
-                      placeholder="https://example.com/avatar.png"
-                      class="w-full px-4 py-3 rounded-xl text-sm transition-all duration-200 focus:outline-none"
-                      style="background: oklch(0.11 0.025 268);
-                             border: 1px solid oklch(0.22 0.020 268);
-                             color: oklch(0.96 0.006 268);
-                             font-family: 'Outfit', sans-serif;"
-                      onfocus="this.style.borderColor='oklch(0.65 0.26 285)';this.style.boxShadow='0 0 0 3px oklch(0.65 0.26 285 / 0.15), 0 0 16px oklch(0.65 0.26 285 / 0.1)'"
-                      onblur="this.style.borderColor='oklch(0.22 0.020 268)';this.style.boxShadow='none'"
-                    />
+                      <label class="text-sm font-semibold" for="avatarUrl"
+                             style="color: var(--color-text-secondary);">
+                        Avatar URL
+                        <span class="font-normal text-xs ml-1" style="color: var(--color-text-muted);">optional</span>
+                      </label>
+                      <input
+                        id="avatarUrl" type="url" formControlName="avatarUrl"
+                        placeholder="https://example.com/avatar.png"
+                        class="w-full px-4 py-3 rounded-xl text-sm transition-all duration-200 focus:outline-none settings-field"
+                        style="background: var(--color-bg-surface);
+                               border: 1px solid var(--color-border);
+                               color: var(--color-text-primary);
+                               font-family: 'Outfit', sans-serif;"
+                      />
                   </div>
 
                   @if (profileStore.error()) {
@@ -279,29 +271,30 @@ type SettingsSection = 'profile' | 'notifications' | 'appearance';
               <div class="flex flex-col gap-4">
                 <h3 class="text-text-primary text-sm font-semibold">Session</h3>
 
-                <div class="flex items-center justify-between py-2"
-                     style="border-bottom: 1px solid oklch(0.22 0.020 268 / 0.5);">
-                  <div class="flex flex-col gap-0.5">
-                    <span class="text-text-primary text-sm">Active session</span>
-                    <span class="text-text-muted text-xs">
-                      Token expires in ~{{ tokenExpiresIn() }}
-                    </span>
-                  </div>
-                  <span class="size-2 rounded-full animate-glow-pulse"
-                        style="background: oklch(0.74 0.18 152);
-                               box-shadow: 0 0 6px oklch(0.74 0.18 152 / 0.6);">
-                  </span>
-                </div>
+                 <div class="flex items-center justify-between py-2"
+                      style="border-bottom: 1px solid color-mix(in oklch, var(--color-border) 50%, transparent);">
+                   <div class="flex flex-col gap-0.5">
+                     <span class="text-text-primary text-sm">Active session</span>
+                     <span class="text-text-muted text-xs">
+                       Token expires in ~{{ tokenExpiresIn() }}
+                     </span>
+                   </div>
+                   <span class="size-2 rounded-full animate-glow-pulse"
+                         style="background: var(--color-success);
+                                box-shadow: 0 0 6px color-mix(in oklch, var(--color-success) 60%, transparent);">
+                   </span>
+                 </div>
 
                 <div class="flex justify-end pt-2">
                   <button (click)="logout()"
                           class="flex items-center gap-2 px-4 py-2 rounded-lg text-sm
-                                 font-medium transition-all duration-150 cursor-pointer"
-                          style="background: oklch(0.65 0.24 22 / 0.1);
-                                 color: oklch(0.72 0.22 22);
-                                 border: 1px solid oklch(0.65 0.24 22 / 0.25);"
-                          onmouseover="this.style.background='oklch(0.65 0.24 22)';this.style.color='white'"
-                          onmouseout="this.style.background='oklch(0.65 0.24 22 / 0.1)';this.style.color='oklch(0.72 0.22 22)'">
+                                 font-medium transition-all duration-150 cursor-pointer settings-logout"
+                          style="background: color-mix(in oklch, var(--color-danger) 10%, transparent);
+                                 color: var(--color-danger);
+                                 border: 1px solid color-mix(in oklch, var(--color-danger) 25%, transparent);"
+                          onmouseover="this.style.background='var(--color-danger)';this.style.color='white'"
+                          onmouseout="this.style.background='color-mix(in oklch, var(--color-danger) 10%, transparent)';this.style.color='var(--color-danger)'"
+                          >
                     <span class="material-symbols-rounded text-sm">logout</span>
                     Sign out
                   </button>
@@ -337,7 +330,7 @@ type SettingsSection = 'profile' | 'notifications' | 'appearance';
                       let last = $last) {
                   <div class="flex items-center justify-between px-6 py-4"
                        [class.border-b]="!last"
-                       [style.border-color]="'oklch(0.22 0.020 268 / 0.5)'">
+                       [style.border-color]="'color-mix(in oklch, var(--color-border) 50%, transparent)'">
 
                     <div class="flex flex-col gap-1.5">
                       <span class="text-text-primary text-sm font-medium">
@@ -379,30 +372,30 @@ type SettingsSection = 'profile' | 'notifications' | 'appearance';
                       Current: Dark (Deep Space)
                     </span>
                   </div>
-                  <span class="px-3 py-1 rounded-full text-xs font-medium"
-                        style="background: oklch(0.65 0.26 285 / 0.12);
-                               color: oklch(0.65 0.26 285);
-                               border: 1px solid oklch(0.65 0.26 285 / 0.2);">
-                    Active
-                  </span>
+                   <span class="px-3 py-1 rounded-full text-xs font-medium"
+                         style="background: color-mix(in oklch, var(--color-accent) 12%, transparent);
+                                color: var(--color-accent);
+                                border: 1px solid color-mix(in oklch, var(--color-accent) 20%, transparent);">
+                     Active
+                   </span>
                 </div>
 
-                <div class="h-px" style="background: oklch(0.22 0.020 268 / 0.5);"></div>
+                <div class="h-px" style="background: color-mix(in oklch, var(--color-border) 50%, transparent);"></div>
 
                 <!-- Accent color preview -->
                 <div class="flex flex-col gap-3">
                   <span class="text-text-primary text-sm font-medium">Accent color</span>
                   <div class="flex items-center gap-3">
                     <div class="size-8 rounded-lg cursor-pointer ring-2 ring-offset-2"
-                         style="background: linear-gradient(135deg, oklch(0.65 0.26 285), oklch(0.78 0.18 200));
-                                ring-color: oklch(0.65 0.26 285);
-                                ring-offset-color: oklch(0.07 0.02 268);">
+                         style="background: linear-gradient(135deg, var(--color-accent), var(--color-cyan));
+                                ring-color: var(--color-accent);
+                                ring-offset-color: var(--color-bg-base);">
                     </div>
                     <span class="text-text-muted text-xs">Violet → Cyan (default)</span>
                   </div>
                 </div>
 
-                <div class="h-px" style="background: oklch(0.22 0.020 268 / 0.5);"></div>
+                <div class="h-px" style="background: color-mix(in oklch, var(--color-border) 50%, transparent);"></div>
 
                 <!-- Font -->
                 <div class="flex items-center justify-between">
@@ -420,11 +413,11 @@ type SettingsSection = 'profile' | 'notifications' | 'appearance';
             </app-card>
 
             <div class="rounded-xl px-4 py-3 text-xs"
-                 style="background: oklch(0.65 0.26 285 / 0.06);
-                        border: 1px solid oklch(0.65 0.26 285 / 0.12);
-                        color: oklch(0.55 0.015 268);">
+                 style="background: color-mix(in oklch, var(--color-accent) 6%, transparent);
+                        border: 1px solid color-mix(in oklch, var(--color-accent) 12%, transparent);
+                        color: var(--color-text-secondary);">
               <span class="material-symbols-rounded text-sm align-middle mr-1"
-                    style="color: oklch(0.65 0.26 285);">info</span>
+                    style="color: var(--color-accent);">info</span>
               Additional theme options will be available in a future update.
             </div>
           </div>
@@ -432,6 +425,14 @@ type SettingsSection = 'profile' | 'notifications' | 'appearance';
 
       </div>
     </div>
+
+    <style>
+      .settings-field:focus {
+        border-color: var(--color-accent) !important;
+        box-shadow: 0 0 0 3px var(--color-accent-subtle), 0 0 0 1px var(--color-accent) !important;
+        outline: none;
+      }
+    </style>
   `,
 })
 export class SettingsComponent implements OnInit {

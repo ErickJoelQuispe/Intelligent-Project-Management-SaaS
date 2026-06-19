@@ -22,7 +22,7 @@ export type SpinnerSize = 'sm' | 'md' | 'lg';
 
       @if (label()) {
         <span class="mt-4 text-sm font-medium tracking-wide"
-              style="color: oklch(0.55 0.015 268); font-family: 'Outfit', sans-serif;">
+              style="color: var(--color-text-secondary); font-family: 'Outfit', sans-serif;">
           {{ label() }}
         </span>
       }
@@ -55,12 +55,12 @@ export class SpinnerComponent {
     return `
       background: conic-gradient(
         from 0deg,
-        oklch(0.65 0.26 285 / 0) 0%,
-        oklch(0.65 0.26 285) 60%,
-        oklch(0.78 0.18 200) 100%
+        transparent 0%,
+        var(--color-accent) 60%,
+        var(--color-cyan) 100%
       );
       animation-duration: ${s.speed};
-      box-shadow: 0 0 16px oklch(0.65 0.26 285 / 0.4);
+      box-shadow: 0 0 16px color-mix(in oklch, var(--color-accent) 40%, transparent);
     `;
   });
 

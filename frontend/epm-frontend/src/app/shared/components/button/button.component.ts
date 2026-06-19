@@ -54,7 +54,7 @@ export type ButtonSize    = 'sm' | 'md' | 'lg';
     }
 
     button:focus-visible {
-      outline: 2px solid oklch(0.65 0.26 285);
+      outline: 2px solid var(--color-accent);
       outline-offset: 2px;
     }
 
@@ -66,8 +66,8 @@ export type ButtonSize    = 'sm' | 'md' | 'lg';
     /* ── PRIMARY — gradiente violet→indigo, sin border visible ── */
     button[data-variant="primary"] {
       background: linear-gradient(135deg,
-        oklch(0.62 0.28 290) 0%,
-        oklch(0.56 0.26 270) 55%,
+        var(--color-accent-hover) 0%,
+        var(--color-accent) 55%,
         oklch(0.50 0.24 255) 100%
       );
       color: white;
@@ -76,7 +76,7 @@ export type ButtonSize    = 'sm' | 'md' | 'lg';
       box-shadow:
         0 1px 0 oklch(1 0 0 / 0.18) inset,
         0 -1px 0 oklch(0 0 0 / 0.25) inset,
-        0 0 20px oklch(0.65 0.26 285 / 0.28),
+        0 0 20px color-mix(in oklch, var(--color-accent) 28%, transparent),
         0 2px 8px oklch(0 0 0 / 0.5);
     }
 
@@ -93,14 +93,14 @@ export type ButtonSize    = 'sm' | 'md' | 'lg';
 
     button[data-variant="primary"]:hover:not(:disabled) {
       background: linear-gradient(135deg,
-        oklch(0.67 0.28 290) 0%,
-        oklch(0.61 0.26 270) 55%,
+        var(--color-accent-hover) 0%,
+        var(--color-accent) 55%,
         oklch(0.55 0.24 255) 100%
       );
       box-shadow:
         0 1px 0 oklch(1 0 0 / 0.2) inset,
         0 -1px 0 oklch(0 0 0 / 0.2) inset,
-        0 0 28px oklch(0.65 0.26 285 / 0.5),
+        0 0 28px color-mix(in oklch, var(--color-accent) 50%, transparent),
         0 4px 16px oklch(0 0 0 / 0.4);
       transform: translateY(-1px);
     }
@@ -109,25 +109,25 @@ export type ButtonSize    = 'sm' | 'md' | 'lg';
       transform: translateY(0px);
       box-shadow:
         0 1px 0 oklch(0 0 0 / 0.2) inset,
-        0 0 12px oklch(0.65 0.26 285 / 0.3);
+        0 0 12px color-mix(in oklch, var(--color-accent) 30%, transparent);
     }
 
     /* ── SECONDARY — glass, borde sutil con tinte violeta ── */
     button[data-variant="secondary"] {
-      background: oklch(0.14 0.025 268 / 0.8);
-      color: oklch(0.82 0.012 268);
-      border: 1px solid oklch(0.28 0.022 268);
+      background: color-mix(in oklch, var(--color-bg-surface) 80%, transparent);
+      color: var(--color-text-primary);
+      border: 1px solid var(--color-border-strong);
       backdrop-filter: blur(8px);
       box-shadow: 0 1px 0 oklch(1 0 0 / 0.05) inset;
     }
 
     button[data-variant="secondary"]:hover:not(:disabled) {
-      background: oklch(0.18 0.025 268);
-      color: oklch(0.96 0.006 268);
-      border-color: oklch(0.65 0.26 285 / 0.45);
+      background: var(--color-bg-elevated);
+      color: var(--color-text-primary);
+      border-color: color-mix(in oklch, var(--color-accent) 45%, transparent);
       box-shadow:
         0 1px 0 oklch(1 0 0 / 0.07) inset,
-        0 0 12px oklch(0.65 0.26 285 / 0.15);
+        0 0 12px color-mix(in oklch, var(--color-accent) 15%, transparent);
       transform: translateY(-1px);
     }
 
@@ -136,32 +136,32 @@ export type ButtonSize    = 'sm' | 'md' | 'lg';
     /* ── GHOST — sin borde por defecto, aparece en hover ── */
     button[data-variant="ghost"] {
       background: transparent;
-      color: oklch(0.58 0.015 268);
+      color: var(--color-text-secondary);
       border: 1px solid transparent;
     }
 
     button[data-variant="ghost"]:hover:not(:disabled) {
-      background: oklch(0.65 0.26 285 / 0.08);
-      color: oklch(0.90 0.008 268);
-      border-color: oklch(0.65 0.26 285 / 0.18);
+      background: color-mix(in oklch, var(--color-accent) 8%, transparent);
+      color: var(--color-text-primary);
+      border-color: color-mix(in oklch, var(--color-accent) 18%, transparent);
     }
 
     button[data-variant="ghost"]:active:not(:disabled) {
-      background: oklch(0.65 0.26 285 / 0.13);
+      background: color-mix(in oklch, var(--color-accent) 13%, transparent);
     }
 
     /* ── DANGER ── */
     button[data-variant="danger"] {
-      background: oklch(0.65 0.24 22 / 0.1);
-      color: oklch(0.72 0.22 22);
-      border: 1px solid oklch(0.65 0.24 22 / 0.28);
+      background: var(--color-danger-subtle);
+      color: var(--color-danger);
+      border: 1px solid color-mix(in oklch, var(--color-danger) 28%, transparent);
     }
 
     button[data-variant="danger"]:hover:not(:disabled) {
-      background: oklch(0.65 0.24 22);
+      background: var(--color-danger);
       color: white;
       border-color: transparent;
-      box-shadow: 0 0 18px oklch(0.65 0.24 22 / 0.45);
+      box-shadow: 0 0 18px color-mix(in oklch, var(--color-danger) 45%, transparent);
       transform: translateY(-1px);
     }
 

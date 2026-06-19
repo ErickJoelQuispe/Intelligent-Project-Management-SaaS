@@ -40,10 +40,10 @@ export class BadgeComponent {
 
   // Glow sutil en los badges de estado — hace que "salten" del fondo oscuro
   private readonly variantStyles: Record<BadgeVariant, string> = {
-    success: 'box-shadow: 0 0 8px oklch(0.74 0.18 152 / 0.25);',
-    warning: 'box-shadow: 0 0 8px oklch(0.82 0.18 78 / 0.25);',
-    danger:  'box-shadow: 0 0 8px oklch(0.65 0.24 22 / 0.25);',
-    info:    'box-shadow: 0 0 8px oklch(0.72 0.16 225 / 0.25);',
+    success: 'box-shadow: 0 0 8px color-mix(in oklch, var(--color-success) 25%, transparent);',
+    warning: 'box-shadow: 0 0 8px color-mix(in oklch, var(--color-warning) 25%, transparent);',
+    danger:  'box-shadow: 0 0 8px color-mix(in oklch, var(--color-danger) 25%, transparent);',
+    info:    'box-shadow: 0 0 8px color-mix(in oklch, var(--color-info) 25%, transparent);',
     neutral: '',
   };
 

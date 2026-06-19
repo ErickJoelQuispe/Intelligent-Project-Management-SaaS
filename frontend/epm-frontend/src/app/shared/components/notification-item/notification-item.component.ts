@@ -42,9 +42,9 @@ const TYPE_ICON: Record<string, string> = {
             </span>
           }
           <div class="size-8 rounded-lg flex items-center justify-center"
-               style="background: oklch(0.17 0.025 268);">
+               style="background: var(--color-bg-elevated);">
             <span class="material-symbols-rounded text-base"
-                  style="color: oklch(0.65 0.26 285 / 0.8); font-size: 1rem;">
+                  style="color: color-mix(in oklch, var(--color-accent) 80%, transparent); font-size: 1rem;">
               {{ icon() }}
             </span>
           </div>
@@ -59,7 +59,7 @@ const TYPE_ICON: Record<string, string> = {
             {{ notification().message }}
           </p>
           <time class="text-xs mt-0.5 block"
-                style="color: oklch(0.42 0.012 268);"
+                style="color: var(--color-text-muted);"
                 [dateTime]="notification().createdAt">
             {{ notification().createdAt | date: 'MMM d, h:mm a' }}
           </time>
