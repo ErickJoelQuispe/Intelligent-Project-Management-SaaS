@@ -5,6 +5,8 @@ import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
+import static org.mockito.hamcrest.MockitoHamcrest.argThat;
+import static org.hamcrest.Matchers.containsString;
 
 import java.time.Instant;
 import java.util.UUID;
@@ -108,6 +110,58 @@ class UserEventConsumerTest {
         verify(notificationService).create(
                 eq(tenantId), eq(userId),
                 eq(NotificationType.MEMBER_LEFT_TEAM), any(), any());
+    }
+
+    // ── teamName in message: joined ───────────────────────────────────────
+
+    @Test
+    void consume_teamMemberJoined_messageContainsTeamName() {
+        UUID eventId = UUID.randomUUID();
+        UUID userId = UUID.randomUUID();
+        UUID tenantId = UUID.randomUUID();
+
+        String message = buildUserEvent(eventId.toString(), "TeamMemberJoined", tenantId.toString(),
+                userId.toString(), "Engineering", null);
+
+        when(processedEventRepository.claimEvent(
+                eq(eventId.toString()), eq("user.team.member-joined"), any(Instant.class)))
+                .thenReturn(1);
+        when(notificationService.create(any(), any(), eq(NotificationType.MEMBER_JOINED_TEAM), any(), any()))
+                .thenReturn(Notification.create(tenantId, userId,
+                        NotificationType.MEMBER_JOINED_TEAM, UUID.randomUUID(), "You joined Engineering"));
+
+        consumer.consume(toRecord("user.team.member-joined", message));
+
+        verify(notificationService).create(
+                eq(tenantId), eq(userId),
+                eq(NotificationType.MEMBER_JOINED_TEAM), any(),
+                argThat(containsString("Engineering")));
+    }
+
+    // ── teamName in message: left ─────────────────────────────────────────
+
+    @Test
+    void consume_teamMemberLeft_messageContainsTeamName() {
+        UUID eventId = UUID.randomUUID();
+        UUID userId = UUID.randomUUID();
+        UUID tenantId = UUID.randomUUID();
+
+        String message = buildUserEvent(eventId.toString(), "TeamMemberLeft", tenantId.toString(),
+                userId.toString(), "Design Guild", null);
+
+        when(processedEventRepository.claimEvent(
+                eq(eventId.toString()), eq("user.team.member-left"), any(Instant.class)))
+                .thenReturn(1);
+        when(notificationService.create(any(), any(), eq(NotificationType.MEMBER_LEFT_TEAM), any(), any()))
+                .thenReturn(Notification.create(tenantId, userId,
+                        NotificationType.MEMBER_LEFT_TEAM, UUID.randomUUID(), "You left Design Guild"));
+
+        consumer.consume(toRecord("user.team.member-left", message));
+
+        verify(notificationService).create(
+                eq(tenantId), eq(userId),
+                eq(NotificationType.MEMBER_LEFT_TEAM), any(),
+                argThat(containsString("Design Guild")));
     }
 
     // ── Idempotency — claimEvent returns 0 → duplicate skipped ────────────
