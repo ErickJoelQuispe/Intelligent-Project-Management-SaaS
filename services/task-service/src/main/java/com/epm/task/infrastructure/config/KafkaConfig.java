@@ -50,6 +50,7 @@ public class KafkaConfig {
         props.put(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, StringSerializer.class);
         props.put(ProducerConfig.ACKS_CONFIG, "all");
         props.put(ProducerConfig.RETRIES_CONFIG, 3);
+        props.put(ProducerConfig.ENABLE_IDEMPOTENCE_CONFIG, true);
         // Bound the time a send can block on metadata so a dead/slow broker cannot pin the
         // outbox-relay thread for the Kafka default of 60s (delivery.timeout must be >=
         // request.timeout + linger; request.timeout default 30s is lowered to fit).
