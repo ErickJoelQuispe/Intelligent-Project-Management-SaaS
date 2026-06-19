@@ -1,6 +1,7 @@
 package com.epm.project.domain.event;
 
 import java.time.Instant;
+import java.util.List;
 import java.util.UUID;
 
 /**
@@ -10,6 +11,7 @@ public record TeamAssignedToProject(
         UUID eventId,
         UUID projectId,
         UUID teamId,
+        List<UUID> memberIds,
         UUID tenantId,
         Instant occurredAt) {
 }

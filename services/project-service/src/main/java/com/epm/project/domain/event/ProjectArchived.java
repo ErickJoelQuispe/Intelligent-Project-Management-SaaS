@@ -9,6 +9,8 @@ import java.util.UUID;
 public record ProjectArchived(
         UUID eventId,
         UUID projectId,
+        String name,
+        UUID ownerId,
         UUID tenantId,
         Instant occurredAt) {
 }

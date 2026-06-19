@@ -103,7 +103,9 @@ class OutboxDomainEventPublisherTest {
 
         UUID projectId = UUID.randomUUID();
         UUID tenantId = UUID.randomUUID();
-        ProjectArchived event = new ProjectArchived(UUID.randomUUID(), projectId, tenantId, Instant.now());
+        UUID ownerId = UUID.randomUUID();
+        ProjectArchived event = new ProjectArchived(UUID.randomUUID(), projectId,
+                "Archived Project", ownerId, tenantId, Instant.now());
 
         publisher.publish(List.of(event));
 
@@ -116,6 +118,8 @@ class OutboxDomainEventPublisherTest {
 
         JsonNode payload = objectMapper.readTree(saved.getPayload());
         assertThat(payload.get("payload").get("projectId").asText()).isEqualTo(projectId.toString());
+        assertThat(payload.get("payload").get("name").asText()).isEqualTo("Archived Project");
+        assertThat(payload.get("payload").get("ownerId").asText()).isEqualTo(ownerId.toString());
     }
 
     // ── TeamAssignedToProject ─────────────────────────────────────────────────
@@ -128,8 +132,10 @@ class OutboxDomainEventPublisherTest {
         UUID projectId = UUID.randomUUID();
         UUID teamId = UUID.randomUUID();
         UUID tenantId = UUID.randomUUID();
+        UUID memberId1 = UUID.randomUUID();
+        UUID memberId2 = UUID.randomUUID();
         TeamAssignedToProject event = new TeamAssignedToProject(UUID.randomUUID(),
-                projectId, teamId, tenantId, Instant.now());
+                projectId, teamId, List.of(memberId1, memberId2), tenantId, Instant.now());
 
         publisher.publish(List.of(event));
 
@@ -143,5 +149,7 @@ class OutboxDomainEventPublisherTest {
         JsonNode payload = objectMapper.readTree(saved.getPayload());
         assertThat(payload.get("payload").get("teamId").asText()).isEqualTo(teamId.toString());
         assertThat(payload.get("payload").get("projectId").asText()).isEqualTo(projectId.toString());
+        assertThat(payload.get("payload").get("memberIds").isArray()).isTrue();
+        assertThat(payload.get("payload").get("memberIds")).hasSize(2);
     }
 }

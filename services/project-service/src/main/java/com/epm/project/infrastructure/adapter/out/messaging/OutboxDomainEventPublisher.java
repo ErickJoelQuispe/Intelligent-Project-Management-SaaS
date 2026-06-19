@@ -130,6 +130,8 @@ public class OutboxDomainEventPublisher implements DomainEventPublisher {
             envelope.put("occurredAt", event.occurredAt().toString());
             ObjectNode payload = objectMapper.createObjectNode();
             payload.put("projectId", event.projectId().toString());
+            payload.put("name", event.name());
+            payload.put("ownerId", event.ownerId().toString());
             envelope.set("payload", payload);
             return objectMapper.writeValueAsString(envelope);
         } catch (JsonProcessingException e) {
@@ -147,6 +149,11 @@ public class OutboxDomainEventPublisher implements DomainEventPublisher {
             ObjectNode payload = objectMapper.createObjectNode();
             payload.put("projectId", event.projectId().toString());
             payload.put("teamId", event.teamId().toString());
+            var memberIdsNode = objectMapper.createArrayNode();
+            for (UUID memberId : event.memberIds()) {
+                memberIdsNode.add(memberId.toString());
+            }
+            payload.set("memberIds", memberIdsNode);
             envelope.set("payload", payload);
             return objectMapper.writeValueAsString(envelope);
         } catch (JsonProcessingException e) {

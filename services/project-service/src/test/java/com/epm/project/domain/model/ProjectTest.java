@@ -327,6 +327,72 @@ class ProjectTest {
         assertThat(project.hasRole(ownerId, ProjectRole.OWNER, ProjectRole.MANAGER)).isTrue();
     }
 
+    // ── archive() payload enrichment tests ────────────────────────────────
+
+    @Test
+    void archive_emits_ProjectArchived_with_name_and_ownerId() {
+        UUID ownerId = UUID.randomUUID();
+        UUID tenantId = UUID.randomUUID();
+        Project project = Project.create(new CreateProjectCommand(
+                "Beta Project", null, ProjectVisibility.PRIVATE, ownerId, tenantId));
+        project.pullDomainEvents();
+
+        project.archive(ownerId);
+
+        List<Object> events = project.pullDomainEvents();
+        assertThat(events).hasSize(1);
+        ProjectArchived evt = (ProjectArchived) events.get(0);
+        assertThat(evt.name()).isEqualTo("Beta Project");
+        assertThat(evt.ownerId()).isEqualTo(ownerId);
+        assertThat(evt.projectId()).isEqualTo(project.getId());
+        assertThat(evt.tenantId()).isEqualTo(tenantId);
+    }
+
+    // ── assignTeam() payload enrichment tests ─────────────────────────────
+
+    @Test
+    void assignTeam_emits_TeamAssignedToProject_with_active_memberIds() {
+        UUID ownerId = UUID.randomUUID();
+        UUID tenantId = UUID.randomUUID();
+        UUID teamId = UUID.randomUUID();
+        UUID memberId1 = UUID.randomUUID();
+        UUID memberId2 = UUID.randomUUID();
+
+        Project project = Project.create(new CreateProjectCommand(
+                "Gamma Project", null, ProjectVisibility.PRIVATE, ownerId, tenantId));
+        project.addMember(memberId1, ProjectRole.CONTRIBUTOR, ownerId);
+        project.addMember(memberId2, ProjectRole.MANAGER, ownerId);
+        project.pullDomainEvents();
+
+        project.assignTeam(teamId, ownerId);
+
+        List<Object> events = project.pullDomainEvents();
+        assertThat(events).hasSize(1);
+        TeamAssignedToProject evt = (TeamAssignedToProject) events.get(0);
+        assertThat(evt.memberIds()).containsExactlyInAnyOrder(ownerId, memberId1, memberId2);
+    }
+
+    @Test
+    void assignTeam_memberIds_excludes_removed_members() {
+        UUID ownerId = UUID.randomUUID();
+        UUID tenantId = UUID.randomUUID();
+        UUID teamId = UUID.randomUUID();
+        UUID removedMemberId = UUID.randomUUID();
+
+        Project project = Project.create(new CreateProjectCommand(
+                "Delta Project", null, ProjectVisibility.PRIVATE, ownerId, tenantId));
+        project.addMember(removedMemberId, ProjectRole.CONTRIBUTOR, ownerId);
+        project.removeMember(removedMemberId);
+        project.pullDomainEvents();
+
+        project.assignTeam(teamId, ownerId);
+
+        List<Object> events = project.pullDomainEvents();
+        TeamAssignedToProject evt = (TeamAssignedToProject) events.get(0);
+        assertThat(evt.memberIds()).containsExactly(ownerId);
+        assertThat(evt.memberIds()).doesNotContain(removedMemberId);
+    }
+
     // ── canBeAccessedBy() tests — TEAM visibility semantics ───────────────
 
     @Test

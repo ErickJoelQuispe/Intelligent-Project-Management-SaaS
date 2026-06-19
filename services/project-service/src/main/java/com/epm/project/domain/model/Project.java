@@ -152,7 +152,7 @@ public class Project {
         this.status = ProjectStatus.ARCHIVED;
         this.updatedAt = Instant.now();
         domainEvents.add(new ProjectArchived(
-                UuidCreator.getTimeOrderedEpoch(), id, tenantId, Instant.now()));
+                UuidCreator.getTimeOrderedEpoch(), id, this.name, this.ownerProfileId, tenantId, Instant.now()));
     }
 
     /**
@@ -167,8 +167,12 @@ public class Project {
         guardRole(callerProfileId, ProjectRole.OWNER, ProjectRole.MANAGER);
         guardNoDuplicateTeam(teamId);
         teams.add(ProjectTeam.create(id, teamId));
+        List<UUID> activeMemberIds = members.stream()
+                .filter(ProjectMember::isActive)
+                .map(ProjectMember::getProfileId)
+                .toList();
         domainEvents.add(new TeamAssignedToProject(
-                UuidCreator.getTimeOrderedEpoch(), id, teamId, tenantId, Instant.now()));
+                UuidCreator.getTimeOrderedEpoch(), id, teamId, activeMemberIds, tenantId, Instant.now()));
     }
 
     /**
