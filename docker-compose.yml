@@ -423,7 +423,11 @@ services:
       EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: "http://epm-discovery:8761/eureka/"
       EUREKA_CLIENT_ENABLED: "true"
       SPRING_KAFKA_BOOTSTRAP_SERVERS: "epm-kafka:9092"
-      DEEPSEEK_API_KEY: "${DEEPSEEK_API_KEY}"
+      # Default is a non-empty dummy so Spring AI can build its beans and the
+      # service boots even without a real key (e.g. in CI). Real calls to
+      # DeepSeek then fail and trip the circuit breaker, which the e2e tests
+      # accept (200 or 503). Override with a real key for actual AI usage.
+      DEEPSEEK_API_KEY: "${DEEPSEEK_API_KEY:-dummy-ci-key}"
       SPRING_PROFILES_ACTIVE: "docker"
     depends_on:
       discovery-service:
