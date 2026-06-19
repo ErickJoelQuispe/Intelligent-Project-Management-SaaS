@@ -14,6 +14,7 @@ export interface TaskDraft {
 export interface GenerateTasksRequest {
   projectId: string;
   description: string;
+  bypassCache: boolean;
 }
 
 export interface GenerateTasksResponse {
@@ -32,10 +33,15 @@ export class AiService {
   private readonly oauth      = inject(OAuthService);
   private readonly baseUrl    = `${environment.apiBaseUrl}/ai`;
 
-  generateTasks(projectId: string, description: string): Observable<GenerateTasksResponse> {
+  generateTasks(
+    projectId: string,
+    description: string,
+    bypassCache = false,
+  ): Observable<GenerateTasksResponse> {
     return this.http.post<GenerateTasksResponse>(`${this.baseUrl}/tasks/generate`, {
       projectId,
       description,
+      bypassCache,
     });
   }
 

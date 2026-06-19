@@ -45,7 +45,7 @@ describe('AiService', () => {
 
     const req = httpMock.expectOne(`${BASE_URL}/tasks/generate`);
     expect(req.request.method).toBe('POST');
-    expect(req.request.body).toEqual({ projectId: 'proj-1', description: 'Build a login' });
+    expect(req.request.body).toEqual({ projectId: 'proj-1', description: 'Build a login', bypassCache: false });
     req.flush(expected);
   });
 
