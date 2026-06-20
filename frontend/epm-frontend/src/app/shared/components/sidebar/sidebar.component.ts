@@ -35,46 +35,48 @@ interface NavItem {
 
         <!-- Logo mark — S-route: two pivots, one direction. Origin → obstacles → destination. -->
         <div class="logomark" aria-hidden="true">
-          <svg width="30" height="32" viewBox="0 0 30 32" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <svg width="30" height="30" viewBox="0 0 30 30" fill="none" xmlns="http://www.w3.org/2000/svg">
             <defs>
-              <!-- Gradient flows diagonally matching the S path direction -->
-              <linearGradient id="flow-grad" x1="4" y1="6" x2="26" y2="25" gradientUnits="userSpaceOnUse">
+              <linearGradient id="flow-grad" x1="3" y1="5" x2="27" y2="26" gradientUnits="userSpaceOnUse">
                 <stop stop-color="var(--color-accent)"/>
-                <stop offset="0.55" stop-color="color-mix(in oklch, var(--color-accent) 50%, var(--color-cyan))"/>
+                <stop offset="0.5" stop-color="color-mix(in oklch, var(--color-accent) 40%, var(--color-cyan))"/>
                 <stop offset="1" stop-color="var(--color-cyan)"/>
               </linearGradient>
-              <!-- Soft glow behind the path -->
               <filter id="flow-glow" x="-40%" y="-40%" width="180%" height="180%">
-                <feGaussianBlur in="SourceGraphic" stdDeviation="1.2" result="blur"/>
-                <feColorMatrix in="blur" type="saturate" values="1.8" result="vivid"/>
+                <feGaussianBlur in="SourceGraphic" stdDeviation="1.4" result="blur"/>
                 <feMerge>
-                  <feMergeNode in="vivid"/>
+                  <feMergeNode in="blur"/>
                   <feMergeNode in="SourceGraphic"/>
                 </feMerge>
               </filter>
             </defs>
 
             <!--
-              S-route path — two sharp pivots with rounded corners:
-              Start top-left (6,7) → right to (20,7) → pivot down to (20,15)
-              → left to (10,15) → pivot down to (10,23) → right to exit (24,23)
-              Corner radius = 3 via Q bezier at each turn
+              True S-curve with cubic beziers:
+              Start (4, 6) — top left
+              C1: curves right and down through the upper belly
+              C2: crosses the midline — the S inflection point
+              C3: curves right and down through the lower belly
+              End (26, 24) — bottom right exit
+
+              Cubic bezier control points create a smooth S:
+              M 4 6
+              C 18 6,  18 14,  15 15   ← upper arc (right then back)
+              C 12 16,  12 24,  26 24  ← lower arc (left then right again)
             -->
             <path
-              d="M6 7 H17 Q20 7 20 10 V13 Q20 16 17 16 H13 Q10 16 10 19 V22 Q10 25 13 25 H24"
+              d="M4 6 C20 5, 20 15, 15 15 C10 15, 10 25, 26 24"
               stroke="url(#flow-grad)"
-              stroke-width="2.6"
+              stroke-width="2.8"
               stroke-linecap="round"
-              stroke-linejoin="round"
               fill="none"
               filter="url(#flow-glow)"
               class="logo-path"
             />
 
-            <!-- Arrowhead — two angled lines diverging from the endpoint -->
-            <!-- Upper arm -->
+            <!-- Arrowhead at exit (26, 24) pointing right-down -->
             <path
-              d="M20.5 22 L24.5 25 L20.5 28"
+              d="M22 21 L26 24 L22 27"
               stroke="url(#flow-grad)"
               stroke-width="2.6"
               stroke-linecap="round"
@@ -83,8 +85,8 @@ interface NavItem {
               class="logo-arrow"
             />
 
-            <!-- Origin dot — pulsing source point -->
-            <circle cx="6" cy="7" r="2.2" fill="var(--color-accent)" class="logo-dot"/>
+            <!-- Origin dot -->
+            <circle cx="4" cy="6" r="2.4" fill="var(--color-accent)" class="logo-dot"/>
           </svg>
           <div class="logomark-glow" aria-hidden="true"></div>
         </div>
