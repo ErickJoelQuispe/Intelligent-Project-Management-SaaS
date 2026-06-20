@@ -1,10 +1,11 @@
 import { inject, Injectable, signal, computed } from '@angular/core';
 import { DOCUMENT } from '@angular/common';
 
-export type Theme = 'dark' | 'light';
+export type Theme = 'midnight' | 'amber' | 'catppuccin' | 'nord' | 'rose';
 
 const STORAGE_KEY = 'epm-theme';
-const DEFAULT_THEME: Theme = 'dark';
+const DEFAULT_THEME: Theme = 'midnight';
+const VALID_THEMES: readonly Theme[] = ['midnight', 'amber', 'catppuccin', 'nord', 'rose'];
 
 @Injectable({ providedIn: 'root' })
 export class ThemeService {
@@ -12,9 +13,8 @@ export class ThemeService {
 
   private readonly _theme = signal<Theme>(this._resolveInitialTheme());
 
-  readonly theme    = this._theme.asReadonly();
-  readonly isDark   = computed(() => this._theme() === 'dark');
-  readonly isLight  = computed(() => this._theme() === 'light');
+  readonly theme   = this._theme.asReadonly();
+  readonly isDark  = computed(() => (['midnight', 'catppuccin', 'nord'] as Theme[]).includes(this._theme()));
 
   constructor() {
     // Apply the initial theme immediately — synchronous, no render cycle needed.
@@ -23,8 +23,9 @@ export class ThemeService {
     this._applyToDocument(this._theme());
   }
 
+  /** Toggle between midnight and amber — kept for sidebar compatibility. */
   toggle(): void {
-    this.setTheme(this._theme() === 'dark' ? 'light' : 'dark');
+    this.setTheme(this.isDark() ? 'amber' : 'midnight');
   }
 
   setTheme(theme: Theme): void {
@@ -38,7 +39,9 @@ export class ThemeService {
   private _resolveInitialTheme(): Theme {
     try {
       const stored = localStorage.getItem(STORAGE_KEY) as Theme | null;
-      if (stored === 'dark' || stored === 'light') return stored;
+      if (stored && (VALID_THEMES as readonly string[]).includes(stored)) {
+        return stored as Theme;
+      }
     } catch {
       // localStorage unavailable (SSR or blocked)
     }
