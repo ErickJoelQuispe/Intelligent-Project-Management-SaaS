@@ -83,6 +83,7 @@ services:
       - "8180:8080"
     volumes:
       - ./infra/keycloak:/opt/keycloak/data/import
+      - ./infra/keycloak/themes:/opt/keycloak/themes
     depends_on:
       postgres:
         condition: service_healthy
