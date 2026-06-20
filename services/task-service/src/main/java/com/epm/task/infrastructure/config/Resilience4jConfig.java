@@ -37,9 +37,11 @@ public class Resilience4jConfig {
     public CircuitBreakerRegistry circuitBreakerRegistry() {
         CircuitBreakerConfig config = CircuitBreakerConfig.custom()
                 .failureRateThreshold(50)
-                .minimumNumberOfCalls(3)
-                .slidingWindowSize(5)
-                .waitDurationInOpenState(Duration.ofSeconds(30))
+                .minimumNumberOfCalls(5)
+                .slidingWindowSize(10)
+                .waitDurationInOpenState(Duration.ofSeconds(10))
+                .permittedNumberOfCallsInHalfOpenState(3)
+                .automaticTransitionFromOpenToHalfOpenEnabled(true)
                 .build();
 
         CircuitBreakerRegistry registry = CircuitBreakerRegistry.of(config);

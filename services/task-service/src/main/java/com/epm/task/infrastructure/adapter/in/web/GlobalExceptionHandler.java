@@ -18,6 +18,7 @@ import org.springframework.validation.FieldError;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.servlet.resource.NoResourceFoundException;
 
 /**
  * Maps domain exceptions to RFC 7807 Problem Details responses.
@@ -158,6 +159,16 @@ public class GlobalExceptionHandler {
         problem.setTitle("Bad Request");
         problem.setDetail(ex.getMessage());
         problem.setProperty("errorCode", "BAD_REQUEST");
+        return problem;
+    }
+
+    /** 404 Not Found — static resource not found (e.g. actuator scrape on missing endpoint). */
+    @ExceptionHandler(NoResourceFoundException.class)
+    public ProblemDetail handleNoResource(NoResourceFoundException ex) {
+        ProblemDetail problem = ProblemDetail.forStatus(HttpStatus.NOT_FOUND);
+        problem.setType(URI.create("https://api.epm.com/errors/not-found"));
+        problem.setTitle("Not Found");
+        problem.setDetail(ex.getMessage());
         return problem;
     }
 

@@ -54,9 +54,11 @@ resilience4j:
     instances:
       projectService:
         failureRateThreshold: 50
-        minimumNumberOfCalls: 3
-        slidingWindowSize: 5
-        waitDurationInOpenState: 30s
+        minimumNumberOfCalls: 5
+        slidingWindowSize: 10
+        waitDurationInOpenState: 10s
+        permittedNumberOfCallsInHalfOpenState: 3
+        automaticTransitionFromOpenToHalfOpenEnabled: true
   timelimiter:
     instances:
       projectService:
