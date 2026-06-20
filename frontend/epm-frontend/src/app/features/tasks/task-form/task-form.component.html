@@ -7,132 +7,401 @@
   </app-button>
 </app-page-header>
 
-<div class="p-6 max-w-xl">
+<div class="tf-page">
+  <div class="tf-wrap animate-fade-up">
 
-  @if (loadingTask()) {
-    <app-spinner size="md" [full]="true" label="Loading task..." />
-  }
+    @if (loadingTask()) {
+      <app-spinner size="md" [full]="true" label="Loading task..." />
+    }
 
-  @if (error()) {
-    <div class="mb-6">
+    @if (error()) {
       <app-error-banner [message]="error()!" variant="inline" />
-    </div>
+    }
+
+    <!-- ── Project context pill ─────────────────────────── -->
+    @if (project(); as proj) {
+      <div class="tf-project-bar">
+        <span class="material-symbols-rounded tf-project-icon">folder</span>
+        <span class="tf-project-name">{{ proj.name }}</span>
+        <span class="tf-project-sep">·</span>
+        <span class="tf-project-badge">
+          <span class="material-symbols-rounded">
+            {{ proj.visibility === 'PRIVATE' ? 'lock' : proj.visibility === 'TEAM' ? 'group' : 'public' }}
+          </span>
+          {{ proj.visibility | titlecase }}
+        </span>
+        <span class="tf-project-badge tf-project-badge--status">
+          {{ proj.status | titlecase }}
+        </span>
+      </div>
+    }
+
+    <form [formGroup]="form" (ngSubmit)="onSubmit()" novalidate class="tf-form">
+
+      <!-- ── Title ────────────────────────────────────────── -->
+      <div class="tf-field">
+        <label class="tf-label" for="title">
+          Title <span class="tf-required">*</span>
+        </label>
+        <input
+          id="title" type="text" formControlName="title"
+          placeholder="What needs to be done?"
+          class="tf-input"
+        />
+        @if (form.controls.title.hasError('required') && form.controls.title.touched) {
+          <span class="tf-error">Title is required.</span>
+        }
+      </div>
+
+      <!-- ── Description ─────────────────────────────────── -->
+      <div class="tf-field">
+        <label class="tf-label" for="description">
+          Description <span class="tf-optional">optional</span>
+        </label>
+        <textarea
+          id="description" formControlName="description" rows="3"
+          placeholder="Add more context, acceptance criteria, or notes..."
+          class="tf-input tf-textarea"
+        ></textarea>
+      </div>
+
+      <!-- ── Priority + Deadline — side by side ──────────── -->
+      <div class="tf-row">
+
+        <div class="tf-field">
+          <label class="tf-label">Priority</label>
+          <div class="tf-priority-group">
+            @for (p of priorities; track p.value) {
+              <label
+                class="tf-priority-btn"
+                [class.tf-priority-btn--active]="form.controls.priority.value === p.value"
+                [class.tf-priority-btn--high]="p.value === 'HIGH' && form.controls.priority.value === 'HIGH'"
+                [class.tf-priority-btn--medium]="p.value === 'MEDIUM' && form.controls.priority.value === 'MEDIUM'"
+                [class.tf-priority-btn--low]="p.value === 'LOW' && form.controls.priority.value === 'LOW'"
+              >
+                <input type="radio" formControlName="priority" [value]="p.value" class="sr-only" />
+                <span class="material-symbols-rounded tf-priority-icon">{{ p.icon }}</span>
+                <span>{{ p.label }}</span>
+              </label>
+            }
+          </div>
+        </div>
+
+        <div class="tf-field">
+          <label class="tf-label" for="deadline">
+            Deadline <span class="tf-optional">optional</span>
+          </label>
+          <input
+            id="deadline" type="date" formControlName="deadline"
+            class="tf-input"
+          />
+        </div>
+
+      </div>
+
+      <!-- ── Assignee ─────────────────────────────────────── -->
+      <div class="tf-field">
+        <label class="tf-label" for="assigneeId">
+          Assignee <span class="tf-optional">optional</span>
+        </label>
+        <select id="assigneeId" formControlName="assigneeId" class="tf-input tf-select">
+          <option value="">Unassigned</option>
+          @for (user of users(); track user.id) {
+            <option [value]="user.id">
+              {{ user.firstName && user.lastName ? user.firstName + ' ' + user.lastName : user.email }}
+            </option>
+          }
+        </select>
+      </div>
+
+      <!-- ── Priority guide — inline compact ─────────────── -->
+      <div class="tf-context">
+        <p class="tf-context-title">
+          <span class="material-symbols-rounded">info</span>
+          Priority guide
+        </p>
+        <div class="tf-context-pills">
+          <span class="tf-cpill tf-cpill--high">
+            <span class="material-symbols-rounded">keyboard_double_arrow_up</span>
+            <strong>High</strong> — blocking / critical path
+          </span>
+          <span class="tf-cpill tf-cpill--medium">
+            <span class="material-symbols-rounded">drag_handle</span>
+            <strong>Medium</strong> — plan this sprint
+          </span>
+          <span class="tf-cpill tf-cpill--low">
+            <span class="material-symbols-rounded">keyboard_double_arrow_down</span>
+            <strong>Low</strong> — nice to have
+          </span>
+        </div>
+      </div>
+
+      <!-- ── Divider + Actions ────────────────────────────── -->
+      <div class="tf-divider"></div>
+
+      <div class="tf-actions">
+        <app-button type="button" variant="secondary" (click)="onCancel()">Cancel</app-button>
+        <app-button type="submit" variant="primary" [loading]="loading()">
+          {{ taskId() ? 'Save changes' : 'Create task' }}
+        </app-button>
+      </div>
+
+    </form>
+  </div>
+</div>
+
+<style>
+  /* ── Page wrapper ────────────────────────────────────── */
+  .tf-page {
+    display: flex;
+    justify-content: center;
+    padding: 2.5rem 1.5rem;
+    min-height: calc(100vh - 5rem);
+    align-items: flex-start;
   }
 
-  <form [formGroup]="form" (ngSubmit)="onSubmit()" novalidate
-        class="flex flex-col gap-5">
+  .tf-wrap {
+    width: 100%;
+    max-width: 42rem;
+    display: flex;
+    flex-direction: column;
+    gap: 1.25rem;
+  }
 
-    <!-- Title -->
-    <div class="flex flex-col gap-1.5">
-      <label class="text-text-primary text-sm font-medium" for="title">
-        Title <span class="text-danger">*</span>
-      </label>
-      <input
-        id="title"
-        type="text"
-        formControlName="title"
-        placeholder="What needs to be done?"
-        class="w-full px-3 py-2 rounded-lg text-sm
-               bg-bg-elevated border border-border
-               text-text-primary placeholder:text-text-muted
-               focus:outline-none focus:border-accent focus:ring-1 focus:ring-accent
-               transition-colors duration-150"
-      />
-      @if (form.controls.title.hasError('required') && form.controls.title.touched) {
-        <span class="text-danger text-xs">Title is required.</span>
-      }
-    </div>
+  /* ── Project bar ─────────────────────────────────────── */
+  .tf-project-bar {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.5rem 0.75rem;
+    border-radius: 0.625rem;
+    background: var(--color-bg-elevated);
+    border: 1px solid var(--color-border);
+    flex-wrap: wrap;
+  }
 
-    <!-- Description -->
-    <div class="flex flex-col gap-1.5">
-      <label class="text-text-primary text-sm font-medium" for="description">
-        Description
-        <span class="text-text-muted font-normal">(optional)</span>
-      </label>
-      <textarea
-        id="description"
-        formControlName="description"
-        placeholder="Add more details..."
-        rows="3"
-        class="w-full px-3 py-2 rounded-lg text-sm resize-none
-               bg-bg-elevated border border-border
-               text-text-primary placeholder:text-text-muted
-               focus:outline-none focus:border-accent focus:ring-1 focus:ring-accent
-               transition-colors duration-150"
-      ></textarea>
-    </div>
+  .tf-project-icon {
+    font-size: 0.9375rem;
+    color: var(--color-accent);
+    flex-shrink: 0;
+  }
 
-    <!-- Priority -->
-    <div class="flex flex-col gap-1.5">
-      <label class="text-text-primary text-sm font-medium" for="priority">
-        Priority
-      </label>
-      <select
-        id="priority"
-        formControlName="priority"
-        class="w-full px-3 py-2 rounded-lg text-sm
-               bg-bg-elevated border border-border
-               text-text-primary
-               focus:outline-none focus:border-accent focus:ring-1 focus:ring-accent
-               transition-colors duration-150"
-      >
-        @for (p of priorities; track p.value) {
-          <option [value]="p.value">{{ p.label }}</option>
-        }
-      </select>
-    </div>
+  .tf-project-name {
+    font-size: 0.875rem;
+    font-weight: 600;
+    color: var(--color-text-primary);
+  }
 
-    <!-- Deadline -->
-    <div class="flex flex-col gap-1.5">
-      <label class="text-text-primary text-sm font-medium" for="deadline">
-        Deadline
-        <span class="text-text-muted font-normal">(optional)</span>
-      </label>
-      <input
-        id="deadline"
-        type="date"
-        formControlName="deadline"
-        class="w-full px-3 py-2 rounded-lg text-sm
-               bg-bg-elevated border border-border
-               text-text-primary
-               focus:outline-none focus:border-accent focus:ring-1 focus:ring-accent
-               transition-colors duration-150"
-      />
-    </div>
+  .tf-project-sep {
+    color: var(--color-text-muted);
+    font-size: 0.875rem;
+  }
 
-    <!-- Assignee — optional -->
-    <div class="flex flex-col gap-1.5">
-      <label class="text-text-primary text-sm font-medium" for="assigneeId">
-        Assignee
-        <span class="text-text-muted font-normal">(optional)</span>
-      </label>
-      <select
-        id="assigneeId"
-        formControlName="assigneeId"
-        class="w-full px-3 py-2 rounded-lg text-sm
-               bg-bg-elevated border border-border
-               text-text-primary
-               focus:outline-none focus:border-accent focus:ring-1 focus:ring-accent
-               transition-colors duration-150"
-      >
-        <option value="">Unassigned</option>
-        @for (user of users(); track user.id) {
-          <option [value]="user.id">
-            {{ user.firstName && user.lastName ? user.firstName + ' ' + user.lastName : user.email }}
-          </option>
-        }
-      </select>
-    </div>
+  .tf-project-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.2rem;
+    font-size: 0.6875rem;
+    font-weight: 500;
+    padding: 0.125rem 0.5rem;
+    border-radius: 9999px;
+    background: var(--color-accent-subtle);
+    color: var(--color-accent);
+  }
 
-    <!-- Actions -->
-    <div class="flex items-center justify-end gap-3 pt-2 border-t border-border">
-      <app-button type="button" variant="secondary" (click)="onCancel()">
-        Cancel
-      </app-button>
-      <app-button type="submit" variant="primary" [loading]="loading()">
-        {{ taskId() ? 'Save changes' : 'Create task' }}
-      </app-button>
-    </div>
+  .tf-project-badge .material-symbols-rounded { font-size: 0.75rem; }
 
-  </form>
-</div>
+  .tf-project-badge--status {
+    background: var(--color-success-subtle);
+    color: var(--color-success);
+  }
+
+  /* ── Form ────────────────────────────────────────────── */
+  .tf-form {
+    display: flex;
+    flex-direction: column;
+    gap: 1.25rem;
+  }
+
+  /* ── Fields ──────────────────────────────────────────── */
+  .tf-field {
+    display: flex;
+    flex-direction: column;
+    gap: 0.4rem;
+  }
+
+  .tf-label {
+    font-size: 0.8125rem;
+    font-weight: 600;
+    letter-spacing: 0.01em;
+    color: var(--color-text-secondary);
+  }
+
+  .tf-required { color: var(--color-danger); margin-left: 0.125rem; }
+
+  .tf-optional {
+    font-size: 0.75rem;
+    font-weight: 400;
+    color: var(--color-text-muted);
+    margin-left: 0.25rem;
+  }
+
+  .tf-input {
+    width: 100%;
+    padding: 0.625rem 0.875rem;
+    border-radius: 0.625rem;
+    font-size: 0.875rem;
+    font-family: 'Outfit', sans-serif;
+    background: var(--color-bg-surface);
+    border: 1px solid var(--color-border);
+    color: var(--color-text-primary);
+    transition: border-color 0.18s, box-shadow 0.18s;
+    outline: none;
+  }
+
+  .tf-input::placeholder { color: var(--color-text-muted); }
+
+  .tf-input:focus {
+    border-color: var(--color-accent);
+    box-shadow: 0 0 0 3px var(--color-accent-subtle);
+  }
+
+  .tf-textarea { resize: vertical; min-height: 6rem; }
+
+  .tf-select {
+    appearance: none;
+    cursor: pointer;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%23888' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 0.75rem center;
+    padding-right: 2.25rem;
+  }
+
+  .tf-error { font-size: 0.75rem; color: var(--color-danger); }
+
+  /* ── Row: priority + deadline side by side ───────────── */
+  .tf-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1rem;
+    align-items: start;
+  }
+
+  /* ── Priority buttons ────────────────────────────────── */
+  .tf-priority-group {
+    display: flex;
+    gap: 0.375rem;
+  }
+
+  .tf-priority-btn {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.3rem;
+    padding: 0.4375rem 0.375rem;
+    border-radius: 0.5rem;
+    border: 1px solid var(--color-border);
+    background: var(--color-bg-surface);
+    font-size: 0.8125rem;
+    font-family: 'Outfit', sans-serif;
+    color: var(--color-text-muted);
+    cursor: pointer;
+    transition: border-color 0.15s, background 0.15s, color 0.15s;
+  }
+
+  .tf-priority-btn:hover {
+    border-color: var(--color-border-strong);
+    color: var(--color-text-primary);
+  }
+
+  .tf-priority-icon { font-size: 0.9375rem; }
+
+  .tf-priority-btn--active.tf-priority-btn--high {
+    border-color: var(--color-danger);
+    background: color-mix(in oklch, var(--color-danger) 10%, var(--color-bg-surface));
+    color: var(--color-danger);
+  }
+
+  .tf-priority-btn--active.tf-priority-btn--medium {
+    border-color: var(--color-warning);
+    background: color-mix(in oklch, var(--color-warning) 10%, var(--color-bg-surface));
+    color: var(--color-warning);
+  }
+
+  .tf-priority-btn--active.tf-priority-btn--low {
+    border-color: var(--color-success);
+    background: color-mix(in oklch, var(--color-success) 10%, var(--color-bg-surface));
+    color: var(--color-success);
+  }
+
+  /* ── Context block ───────────────────────────────────── */
+  .tf-context {
+    border-radius: 0.625rem;
+    background: var(--color-bg-elevated);
+    border: 1px solid var(--color-border);
+    padding: 0.75rem 1rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.625rem;
+  }
+
+  .tf-context-title {
+    display: flex;
+    align-items: center;
+    gap: 0.375rem;
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: var(--color-text-muted);
+    margin: 0;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+  }
+
+  .tf-context-title .material-symbols-rounded {
+    font-size: 0.875rem;
+    color: var(--color-accent);
+  }
+
+  .tf-context-pills {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+  }
+
+  .tf-cpill {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
+    font-size: 0.75rem;
+    padding: 0.1875rem 0.5rem 0.1875rem 0.375rem;
+    border-radius: 9999px;
+    background: var(--color-bg-surface);
+    border: 1px solid var(--color-border);
+    color: var(--color-text-secondary);
+  }
+
+  .tf-cpill .material-symbols-rounded { font-size: 0.8125rem; }
+
+  .tf-cpill--high   { color: var(--color-danger);  border-color: color-mix(in oklch, var(--color-danger)  30%, var(--color-border)); }
+  .tf-cpill--medium { color: var(--color-warning); border-color: color-mix(in oklch, var(--color-warning) 30%, var(--color-border)); }
+  .tf-cpill--low    { color: var(--color-success); border-color: color-mix(in oklch, var(--color-success) 30%, var(--color-border)); }
+
+  /* ── Divider + Actions ───────────────────────────────── */
+  .tf-divider {
+    height: 1px;
+    background: linear-gradient(
+      90deg,
+      color-mix(in oklch, var(--color-accent) 30%, transparent),
+      var(--color-border),
+      transparent
+    );
+  }
+
+  .tf-actions {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 0.75rem;
+  }
+</style>

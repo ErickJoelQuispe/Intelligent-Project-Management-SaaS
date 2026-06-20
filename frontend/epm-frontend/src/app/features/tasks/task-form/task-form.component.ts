@@ -10,12 +10,15 @@ import { ActivatedRoute, Router } from '@angular/router';
 import { switchMap, of } from 'rxjs';
 import { TaskService } from '../task.service';
 import { TaskPriority } from '../../../core/models/task.models';
+import { Project } from '../../../core/models/project.model';
 import { TenantUser } from '../../../core/models/user-profile.model';
 import { UserService } from '../../settings/services/user.service';
+import { ProjectService } from '../../projects/project.service';
 import { PageHeaderComponent } from '../../../shared/components/page-header/page-header.component';
 import { ButtonComponent } from '../../../shared/components/button/button.component';
 import { ErrorBannerComponent } from '../../../shared/components/error-banner/error-banner.component';
 import { SpinnerComponent } from '../../../shared/components/spinner/spinner.component';
+import { TitleCasePipe } from '@angular/common';
 
 @Component({
   selector: 'app-task-form',
@@ -27,31 +30,34 @@ import { SpinnerComponent } from '../../../shared/components/spinner/spinner.com
     ButtonComponent,
     ErrorBannerComponent,
     SpinnerComponent,
+    TitleCasePipe,
   ],
   templateUrl: './task-form.component.html',
   styleUrl: './task-form.component.scss',
 })
 export class TaskFormComponent implements OnInit {
-  private readonly fb          = inject(FormBuilder);
-  private readonly taskService = inject(TaskService);
-  private readonly userService = inject(UserService);
-  private readonly route       = inject(ActivatedRoute);
-  private readonly router      = inject(Router);
+  private readonly fb             = inject(FormBuilder);
+  private readonly taskService    = inject(TaskService);
+  private readonly userService    = inject(UserService);
+  private readonly projectService = inject(ProjectService);
+  private readonly route          = inject(ActivatedRoute);
+  private readonly router         = inject(Router);
 
-  projectId = '';
-  taskId    = signal<string | null>(null);
-  loading   = signal(false);
+  projectId   = '';
+  taskId      = signal<string | null>(null);
+  loading     = signal(false);
   loadingTask = signal(false);
-  error     = signal<string | null>(null);
-  users     = signal<TenantUser[]>([]);
+  error       = signal<string | null>(null);
+  users       = signal<TenantUser[]>([]);
+  project     = signal<Project | null>(null);
 
   /** Tracks the assigneeId that was loaded with the task (for change detection). */
   private originalAssigneeId: string | null = null;
 
-  readonly priorities: { value: TaskPriority; label: string }[] = [
-    { value: 'HIGH',   label: 'High' },
-    { value: 'MEDIUM', label: 'Medium' },
-    { value: 'LOW',    label: 'Low' },
+  readonly priorities: { value: TaskPriority; label: string; icon: string }[] = [
+    { value: 'HIGH',   label: 'High',   icon: 'keyboard_double_arrow_up' },
+    { value: 'MEDIUM', label: 'Medium', icon: 'drag_handle' },
+    { value: 'LOW',    label: 'Low',    icon: 'keyboard_double_arrow_down' },
   ];
 
   form = this.fb.nonNullable.group({
@@ -70,6 +76,13 @@ export class TaskFormComponent implements OnInit {
       next: (u) => this.users.set(u),
       error: () => {},
     });
+
+    if (this.projectId) {
+      this.projectService.getById(this.projectId).subscribe({
+        next: (p) => this.project.set(p),
+        error: () => {},
+      });
+    }
 
     if (id) {
       this.taskId.set(id);
@@ -111,9 +124,8 @@ export class TaskFormComponent implements OnInit {
 
     const id = this.taskId();
     if (id) {
-      // Determine if assigneeId changed
       const currentAssigneeId = assigneeId || null;
-      const assigneeChanged = currentAssigneeId !== this.originalAssigneeId;
+      const assigneeChanged   = currentAssigneeId !== this.originalAssigneeId;
 
       this.taskService
         .update(id, {
@@ -125,7 +137,6 @@ export class TaskFormComponent implements OnInit {
         .pipe(
           switchMap(() => {
             if (assigneeChanged) {
-              // Empty string means unassign → send null
               return this.taskService.assign(id, assigneeId || null);
             }
             return of(null);
@@ -154,6 +165,14 @@ export class TaskFormComponent implements OnInit {
 
   onCancel(): void {
     this.goBack();
+  }
+
+  assigneeName(id: string): string {
+    const user = this.users().find(u => u.id === id);
+    if (!user) return id;
+    return (user.firstName && user.lastName)
+      ? `${user.firstName} ${user.lastName}`
+      : user.email;
   }
 
   private goBack(): void {
