@@ -33,30 +33,46 @@ interface NavItem {
       <!-- ═══ Brand ═══ -->
       <header class="sidebar-brand" [class.sidebar-brand--collapsed]="collapsed()">
 
-        <!-- Logo mark — geometric SVG mark -->
+        <!-- Logo mark — flow arrow: task pipeline that pivots and drives forward -->
         <div class="logomark" aria-hidden="true">
-          <svg width="28" height="28" viewBox="0 0 28 28" fill="none" xmlns="http://www.w3.org/2000/svg">
-            <!-- Outer hexagon -->
-            <path d="M14 2L25.258 8.5V21.5L14 28L2.742 21.5V8.5L14 2Z"
-                  fill="url(#logo-grad-outer)" opacity="0.15"/>
-            <!-- Inner hexagon -->
-            <path d="M14 7L21.794 11.5V20.5L14 25L6.206 20.5V11.5L14 7Z"
-                  fill="url(#logo-grad-outer)" opacity="0.25"/>
-            <!-- Core shape -->
-            <path d="M14 10.5L19.196 13.5V19.5L14 22.5L8.804 19.5V13.5L14 10.5Z"
-                  fill="url(#logo-grad-core)"/>
-            <!-- Center dot -->
-            <circle cx="14" cy="16.5" r="2" fill="white" opacity="0.9"/>
+          <svg width="30" height="30" viewBox="0 0 30 30" fill="none" xmlns="http://www.w3.org/2000/svg">
             <defs>
-              <linearGradient id="logo-grad-outer" x1="2.742" y1="2" x2="25.258" y2="28" gradientUnits="userSpaceOnUse">
+              <linearGradient id="flow-grad" x1="4" y1="8" x2="26" y2="22" gradientUnits="userSpaceOnUse">
                 <stop stop-color="var(--color-accent)"/>
                 <stop offset="1" stop-color="var(--color-cyan)"/>
               </linearGradient>
-              <linearGradient id="logo-grad-core" x1="8.804" y1="10.5" x2="19.196" y2="22.5" gradientUnits="userSpaceOnUse">
-                <stop stop-color="var(--color-accent)"/>
-                <stop offset="1" stop-color="var(--color-cyan)"/>
-              </linearGradient>
+              <filter id="flow-glow" x="-30%" y="-30%" width="160%" height="160%">
+                <feGaussianBlur stdDeviation="1.5" result="blur"/>
+                <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+              </filter>
             </defs>
+
+            <!-- Flow path: starts top-left, goes right, drops down, exits right with arrowhead -->
+            <!-- Stroke only — the path IS the logo -->
+            <path
+              d="M5 9 H18 Q21 9 21 12 V18 H25"
+              stroke="url(#flow-grad)"
+              stroke-width="2.5"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              fill="none"
+              filter="url(#flow-glow)"
+              class="logo-path"
+            />
+
+            <!-- Arrowhead at the end — pointing right -->
+            <path
+              d="M22 15.5 L25.5 18 L22 20.5"
+              stroke="url(#flow-grad)"
+              stroke-width="2.5"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              fill="none"
+              class="logo-arrow"
+            />
+
+            <!-- Origin dot — where the task starts -->
+            <circle cx="5" cy="9" r="2" fill="var(--color-accent)" class="logo-dot"/>
           </svg>
           <div class="logomark-glow" aria-hidden="true"></div>
         </div>
@@ -235,17 +251,48 @@ interface NavItem {
       }
       .logomark-glow {
         position: absolute;
-        inset: -4px;
-        background: radial-gradient(circle, var(--color-accent-glow) 0%, transparent 70%);
+        inset: -6px;
+        background: radial-gradient(ellipse at 80% 60%, var(--color-accent-glow) 0%, transparent 65%);
         border-radius: 50%;
-        opacity: 0.6;
-        animation: logo-breathe 3s ease-in-out infinite;
+        opacity: 0.5;
+        animation: logo-glow-pulse 3s ease-in-out infinite;
         pointer-events: none;
       }
 
-      @keyframes logo-breathe {
-        0%, 100% { opacity: 0.4; transform: scale(1); }
-        50%       { opacity: 0.7; transform: scale(1.12); }
+      @keyframes logo-glow-pulse {
+        0%, 100% { opacity: 0.35; }
+        50%       { opacity: 0.65; }
+      }
+
+      /* Flow path draw-in on load */
+      .logo-path {
+        stroke-dasharray: 52;
+        stroke-dashoffset: 52;
+        animation: logo-draw 0.7s cubic-bezier(0.4, 0, 0.2, 1) 0.1s forwards;
+      }
+
+      .logo-arrow {
+        stroke-dasharray: 10;
+        stroke-dashoffset: 10;
+        animation: logo-draw 0.3s cubic-bezier(0.4, 0, 0.2, 1) 0.75s forwards;
+      }
+
+      .logo-dot {
+        opacity: 0;
+        animation: logo-dot-appear 0.25s ease 0.05s forwards;
+      }
+
+      @keyframes logo-draw {
+        to { stroke-dashoffset: 0; }
+      }
+
+      @keyframes logo-dot-appear {
+        to { opacity: 1; }
+      }
+
+      @media (prefers-reduced-motion: reduce) {
+        .logo-path, .logo-arrow { animation: none; stroke-dashoffset: 0; }
+        .logo-dot { animation: none; opacity: 1; }
       }
 
       /* ── Brand text ────────────────────────────────── */
