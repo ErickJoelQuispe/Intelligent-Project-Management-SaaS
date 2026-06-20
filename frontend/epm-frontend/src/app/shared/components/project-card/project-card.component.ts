@@ -3,115 +3,355 @@ import {
   ChangeDetectionStrategy,
   input,
   output,
+  computed,
 } from '@angular/core';
 import { DatePipe } from '@angular/common';
 import { RouterLink } from '@angular/router';
-import { CardComponent } from '../card/card.component';
 import { ButtonComponent } from '../button/button.component';
 import { ProjectStatusBadgeComponent } from '../project-status-badge/project-status-badge.component';
-import { Project } from '../../../core/models/project.model';
+import { Project, ProjectStatus } from '../../../core/models/project.model';
+
+/** Deterministic hue from project name — same name always gets same color */
+function nameToHue(name: string): number {
+  let hash = 0;
+  for (let i = 0; i < name.length; i++) {
+    hash = (hash * 31 + name.charCodeAt(i)) >>> 0;
+  }
+  // Avoid the 30-60° range (too close to warning/amber in our palette)
+  const raw = hash % 320;
+  return raw < 30 ? raw + 90 : raw + 60;
+}
 
 @Component({
   selector: 'app-project-card',
   standalone: true,
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [DatePipe, RouterLink, CardComponent, ButtonComponent, ProjectStatusBadgeComponent],
+  imports: [DatePipe, RouterLink, ButtonComponent, ProjectStatusBadgeComponent],
   template: `
-    <div class="group relative animate-card-in">
+    <article
+      class="project-card animate-card-in"
+      [class.project-card--archived]="isArchived()"
+    >
+      <!-- Per-project color strip (top) -->
+      <div
+        class="project-card-strip"
+        [style.background]="accentGradient()"
+        aria-hidden="true"
+      ></div>
 
-      <!-- Glow en hover — aparece detrás de la card -->
-      <div class="absolute inset-0 rounded-xl opacity-0 group-hover:opacity-100
-                  transition-opacity duration-500 pointer-events-none -z-10"
-           style="background: radial-gradient(ellipse at 50% 0%, color-mix(in oklch, var(--color-accent) 15%, transparent) 0%, transparent 70%);
-                  filter: blur(8px); transform: translateY(4px);">
+      <!-- Hover glow backdrop -->
+      <div
+        class="project-card-glow"
+        [style.background]="hoverGlow()"
+        aria-hidden="true"
+      ></div>
+
+      <!-- ── Header ─────────────────────────────────── -->
+      <header class="project-card-header">
+
+        <!-- Color dot + title -->
+        <div class="project-card-title-row">
+          <span
+            class="project-color-dot"
+            [style.background]="accentColor()"
+            [style.box-shadow]="accentShadow()"
+            aria-hidden="true"
+          ></span>
+          <h3 class="project-card-title">{{ project().name }}</h3>
+        </div>
+
+        <!-- Status + visibility -->
+        <div class="project-card-meta-row">
+          <app-project-status-badge [status]="project().status" />
+          <span class="project-visibility-chip" [attr.aria-label]="'Visibility: ' + project().visibility">
+            <span class="material-symbols-rounded" aria-hidden="true">
+              {{ visibilityIcon() }}
+            </span>
+            {{ visibilityLabel() }}
+          </span>
+        </div>
+
+      </header>
+
+      <!-- ── Divider ────────────────────────────────── -->
+      <div class="project-card-divider" aria-hidden="true"></div>
+
+      <!-- ── Body ──────────────────────────────────── -->
+      <div class="project-card-body">
+
+        <!-- Description -->
+        <p class="project-card-desc">
+          {{ project().description || 'No description provided.' }}
+        </p>
+
+        <!-- Created date -->
+        <div class="project-card-date" aria-label="Created on {{ project().createdAt | date: 'MMMM d, yyyy' }}">
+          <span class="material-symbols-rounded" aria-hidden="true">calendar_today</span>
+          <span>{{ project().createdAt | date: 'MMM d, yyyy' }}</span>
+        </div>
+
       </div>
 
-      <app-card class="group-hover:border-glow transition-all duration-300 block">
+      <!-- ── Actions ────────────────────────────────── -->
+      @if (showActions()) {
+        <footer class="project-card-actions">
 
-        <!-- Header: borde luminoso superior -->
-        <div card-header class="relative overflow-hidden">
-          <!-- Línea gradiente en el top del header -->
-          <div class="absolute top-0 left-0 right-0 h-px"
-               style="background: linear-gradient(90deg, transparent 0%, color-mix(in oklch, var(--color-accent) 50%, transparent) 40%, color-mix(in oklch, var(--color-cyan) 40%, transparent) 70%, transparent 100%);">
-          </div>
+          <app-button variant="secondary" size="sm"
+                      [routerLink]="['/projects', project().id, 'tasks']"
+                      aria-label="View tasks for {{ project().name }}">
+            <span class="material-symbols-rounded" aria-hidden="true">checklist</span>
+            Tasks
+          </app-button>
 
-          <div class="flex items-start justify-between gap-3 px-6 pt-5 pb-4">
-            <div class="flex flex-col gap-2 min-w-0">
-              <h3 class="font-semibold text-base leading-snug truncate"
-                  style="color: var(--color-text-primary); font-family: 'Outfit', sans-serif;">
-                {{ project().name }}
-              </h3>
-              <app-project-status-badge [status]="project().status" />
-            </div>
+          <app-button variant="secondary" size="sm"
+                      [routerLink]="['/projects', project().id, 'tasks', 'kanban']"
+                      aria-label="View kanban for {{ project().name }}">
+            <span class="material-symbols-rounded" aria-hidden="true">view_kanban</span>
+            Board
+          </app-button>
 
-            <span class="material-symbols-rounded text-lg shrink-0 mt-0.5"
-                  style="color: var(--color-text-muted);"
-                  [title]="project().visibility">
-              {{ project().visibility === 'PUBLIC' ? 'public' :
-                 project().visibility === 'TEAM'   ? 'group' : 'lock' }}
-            </span>
-          </div>
-        </div>
+          <!-- Spacer -->
+          <div class="flex-1" aria-hidden="true"></div>
 
-        <!-- Body -->
-        <div class="flex flex-col gap-4">
+          <app-button variant="ghost" size="sm"
+                      [routerLink]="['/projects', project().id]"
+                      title="AI Assistant & project details"
+                      aria-label="Open AI assistant for {{ project().name }}">
+            <span class="material-symbols-rounded ai-icon" aria-hidden="true">auto_awesome</span>
+            AI
+          </app-button>
 
-          <!-- Descripción -->
-          <p class="text-sm leading-relaxed line-clamp-2"
-             style="color: var(--color-text-secondary);">
-            {{ project().description || 'No description provided.' }}
-          </p>
+          <app-button variant="ghost" size="sm"
+                      (click)="onArchive($event)"
+                      title="Archive project"
+                      aria-label="Archive {{ project().name }}">
+            <span class="material-symbols-rounded archive-icon" aria-hidden="true">archive</span>
+          </app-button>
 
-          <!-- Meta -->
-          <div class="flex items-center gap-1.5 text-xs"
-               style="color: var(--color-text-muted); font-family: 'JetBrains Mono', monospace;">
-            <span class="material-symbols-rounded text-sm">calendar_today</span>
-            <span>{{ project().createdAt | date: 'MMM d, yyyy' }}</span>
-          </div>
+          <ng-content select="[card-actions]" />
+        </footer>
+      }
 
-          <!-- Acciones -->
-          @if (showActions()) {
-            <div class="flex items-center gap-2 pt-3"
-                 style="border-top: 1px solid color-mix(in oklch, var(--color-border) 60%, transparent);">
-              <app-button variant="secondary" size="sm"
-                          [routerLink]="['/projects', project().id, 'tasks']">
-                <span class="material-symbols-rounded text-sm">list</span>
-                Tasks
-              </app-button>
-              <app-button variant="secondary" size="sm"
-                          [routerLink]="['/projects', project().id, 'tasks', 'kanban']">
-                <span class="material-symbols-rounded text-sm">view_kanban</span>
-                Kanban
-              </app-button>
-              <app-button variant="ghost" size="sm"
-                          [routerLink]="['/projects', project().id]"
-                          title="AI Assistant & project details"
-                          style="margin-left: auto;">
-                <span class="material-symbols-rounded text-sm"
-                      style="color: var(--color-accent);">auto_awesome</span>
-                AI
-              </app-button>
-              <app-button variant="ghost" size="sm"
-                          (click)="onArchive($event)"
-                          title="Archive project">
-                <span class="material-symbols-rounded text-sm"
-                      style="color: var(--color-danger);">archive</span>
-              </app-button>
-              <ng-content select="[card-actions]" />
-            </div>
-          }
+    </article>
 
-        </div>
-      </app-card>
-    </div>
+    <style>
+      /* ── Card shell ──────────────────────────────── */
+      .project-card {
+        position: relative;
+        display: flex;
+        flex-direction: column;
+        border-radius: 0.875rem;
+        overflow: hidden;
+        background: var(--glass-bg);
+        backdrop-filter: blur(12px);
+        -webkit-backdrop-filter: blur(12px);
+        border: 1px solid var(--color-border);
+        transition:
+          border-color 0.2s ease,
+          box-shadow 0.2s ease,
+          transform 0.18s cubic-bezier(0.2, 0, 0, 1);
+        cursor: default;
+      }
+      .project-card:hover {
+        border-color: var(--color-border-strong);
+        box-shadow: var(--shadow-lg);
+        transform: translateY(-2px);
+      }
+      .project-card--archived {
+        opacity: 0.6;
+        filter: saturate(0.4);
+      }
+
+      /* ── Color strip ─────────────────────────────── */
+      .project-card-strip {
+        height: 3px;
+        width: 100%;
+        flex-shrink: 0;
+        transition: height 0.2s ease;
+      }
+      .project-card:hover .project-card-strip {
+        height: 3px;
+      }
+
+      /* ── Hover glow backdrop ─────────────────────── */
+      .project-card-glow {
+        position: absolute;
+        top: -40px;
+        left: 50%;
+        transform: translateX(-50%);
+        width: 70%;
+        height: 80px;
+        filter: blur(20px);
+        opacity: 0;
+        pointer-events: none;
+        transition: opacity 0.3s ease;
+        z-index: 0;
+      }
+      .project-card:hover .project-card-glow {
+        opacity: 1;
+      }
+
+      /* ── Header ──────────────────────────────────── */
+      .project-card-header {
+        position: relative;
+        z-index: 1;
+        display: flex;
+        flex-direction: column;
+        gap: 0.625rem;
+        padding: 1.125rem 1.25rem 0.875rem;
+      }
+
+      .project-card-title-row {
+        display: flex;
+        align-items: center;
+        gap: 0.625rem;
+        min-width: 0;
+      }
+
+      .project-color-dot {
+        width: 8px;
+        height: 8px;
+        border-radius: 50%;
+        flex-shrink: 0;
+        transition: transform 0.2s ease;
+      }
+      .project-card:hover .project-color-dot {
+        transform: scale(1.35);
+      }
+
+      .project-card-title {
+        font-family: 'Outfit', sans-serif;
+        font-size: 0.9375rem;
+        font-weight: 650;
+        line-height: 1.3;
+        color: var(--color-text-primary);
+        margin: 0;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+        letter-spacing: -0.01em;
+      }
+
+      .project-card-meta-row {
+        display: flex;
+        align-items: center;
+        gap: 0.625rem;
+        flex-wrap: wrap;
+      }
+
+      .project-visibility-chip {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.25rem;
+        padding: 0.1875rem 0.5rem;
+        border-radius: 9999px;
+        font-size: 0.6875rem;
+        font-weight: 500;
+        letter-spacing: 0.02em;
+        color: var(--color-text-muted);
+        background: color-mix(in oklch, var(--color-bg-overlay) 60%, transparent);
+        border: 1px solid color-mix(in oklch, var(--color-border) 50%, transparent);
+      }
+      .project-visibility-chip .material-symbols-rounded {
+        font-size: 0.75rem;
+      }
+
+      /* ── Divider ─────────────────────────────────── */
+      .project-card-divider {
+        height: 1px;
+        margin: 0 1.25rem;
+        background: color-mix(in oklch, var(--color-border) 50%, transparent);
+        flex-shrink: 0;
+      }
+
+      /* ── Body ────────────────────────────────────── */
+      .project-card-body {
+        position: relative;
+        z-index: 1;
+        display: flex;
+        flex-direction: column;
+        gap: 0.75rem;
+        padding: 0.875rem 1.25rem 1rem;
+        flex: 1;
+      }
+
+      .project-card-desc {
+        font-size: 0.8125rem;
+        line-height: 1.6;
+        color: var(--color-text-secondary);
+        margin: 0;
+        display: -webkit-box;
+        -webkit-line-clamp: 2;
+        -webkit-box-orient: vertical;
+        overflow: hidden;
+      }
+
+      .project-card-date {
+        display: flex;
+        align-items: center;
+        gap: 0.375rem;
+        font-size: 0.75rem;
+        color: var(--color-text-muted);
+        font-family: 'JetBrains Mono', monospace;
+        font-feature-settings: 'tnum';
+      }
+      .project-card-date .material-symbols-rounded {
+        font-size: 0.875rem;
+      }
+
+      /* ── Actions footer ──────────────────────────── */
+      .project-card-actions {
+        position: relative;
+        z-index: 1;
+        display: flex;
+        align-items: center;
+        gap: 0.375rem;
+        padding: 0.625rem 1rem 0.875rem;
+        border-top: 1px solid color-mix(in oklch, var(--color-border) 45%, transparent);
+      }
+
+      /* AI button icon tint */
+      .ai-icon { color: var(--color-accent); }
+
+      /* Archive button icon tint */
+      .archive-icon { color: var(--color-danger); }
+    </style>
   `,
 })
 export class ProjectCardComponent {
-  project          = input.required<Project>();
-  showActions      = input<boolean>(true);
-  viewTasks        = output<Project>();
-  viewKanban       = output<Project>();
-  projectArchived  = output<Project>();
+  project         = input.required<Project>();
+  showActions     = input<boolean>(true);
+  projectArchived = output<Project>();
+
+  isArchived = computed(() => this.project().status === ProjectStatus.ARCHIVED);
+
+  /** Deterministic hue derived from project name */
+  private readonly hue = computed(() => nameToHue(this.project().name));
+
+  accentColor   = computed(() => `oklch(0.68 0.20 ${this.hue()})`);
+  accentGradient = computed(() =>
+    `linear-gradient(90deg, oklch(0.62 0.22 ${this.hue()}) 0%, oklch(0.72 0.18 ${this.hue() + 30}) 100%)`
+  );
+  accentShadow  = computed(() => `0 0 8px oklch(0.68 0.20 ${this.hue()} / 0.6)`);
+  hoverGlow     = computed(() =>
+    `radial-gradient(ellipse, oklch(0.68 0.20 ${this.hue()} / 0.12) 0%, transparent 70%)`
+  );
+
+  visibilityIcon = computed(() => {
+    switch (this.project().visibility) {
+      case 'PUBLIC':  return 'public';
+      case 'TEAM':    return 'group';
+      default:        return 'lock';
+    }
+  });
+
+  visibilityLabel = computed(() => {
+    switch (this.project().visibility) {
+      case 'PUBLIC':  return 'Public';
+      case 'TEAM':    return 'Team';
+      default:        return 'Private';
+    }
+  });
 
   onArchive(event: MouseEvent): void {
     event.stopPropagation();

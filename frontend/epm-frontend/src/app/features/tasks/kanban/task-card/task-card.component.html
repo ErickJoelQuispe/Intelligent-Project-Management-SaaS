@@ -4,6 +4,7 @@
   (dragstart)="onDragStart($event)"
   (dragend)="onDragEnd($event)"
   class="task-card animate-card-in"
+  [attr.data-priority-bar]="task().priority"
   [attr.aria-label]="'Task: ' + task().title"
   role="article"
 >

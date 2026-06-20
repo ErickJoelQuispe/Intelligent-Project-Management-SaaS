@@ -7,22 +7,35 @@
     variant="ghost"
     size="sm"
     [routerLink]="['/projects', projectId, 'tasks', 'kanban']"
+    aria-label="Switch to kanban view"
   >
-    <span class="material-symbols-rounded text-sm">view_kanban</span>
-    Kanban view
+    <span class="material-symbols-rounded" aria-hidden="true">view_kanban</span>
+    Kanban
+  </app-button>
+  <app-button
+    page-action
+    variant="primary"
+    size="sm"
+    [routerLink]="['/projects', projectId, 'tasks', 'new']"
+    aria-label="Create new task"
+  >
+    <span class="material-symbols-rounded" aria-hidden="true">add</span>
+    New task
   </app-button>
 </app-page-header>
 
-<div class="p-6">
+<div class="task-list-content">
 
   @if (loading()) {
     <app-spinner size="lg" [full]="true" label="Loading tasks..." />
+
   } @else if (error()) {
     <app-error-banner
       [message]="error()!"
       retryLabel="Try again"
       (retry)="loadTasks()"
     />
+
   } @else if (tasks().length === 0) {
     <app-empty-state
       icon="task"
@@ -31,84 +44,115 @@
     >
       <app-button action variant="primary"
                   [routerLink]="['/projects', projectId, 'tasks', 'new']">
+        <span class="material-symbols-rounded" aria-hidden="true">add</span>
         New task
       </app-button>
     </app-empty-state>
+
   } @else {
 
-    <div class="rounded-xl overflow-hidden"
-         style="border: 1px solid var(--color-border);
-                box-shadow: 0 4px 24px oklch(0 0 0 / 0.4);">
+    <div class="task-table" role="table" aria-label="Task list">
 
-      <!-- Header -->
-      <div class="grid grid-cols-[2fr_1fr_1fr_1fr_auto] px-5 py-3"
-           style="background: var(--color-bg-elevated);
-                  border-bottom: 1px solid var(--color-border);">
-        @for (col of tableHeaders; track $index) {
-          <span class="text-xs font-semibold uppercase tracking-widest"
-                style="color: var(--color-text-muted); font-family: 'JetBrains Mono', monospace;">
-            {{ col }}
-          </span>
-        }
+      <!-- Table header -->
+      <div class="task-table-head" role="row">
+        <span class="task-th task-th--title" role="columnheader">Title</span>
+        <span class="task-th" role="columnheader">Status</span>
+        <span class="task-th" role="columnheader">Priority</span>
+        <span class="task-th task-th--mono" role="columnheader">Deadline</span>
+        <span class="task-th task-th--actions" role="columnheader" aria-label="Actions"></span>
       </div>
 
-      <!-- Filas -->
+      <!-- Rows -->
       @for (task of tasks(); track task.id; let i = $index) {
-        <div class="group grid grid-cols-[2fr_1fr_1fr_1fr_auto]
-                    px-5 py-3.5 items-center
-                    transition-all duration-150 cursor-default animate-card-in"
-             [class]="'stagger-' + ((i % 6) + 1)"
-             style="border-bottom: 1px solid color-mix(in oklch, var(--color-border) 50%, transparent);"
-             [style.background]="i % 2 === 0
-               ? 'var(--color-bg-base)'
-               : 'var(--color-bg-surface)'"
+        <div
+          class="task-row animate-card-in"
+          [class]="'stagger-' + ((i % 6) + 1)"
+          [class.task-row--odd]="i % 2 !== 0"
+          role="row"
+          [attr.aria-label]="task.title"
         >
-          <span class="text-sm font-medium truncate pr-4 group-hover:text-accent
-                       transition-colors duration-150"
-                style="color: var(--color-text-primary);">
-            {{ task.title }}
-          </span>
-          <app-task-status-badge [status]="task.status" />
-          <app-task-priority-badge [priority]="task.priority" />
-          <span class="text-xs font-mono"
-                style="color: var(--color-text-muted); font-family: 'JetBrains Mono', monospace;">
-            {{ task.deadline ? (task.deadline | date:'MMM d, yy') : '—' }}
-          </span>
-          <div class="flex items-center gap-1">
+
+          <!-- Priority accent bar -->
+          <div class="task-row-priority-bar" [attr.data-priority]="task.priority" aria-hidden="true"></div>
+
+          <!-- Title -->
+          <div class="task-row-title" role="cell">
+            <span class="task-title-text">{{ task.title }}</span>
+            @if (task.parentTaskId) {
+              <span class="task-subtask-chip" aria-label="Subtask">
+                <span class="material-symbols-rounded" aria-hidden="true">subdirectory_arrow_right</span>
+                Subtask
+              </span>
+            }
+          </div>
+
+          <!-- Status -->
+          <div role="cell">
+            <app-task-status-badge [status]="task.status" />
+          </div>
+
+          <!-- Priority -->
+          <div role="cell">
+            <app-task-priority-badge [priority]="task.priority" />
+          </div>
+
+          <!-- Deadline -->
+          <div class="task-row-deadline" role="cell">
+            @if (task.deadline) {
+              <span
+                class="task-deadline-chip"
+                [class.task-deadline-chip--overdue]="isOverdue(task.deadline)"
+              >
+                <span class="material-symbols-rounded" aria-hidden="true">schedule</span>
+                {{ task.deadline | date:'MMM d, yy' }}
+              </span>
+            } @else {
+              <span class="task-deadline-empty" aria-label="No deadline">—</span>
+            }
+          </div>
+
+          <!-- Actions -->
+          <div class="task-row-actions" role="cell">
             <app-button variant="ghost" size="sm"
                         [routerLink]="['/projects', projectId, 'tasks', task.id, 'edit']"
-                        title="Edit task">
-              <span class="material-symbols-rounded text-sm">edit</span>
+                        [attr.aria-label]="'Edit task: ' + task.title">
+              <span class="material-symbols-rounded" aria-hidden="true">edit</span>
             </app-button>
-            <app-button variant="ghost" size="sm"
-                        (click)="deleteTask(task.id, task.title)"
-                        title="Delete task">
-              <span class="material-symbols-rounded text-sm"
-                     style="color: var(--color-danger);">delete</span>
-            </app-button>
+            <button
+              class="task-delete-btn"
+              (click)="deleteTask(task.id, task.title)"
+              [attr.aria-label]="'Delete task: ' + task.title"
+            >
+              <span class="material-symbols-rounded" aria-hidden="true">delete</span>
+            </button>
           </div>
+
         </div>
       }
+
     </div>
 
-    <!-- Paginación -->
+    <!-- Pagination -->
     @if (totalPages > 1) {
-      <div class="flex items-center justify-between mt-5">
-        <span class="text-xs font-mono" style="color: var(--color-text-muted); font-family: 'JetBrains Mono', monospace;">
-          Page {{ pageIndex + 1 }} / {{ totalPages }}
+      <div class="task-pagination" aria-label="Pagination">
+        <span class="task-pagination-info">
+          Page {{ pageIndex + 1 }} of {{ totalPages }}
+          <span class="task-pagination-total">&nbsp;· {{ totalElements() }} tasks</span>
         </span>
-        <div class="flex gap-2">
+        <div class="task-pagination-controls">
           <app-button variant="secondary" size="sm"
                       [disabled]="pageIndex === 0"
-                      (click)="onPageChange(pageIndex - 1)">
-            <span class="material-symbols-rounded text-sm">arrow_back</span>
+                      (click)="onPageChange(pageIndex - 1)"
+                      aria-label="Previous page">
+            <span class="material-symbols-rounded" aria-hidden="true">arrow_back</span>
             Prev
           </app-button>
           <app-button variant="secondary" size="sm"
                       [disabled]="pageIndex + 1 >= totalPages"
-                      (click)="onPageChange(pageIndex + 1)">
+                      (click)="onPageChange(pageIndex + 1)"
+                      aria-label="Next page">
             Next
-            <span class="material-symbols-rounded text-sm">arrow_forward</span>
+            <span class="material-symbols-rounded" aria-hidden="true">arrow_forward</span>
           </app-button>
         </div>
       </div>

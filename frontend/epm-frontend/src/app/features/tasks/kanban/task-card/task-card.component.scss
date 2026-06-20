@@ -10,7 +10,8 @@
   backdrop-filter: blur(8px);
   -webkit-backdrop-filter: blur(8px);
   border: 1px solid var(--color-border);
-  padding: 0.75rem 0.75rem 0.75rem 1rem;
+  border-left-width: 3px;
+  padding: 0.75rem 0.75rem 0.75rem 0.875rem;
   cursor: grab;
   transition:
     border-color 0.15s ease,
@@ -39,21 +40,14 @@
   &:hover .task-card-delete-btn { opacity: 1; }
 }
 
-/* ── Priority bar (left edge) ────────────── */
-.task-card-priority-bar {
-  position: absolute;
-  left: 0;
-  top: 0.5rem;
-  bottom: 0.5rem;
-  width: 3px;
-  border-radius: 0 2px 2px 0;
-  transition: width 0.15s ease;
+/* ── Priority border (left edge via border-left on host) ── */
+/* The .task-card-priority-bar div is kept in HTML but hidden;
+   priority color is applied to the card's border-left instead */
+.task-card-priority-bar { display: none; }
 
-  &[data-priority="HIGH"]   { background: linear-gradient(180deg, var(--color-danger),  color-mix(in oklch, var(--color-danger)  60%, transparent)); }
-  &[data-priority="MEDIUM"] { background: linear-gradient(180deg, var(--color-warning), color-mix(in oklch, var(--color-warning) 60%, transparent)); }
-  &[data-priority="LOW"]    { background: linear-gradient(180deg, var(--color-info),    color-mix(in oklch, var(--color-info)    60%, transparent)); }
-}
-.task-card:hover .task-card-priority-bar { width: 3.5px; }
+.task-card[data-priority-bar="HIGH"]   { border-left-color: var(--color-danger); }
+.task-card[data-priority-bar="MEDIUM"] { border-left-color: var(--color-warning); }
+.task-card[data-priority-bar="LOW"]    { border-left-color: var(--color-info); }
 
 /* ── Header ──────────────────────────────── */
 .task-card-header {

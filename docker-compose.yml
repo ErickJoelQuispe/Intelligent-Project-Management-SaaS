@@ -317,7 +317,10 @@ services:
   # Requires: discovery-service, config-service, keycloak, postgres, kafka
   # ─────────────────────────────────────────────────────────────────
   task-service:
-    image: ghcr.io/erickjoelquispe/epm-task:${TAG:-latest}
+    build:
+      context: ./services/task-service
+      dockerfile: Dockerfile.local
+    image: epm-task-local
     container_name: epm-task-service
     ports:
       - "8084:8084"

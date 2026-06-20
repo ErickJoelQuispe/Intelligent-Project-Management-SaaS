@@ -79,4 +79,8 @@ export class TaskListComponent implements OnInit {
   get totalPages(): number {
     return Math.ceil(this.totalElements() / this.pageSize);
   }
+
+  isOverdue(deadline: string): boolean {
+    return new Date(deadline) < new Date();
+  }
 }

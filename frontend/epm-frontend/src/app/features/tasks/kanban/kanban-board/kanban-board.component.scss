@@ -2,30 +2,23 @@
   padding: 1.25rem 1.75rem 1.5rem;
   display: flex;
   flex-direction: column;
+  /* Necesario para que max-height de las columnas tenga referencia */
+  overflow: hidden;
 }
 
 .kanban-columns {
   display: flex;
   gap: 0.875rem;
   overflow-x: auto;
+  overflow-y: visible;
   padding-bottom: 0.75rem;
-  flex: 1;
   align-items: flex-start;
 
-  /* Smooth horizontal scroll */
-  scroll-snap-type: x mandatory;
-  -webkit-overflow-scrolling: touch;
-
-  /* Hide scrollbar but keep it functional */
   scrollbar-width: thin;
   scrollbar-color: var(--color-border) transparent;
 
-  &::-webkit-scrollbar {
-    height: 4px;
-  }
-  &::-webkit-scrollbar-track {
-    background: transparent;
-  }
+  &::-webkit-scrollbar { height: 4px; }
+  &::-webkit-scrollbar-track { background: transparent; }
   &::-webkit-scrollbar-thumb {
     background: var(--color-border);
     border-radius: 9999px;
