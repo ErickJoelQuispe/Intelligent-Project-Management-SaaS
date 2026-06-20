@@ -10,13 +10,13 @@ import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FormsModule } from '@angular/forms';
 import { AiService } from '../ai.service';
 import { ChatMessage } from '../models/chat.models';
-import { ButtonComponent } from '../../../shared/components/button/button.component';
+
 
 @Component({
   selector: 'app-ai-chat',
   standalone: true,
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [ButtonComponent, FormsModule],
+  imports: [FormsModule],
   templateUrl: './ai-chat.component.html',
 })
 export class AiChatComponent {

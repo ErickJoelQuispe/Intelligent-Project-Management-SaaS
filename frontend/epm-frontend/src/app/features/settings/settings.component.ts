@@ -67,25 +67,16 @@ type SettingsSection = 'profile' | 'notifications' | 'appearance';
     <div class="flex gap-0 h-full">
 
       <!-- ── Sidebar de secciones ── -->
-      <nav class="w-56 shrink-0 border-r p-4 flex flex-col gap-1"
-           style="border-color: color-mix(in oklch, var(--color-border) 60%, transparent); min-height: calc(100vh - 73px);">
+      <nav class="settings-nav w-56 shrink-0 border-r p-4 flex flex-col gap-1">
 
         @for (section of sections; track section.id) {
           <button
             (click)="activeSection.set(section.id)"
-            class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm
+            [class.settings-nav-item--active]="activeSection() === section.id"
+            class="settings-nav-item flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm
                    font-medium text-left w-full transition-all duration-150 cursor-pointer"
-            [style.background]="activeSection() === section.id
-              ? 'color-mix(in oklch, var(--color-accent) 12%, transparent)'
-              : 'transparent'"
-            [style.color]="activeSection() === section.id
-              ? 'var(--color-text-primary)'
-              : 'var(--color-text-secondary)'"
           >
-            <span class="material-symbols-rounded text-lg"
-                  [style.color]="activeSection() === section.id
-                    ? 'var(--color-accent)'
-                    : 'inherit'">
+            <span class="settings-nav-icon material-symbols-rounded text-lg">
               {{ section.icon }}
             </span>
             {{ section.label }}
@@ -99,10 +90,7 @@ type SettingsSection = 'profile' | 'notifications' | 'appearance';
         <!-- PROFILE -->
         @if (activeSection() === 'profile') {
           <div class="flex flex-col gap-4 animate-fade-up">
-            <h2 class="text-text-primary font-semibold text-base"
-                style="font-family: 'Outfit', sans-serif;">
-              Profile
-            </h2>
+            <h2 class="settings-section-title">Profile</h2>
 
             <!-- Profile info card -->
             <app-card>
@@ -164,77 +152,57 @@ type SettingsSection = 'profile' | 'notifications' | 'appearance';
                       class="flex flex-col gap-5">
 
                   <div class="grid grid-cols-2 gap-4">
-                    <!-- First name -->
+                     <!-- First name -->
                     <div class="flex flex-col gap-2">
-                      <label class="text-sm font-semibold" for="firstName"
-                             style="color: var(--color-text-secondary);">
+                      <label class="settings-field-label text-sm font-semibold" for="firstName">
                         First name
-                        <span class="font-normal text-xs ml-1" style="color: var(--color-text-muted);">optional</span>
+                        <span class="settings-field-label--optional font-normal text-xs ml-1">optional</span>
                       </label>
                       <input
                         id="firstName" type="text" formControlName="firstName"
                         placeholder="Jane"
-                        class="w-full px-4 py-3 rounded-xl text-sm transition-all duration-200 focus:outline-none settings-field"
-                        style="background: var(--color-bg-surface);
-                               border: 1px solid var(--color-border);
-                               color: var(--color-text-primary);
-                               font-family: 'Outfit', sans-serif;"
+                        class="settings-field w-full px-4 py-3 rounded-xl text-sm transition-all duration-200 focus:outline-none"
                       />
                     </div>
 
                     <!-- Last name -->
                     <div class="flex flex-col gap-2">
-                      <label class="text-sm font-semibold" for="lastName"
-                             style="color: var(--color-text-secondary);">
+                      <label class="settings-field-label text-sm font-semibold" for="lastName">
                         Last name
-                        <span class="font-normal text-xs ml-1" style="color: var(--color-text-muted);">optional</span>
+                        <span class="settings-field-label--optional font-normal text-xs ml-1">optional</span>
                       </label>
                       <input
                         id="lastName" type="text" formControlName="lastName"
                         placeholder="Doe"
-                        class="w-full px-4 py-3 rounded-xl text-sm transition-all duration-200 focus:outline-none settings-field"
-                        style="background: var(--color-bg-surface);
-                               border: 1px solid var(--color-border);
-                               color: var(--color-text-primary);
-                               font-family: 'Outfit', sans-serif;"
+                        class="settings-field w-full px-4 py-3 rounded-xl text-sm transition-all duration-200 focus:outline-none"
                       />
                     </div>
                   </div>
 
                   <!-- Bio -->
                   <div class="flex flex-col gap-2">
-                      <label class="text-sm font-semibold" for="bio"
-                             style="color: var(--color-text-secondary);">
+                      <label class="settings-field-label text-sm font-semibold" for="bio">
                         Bio
-                        <span class="font-normal text-xs ml-1" style="color: var(--color-text-muted);">optional</span>
+                        <span class="settings-field-label--optional font-normal text-xs ml-1">optional</span>
                       </label>
                       <textarea
                         id="bio" formControlName="bio" rows="3"
                         placeholder="Tell us a bit about yourself..."
                         maxlength="2000"
-                        class="w-full px-4 py-3 rounded-xl text-sm resize-none transition-all duration-200 focus:outline-none settings-field"
-                        style="background: var(--color-bg-surface);
-                               border: 1px solid var(--color-border);
-                               color: var(--color-text-primary);
-                               font-family: 'Outfit', sans-serif;"
+                        class="settings-field w-full px-4 py-3 rounded-xl text-sm resize-none transition-all duration-200 focus:outline-none"
                       ></textarea>
                   </div>
 
                   <!-- Avatar URL -->
                   <div class="flex flex-col gap-2">
-                      <label class="text-sm font-semibold" for="avatarUrl"
-                             style="color: var(--color-text-secondary);">
+                      <label class="settings-field-label text-sm font-semibold" for="avatarUrl">
                         Avatar URL
-                        <span class="font-normal text-xs ml-1" style="color: var(--color-text-muted);">optional</span>
+                        <span class="settings-field-label--optional font-normal text-xs ml-1">optional</span>
                       </label>
                       <input
                         id="avatarUrl" type="url" formControlName="avatarUrl"
                         placeholder="https://example.com/avatar.png"
-                        class="w-full px-4 py-3 rounded-xl text-sm transition-all duration-200 focus:outline-none settings-field"
-                        style="background: var(--color-bg-surface);
-                               border: 1px solid var(--color-border);
-                               color: var(--color-text-primary);
-                               font-family: 'Outfit', sans-serif;"
+                        class="settings-field w-full px-4 py-3 rounded-xl text-sm transition-all duration-200 focus:outline-none"
                       />
                   </div>
 
@@ -287,14 +255,8 @@ type SettingsSection = 'profile' | 'notifications' | 'appearance';
 
                 <div class="flex justify-end pt-2">
                   <button (click)="logout()"
-                          class="flex items-center gap-2 px-4 py-2 rounded-lg text-sm
-                                 font-medium transition-all duration-150 cursor-pointer settings-logout"
-                          style="background: color-mix(in oklch, var(--color-danger) 10%, transparent);
-                                 color: var(--color-danger);
-                                 border: 1px solid color-mix(in oklch, var(--color-danger) 25%, transparent);"
-                          onmouseover="this.style.background='var(--color-danger)';this.style.color='white'"
-                          onmouseout="this.style.background='color-mix(in oklch, var(--color-danger) 10%, transparent)';this.style.color='var(--color-danger)'"
-                          >
+                          class="settings-logout-btn flex items-center gap-2 px-4 py-2 rounded-lg text-sm
+                                 font-medium transition-all duration-150 cursor-pointer">
                     <span class="material-symbols-rounded text-sm">logout</span>
                     Sign out
                   </button>
@@ -307,10 +269,7 @@ type SettingsSection = 'profile' | 'notifications' | 'appearance';
         <!-- NOTIFICATIONS -->
         @if (activeSection() === 'notifications') {
           <div class="flex flex-col gap-4 animate-fade-up">
-            <h2 class="text-text-primary font-semibold text-base"
-                style="font-family: 'Outfit', sans-serif;">
-              Notification preferences
-            </h2>
+            <h2 class="settings-section-title">Notification preferences</h2>
             <p class="text-text-muted text-sm -mt-2">
               Choose which events trigger notifications and through which channel.
             </p>
@@ -356,10 +315,7 @@ type SettingsSection = 'profile' | 'notifications' | 'appearance';
         <!-- APPEARANCE -->
         @if (activeSection() === 'appearance') {
           <div class="flex flex-col gap-4 animate-fade-up">
-            <h2 class="text-text-primary font-semibold text-base"
-                style="font-family: 'Outfit', sans-serif;">
-              Appearance
-            </h2>
+            <h2 class="settings-section-title">Appearance</h2>
 
             <app-card>
               <div class="flex flex-col gap-5">
@@ -386,13 +342,11 @@ type SettingsSection = 'profile' | 'notifications' | 'appearance';
                 <div class="flex flex-col gap-3">
                   <span class="text-text-primary text-sm font-medium">Accent color</span>
                   <div class="flex items-center gap-3">
-                    <div class="size-8 rounded-lg cursor-pointer ring-2 ring-offset-2"
-                         style="background: linear-gradient(135deg, var(--color-accent), var(--color-cyan));
-                                ring-color: var(--color-accent);
-                                ring-offset-color: var(--color-bg-base);">
-                    </div>
-                    <span class="text-text-muted text-xs">Violet → Cyan (default)</span>
-                  </div>
+                     <div class="settings-accent-swatch size-8 rounded-lg cursor-pointer"
+                          style="background: linear-gradient(135deg, var(--color-accent), var(--color-cyan));">
+                     </div>
+                     <span class="text-text-muted text-xs">Violet → Cyan (default)</span>
+                   </div>
                 </div>
 
                 <div class="h-px" style="background: color-mix(in oklch, var(--color-border) 50%, transparent);"></div>
@@ -427,10 +381,84 @@ type SettingsSection = 'profile' | 'notifications' | 'appearance';
     </div>
 
     <style>
+      /* Sidebar nav */
+      .settings-nav {
+        border-color: color-mix(in oklch, var(--color-border) 60%, transparent);
+        min-height: calc(100vh - 73px);
+      }
+
+      .settings-nav-item {
+        background: transparent;
+        color: var(--color-text-secondary);
+      }
+
+      .settings-nav-item:hover {
+        background: color-mix(in oklch, var(--color-accent) 8%, transparent);
+        color: var(--color-text-primary);
+      }
+
+      .settings-nav-item--active {
+        background: color-mix(in oklch, var(--color-accent) 12%, transparent) !important;
+        color: var(--color-text-primary) !important;
+      }
+
+      .settings-nav-item--active .settings-nav-icon {
+        color: var(--color-accent);
+      }
+
+      /* Section titles */
+      .settings-section-title {
+        color: var(--color-text-primary);
+        font-family: 'Outfit', sans-serif;
+        font-weight: 600;
+        font-size: 1rem;
+        line-height: 1.5rem;
+      }
+
+      /* Form field labels */
+      .settings-field-label {
+        color: var(--color-text-secondary);
+      }
+
+      .settings-field-label--optional {
+        color: var(--color-text-muted);
+      }
+
+      /* Form inputs / textarea */
+      .settings-field {
+        background: var(--color-bg-surface);
+        border: 1px solid var(--color-border);
+        color: var(--color-text-primary);
+        font-family: 'Outfit', sans-serif;
+      }
+
+      .settings-field::placeholder {
+        color: var(--color-text-muted);
+      }
+
       .settings-field:focus {
         border-color: var(--color-accent) !important;
         box-shadow: 0 0 0 3px var(--color-accent-subtle), 0 0 0 1px var(--color-accent) !important;
         outline: none;
+      }
+
+      /* Logout button — pure CSS hover, no JS */
+      .settings-logout-btn {
+        background: color-mix(in oklch, var(--color-danger) 10%, transparent);
+        color: var(--color-danger);
+        border: 1px solid color-mix(in oklch, var(--color-danger) 25%, transparent);
+      }
+
+      .settings-logout-btn:hover {
+        background: var(--color-danger);
+        color: oklch(1 0 0);
+        border-color: var(--color-danger);
+      }
+
+      /* Accent color swatch */
+      .settings-accent-swatch {
+        outline: 2px solid var(--color-accent);
+        outline-offset: 2px;
       }
     </style>
   `,

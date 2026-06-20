@@ -7,8 +7,7 @@ import {
 } from '@angular/core';
 import { NotificationStore } from '../../store/notification.store';
 import { NotificationItemComponent } from '../../../../shared/components/notification-item/notification-item.component';
-import { ButtonComponent } from '../../../../shared/components/button/button.component';
-import { EmptyStateComponent } from '../../../../shared/components/empty-state/empty-state.component';
+
 import { SpinnerComponent } from '../../../../shared/components/spinner/spinner.component';
 import { Notification } from '../../models/notification.model';
 
@@ -18,8 +17,6 @@ import { Notification } from '../../models/notification.model';
   changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [
     NotificationItemComponent,
-    ButtonComponent,
-    EmptyStateComponent,
     SpinnerComponent,
   ],
   template: `

@@ -17,7 +17,7 @@ import { ButtonComponent } from '../../../shared/components/button/button.compon
 import { SpinnerComponent } from '../../../shared/components/spinner/spinner.component';
 import { ErrorBannerComponent } from '../../../shared/components/error-banner/error-banner.component';
 import { ProjectCardComponent } from '../../../shared/components/project-card/project-card.component';
-import { CardComponent } from '../../../shared/components/card/card.component';
+
 import { AiDraftTaskItemComponent } from '../../../shared/components/ai-draft-task-item/ai-draft-task-item.component';
 import { AiChatComponent } from '../../ai/chat/ai-chat.component';
 import { FormsModule } from '@angular/forms';
@@ -34,7 +34,6 @@ import { FormsModule } from '@angular/forms';
     SpinnerComponent,
     ErrorBannerComponent,
     ProjectCardComponent,
-    CardComponent,
     AiDraftTaskItemComponent,
     AiChatComponent,
   ],

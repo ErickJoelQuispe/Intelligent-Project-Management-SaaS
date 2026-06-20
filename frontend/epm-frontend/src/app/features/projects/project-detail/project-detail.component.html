@@ -13,6 +13,8 @@
       <span class="material-symbols-rounded" aria-hidden="true">edit</span>
       Edit
     </app-button>
+  }
+  @if (project()) {
     <app-button page-action variant="ghost" size="sm"
                 (click)="archiveProject()"
                 aria-label="Archive project"
@@ -275,21 +277,20 @@
     align-items: center;
     justify-content: center;
     margin-top: 0.0625rem;
-
-    .material-symbols-rounded { font-size: 1.125rem; }
-
-    &--teams {
-      background: color-mix(in oklch, var(--color-success) 12%, var(--color-bg-elevated));
-      border: 1px solid color-mix(in oklch, var(--color-success) 20%, transparent);
-      .material-symbols-rounded { color: var(--color-success); }
-    }
-
-    &--ai {
-      background: color-mix(in oklch, var(--color-accent) 12%, var(--color-bg-elevated));
-      border: 1px solid color-mix(in oklch, var(--color-accent) 20%, transparent);
-      .material-symbols-rounded { color: var(--color-accent); }
-    }
   }
+  .pd-section-icon .material-symbols-rounded { font-size: 1.125rem; }
+
+  .pd-section-icon--teams {
+    background: color-mix(in oklch, var(--color-success) 12%, var(--color-bg-elevated));
+    border: 1px solid color-mix(in oklch, var(--color-success) 20%, transparent);
+  }
+  .pd-section-icon--teams .material-symbols-rounded { color: var(--color-success); }
+
+  .pd-section-icon--ai {
+    background: color-mix(in oklch, var(--color-accent) 12%, var(--color-bg-elevated));
+    border: 1px solid color-mix(in oklch, var(--color-accent) 20%, transparent);
+  }
+  .pd-section-icon--ai .material-symbols-rounded { color: var(--color-accent); }
 
   .pd-section-meta {
     display: flex;
@@ -342,16 +343,14 @@
     outline: none;
     appearance: none;
     transition: border-color 0.15s ease;
-
-    &:focus {
-      border-color: var(--color-accent);
-      box-shadow: 0 0 0 2px var(--color-accent-subtle);
-    }
-
-    option {
-      background: var(--color-bg-elevated);
-      color: var(--color-text-primary);
-    }
+  }
+  .pd-select:focus {
+    border-color: var(--color-accent);
+    box-shadow: 0 0 0 2px var(--color-accent-subtle);
+  }
+  .pd-select option {
+    background: var(--color-bg-elevated);
+    color: var(--color-text-primary);
   }
 
   .pd-empty-text {
@@ -364,9 +363,8 @@
     color: var(--color-accent);
     text-decoration: underline;
     text-underline-offset: 2px;
-
-    &:hover { color: var(--color-accent-hover); }
   }
+  .pd-link:hover { color: var(--color-accent-hover); }
 
   /* ── Success / shared banners ────────────── */
   .pd-success-banner {
@@ -380,9 +378,8 @@
     color: var(--color-success);
     font-size: 0.8125rem;
     font-weight: 500;
-
-    .material-symbols-rounded { font-size: 1rem; }
   }
+  .pd-success-banner .material-symbols-rounded { font-size: 1rem; }
 
   /* ── AI section specifics ────────────────── */
   .pd-ai-body {
@@ -460,9 +457,8 @@
     color: var(--color-accent);
     font-family: 'Outfit', sans-serif;
     letter-spacing: 0.01em;
-
-    .material-symbols-rounded { font-size: 0.875rem; }
   }
+  .pd-drafts-label .material-symbols-rounded { font-size: 0.875rem; }
 
   .pd-drafts-list {
     display: flex;
