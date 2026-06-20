@@ -31,8 +31,8 @@ export const routes: Routes = [
   {
     path: 'projects/new',
     loadComponent: () =>
-      import('./features/projects/project-create/project-create.component').then(
-        (m) => m.ProjectCreateComponent,
+      import('./features/projects/project-form/project-form.component').then(
+        (m) => m.ProjectFormComponent,
       ),
     canActivate: [authGuard],
   },
