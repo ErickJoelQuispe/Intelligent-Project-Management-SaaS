@@ -33,26 +33,37 @@ interface NavItem {
       <!-- ═══ Brand ═══ -->
       <header class="sidebar-brand" [class.sidebar-brand--collapsed]="collapsed()">
 
-        <!-- Logo mark — flow arrow: task pipeline that pivots and drives forward -->
+        <!-- Logo mark — S-route: two pivots, one direction. Origin → obstacles → destination. -->
         <div class="logomark" aria-hidden="true">
-          <svg width="30" height="30" viewBox="0 0 30 30" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <svg width="30" height="32" viewBox="0 0 30 32" fill="none" xmlns="http://www.w3.org/2000/svg">
             <defs>
-              <linearGradient id="flow-grad" x1="4" y1="8" x2="26" y2="22" gradientUnits="userSpaceOnUse">
+              <!-- Gradient flows diagonally matching the S path direction -->
+              <linearGradient id="flow-grad" x1="4" y1="6" x2="26" y2="25" gradientUnits="userSpaceOnUse">
                 <stop stop-color="var(--color-accent)"/>
+                <stop offset="0.55" stop-color="color-mix(in oklch, var(--color-accent) 50%, var(--color-cyan))"/>
                 <stop offset="1" stop-color="var(--color-cyan)"/>
               </linearGradient>
-              <filter id="flow-glow" x="-30%" y="-30%" width="160%" height="160%">
-                <feGaussianBlur stdDeviation="1.5" result="blur"/>
-                <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+              <!-- Soft glow behind the path -->
+              <filter id="flow-glow" x="-40%" y="-40%" width="180%" height="180%">
+                <feGaussianBlur in="SourceGraphic" stdDeviation="1.2" result="blur"/>
+                <feColorMatrix in="blur" type="saturate" values="1.8" result="vivid"/>
+                <feMerge>
+                  <feMergeNode in="vivid"/>
+                  <feMergeNode in="SourceGraphic"/>
+                </feMerge>
               </filter>
             </defs>
 
-            <!-- Flow path: starts top-left, goes right, drops down, exits right with arrowhead -->
-            <!-- Stroke only — the path IS the logo -->
+            <!--
+              S-route path — two sharp pivots with rounded corners:
+              Start top-left (6,7) → right to (20,7) → pivot down to (20,15)
+              → left to (10,15) → pivot down to (10,23) → right to exit (24,23)
+              Corner radius = 3 via Q bezier at each turn
+            -->
             <path
-              d="M5 9 H18 Q21 9 21 12 V18 H25"
+              d="M6 7 H17 Q20 7 20 10 V13 Q20 16 17 16 H13 Q10 16 10 19 V22 Q10 25 13 25 H24"
               stroke="url(#flow-grad)"
-              stroke-width="2.5"
+              stroke-width="2.6"
               stroke-linecap="round"
               stroke-linejoin="round"
               fill="none"
@@ -60,19 +71,20 @@ interface NavItem {
               class="logo-path"
             />
 
-            <!-- Arrowhead at the end — pointing right -->
+            <!-- Arrowhead — two angled lines diverging from the endpoint -->
+            <!-- Upper arm -->
             <path
-              d="M22 15.5 L25.5 18 L22 20.5"
+              d="M20.5 22 L24.5 25 L20.5 28"
               stroke="url(#flow-grad)"
-              stroke-width="2.5"
+              stroke-width="2.6"
               stroke-linecap="round"
               stroke-linejoin="round"
               fill="none"
               class="logo-arrow"
             />
 
-            <!-- Origin dot — where the task starts -->
-            <circle cx="5" cy="9" r="2" fill="var(--color-accent)" class="logo-dot"/>
+            <!-- Origin dot — pulsing source point -->
+            <circle cx="6" cy="7" r="2.2" fill="var(--color-accent)" class="logo-dot"/>
           </svg>
           <div class="logomark-glow" aria-hidden="true"></div>
         </div>
@@ -266,15 +278,15 @@ interface NavItem {
 
       /* Flow path draw-in on load */
       .logo-path {
-        stroke-dasharray: 52;
-        stroke-dashoffset: 52;
-        animation: logo-draw 0.7s cubic-bezier(0.4, 0, 0.2, 1) 0.1s forwards;
+        stroke-dasharray: 90;
+        stroke-dashoffset: 90;
+        animation: logo-draw 0.9s cubic-bezier(0.4, 0, 0.2, 1) 0.1s forwards;
       }
 
       .logo-arrow {
-        stroke-dasharray: 10;
-        stroke-dashoffset: 10;
-        animation: logo-draw 0.3s cubic-bezier(0.4, 0, 0.2, 1) 0.75s forwards;
+        stroke-dasharray: 12;
+        stroke-dashoffset: 12;
+        animation: logo-draw 0.3s cubic-bezier(0.4, 0, 0.2, 1) 0.95s forwards;
       }
 
       .logo-dot {
