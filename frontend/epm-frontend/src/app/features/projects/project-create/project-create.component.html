@@ -21,68 +21,62 @@
     <!-- Campo reutilizable — pattern de label + input + error -->
     <div class="flex flex-col gap-2">
       <label class="text-sm font-semibold" for="name"
-             style="color: oklch(0.72 0.015 268);">
-        Project name <span style="color: oklch(0.65 0.24 22);">*</span>
+             style="color: var(--color-text-secondary);">
+        Project name <span style="color: var(--color-danger);">*</span>
       </label>
       <input
         id="name" type="text" formControlName="name"
         placeholder="e.g. Customer portal v2"
         maxlength="100" data-testid="name-input"
-        class="w-full px-4 py-3 rounded-xl text-sm transition-all duration-200
+        class="project-create-field w-full px-4 py-3 rounded-xl text-sm transition-all duration-200
                focus:outline-none"
-        style="background: oklch(0.11 0.025 268);
-               border: 1px solid oklch(0.22 0.020 268);
-               color: oklch(0.96 0.006 268);
+        style="background: var(--color-bg-surface);
+               border: 1px solid var(--color-border);
+               color: var(--color-text-primary);
                font-family: 'Outfit', sans-serif;"
-        onfocus="this.style.borderColor='oklch(0.65 0.26 285)';this.style.boxShadow='0 0 0 3px oklch(0.65 0.26 285 / 0.15), 0 0 16px oklch(0.65 0.26 285 / 0.1)'"
-        onblur="this.style.borderColor='oklch(0.22 0.020 268)';this.style.boxShadow='none'"
       />
       @if (form.controls.name.hasError('required') && form.controls.name.touched) {
-        <span class="text-xs" style="color: oklch(0.65 0.24 22);">Project name is required.</span>
+        <span class="text-xs" style="color: var(--color-danger);">Project name is required.</span>
       }
     </div>
 
     <div class="flex flex-col gap-2">
       <label class="text-sm font-semibold" for="description"
-             style="color: oklch(0.72 0.015 268);">
+             style="color: var(--color-text-secondary);">
         Description
-        <span class="font-normal text-xs ml-1" style="color: oklch(0.42 0.012 268);">optional</span>
+        <span class="font-normal text-xs ml-1" style="color: var(--color-text-muted);">optional</span>
       </label>
       <textarea
         id="description" formControlName="description" rows="4"
         placeholder="What is this project about?"
         data-testid="description-input"
-        class="w-full px-4 py-3 rounded-xl text-sm resize-none transition-all duration-200
+        class="project-create-field w-full px-4 py-3 rounded-xl text-sm resize-none transition-all duration-200
                focus:outline-none"
-        style="background: oklch(0.11 0.025 268);
-               border: 1px solid oklch(0.22 0.020 268);
-               color: oklch(0.96 0.006 268);
+        style="background: var(--color-bg-surface);
+               border: 1px solid var(--color-border);
+               color: var(--color-text-primary);
                font-family: 'Outfit', sans-serif;"
-        onfocus="this.style.borderColor='oklch(0.65 0.26 285)';this.style.boxShadow='0 0 0 3px oklch(0.65 0.26 285 / 0.15)'"
-        onblur="this.style.borderColor='oklch(0.22 0.020 268)';this.style.boxShadow='none'"
       ></textarea>
     </div>
 
     <div class="flex flex-col gap-2">
       <label class="text-sm font-semibold" for="visibility"
-             style="color: oklch(0.72 0.015 268);">
+             style="color: var(--color-text-secondary);">
         Visibility
       </label>
       <select
         id="visibility" formControlName="visibility"
         data-testid="visibility-select"
-        class="w-full px-4 py-3 rounded-xl text-sm transition-all duration-200
+        class="project-create-field w-full px-4 py-3 rounded-xl text-sm transition-all duration-200
                focus:outline-none appearance-none cursor-pointer"
-        style="background: oklch(0.11 0.025 268);
-               border: 1px solid oklch(0.22 0.020 268);
-               color: oklch(0.96 0.006 268);
+        style="background: var(--color-bg-surface);
+               border: 1px solid var(--color-border);
+               color: var(--color-text-primary);
                font-family: 'Outfit', sans-serif;"
-        onfocus="this.style.borderColor='oklch(0.65 0.26 285)';this.style.boxShadow='0 0 0 3px oklch(0.65 0.26 285 / 0.15)'"
-        onblur="this.style.borderColor='oklch(0.22 0.020 268)';this.style.boxShadow='none'"
       >
         @for (opt of visibilityOptions; track opt.value) {
           <option [value]="opt.value"
-                  style="background: oklch(0.13 0.025 268); color: oklch(0.96 0.006 268);">
+                  style="background: var(--color-bg-elevated); color: var(--color-text-primary);">
             {{ opt.label }}
           </option>
         }
@@ -90,7 +84,7 @@
     </div>
 
     <!-- Divider con gradiente -->
-    <div class="h-px" style="background: linear-gradient(90deg, oklch(0.65 0.26 285 / 0.3), oklch(0.22 0.020 268), transparent);"></div>
+    <div class="h-px" style="background: linear-gradient(90deg, color-mix(in oklch, var(--color-accent) 30%, transparent), var(--color-border), transparent);"></div>
 
     <div class="flex items-center justify-end gap-3">
       <app-button type="button" variant="secondary" (click)="onCancel()">
@@ -103,3 +97,11 @@
 
   </form>
 </div>
+
+<style>
+  .project-create-field:focus {
+    border-color: var(--color-accent) !important;
+    box-shadow: 0 0 0 3px var(--color-accent-subtle) !important;
+    outline: none;
+  }
+</style>

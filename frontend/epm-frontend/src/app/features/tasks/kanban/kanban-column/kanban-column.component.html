@@ -1,46 +1,52 @@
-<div
-  class="flex flex-col gap-3 h-full rounded-xl p-3 min-w-64 w-72
-         transition-all duration-200"
-  [class.drop-target]="isDragOver()"
+<section
+  class="kanban-col"
+  [attr.data-status]="status()"
+  [class.kanban-col--drag-over]="isDragOver()"
   (dragover)="onDragOver($event)"
   (dragenter)="onDragEnter($event)"
   (dragleave)="onDragLeave($event)"
   (drop)="onDrop($event)"
-  style="background: oklch(0.11 0.025 268 / 0.6);
-         border: 1px solid oklch(0.22 0.020 268);
-         backdrop-filter: blur(8px)"
+  [attr.aria-label]="statusLabel() + ' column, ' + taskCount() + ' tasks'"
+  role="region"
 >
-  <!-- Header: label + conteo -->
-  <div class="flex items-center justify-between px-1">
-    <span class="text-text-secondary text-sm font-semibold tracking-wide uppercase">
-      {{ statusLabel() }}
-    </span>
-    <app-badge variant="neutral" size="sm">
-      {{ taskCount() }}
-    </app-badge>
-  </div>
+  <!-- Status color strip -->
+  <div class="kanban-col-strip" aria-hidden="true"></div>
 
-  <!-- Drop indicator — aparece cuando hay hover con drag -->
+  <!-- Column header -->
+  <header class="kanban-col-header">
+    <div class="kanban-col-title-row">
+      <span class="kanban-col-dot" aria-hidden="true"></span>
+      <h2 class="kanban-col-title">{{ statusLabel() }}</h2>
+    </div>
+    <span class="kanban-col-count" [attr.aria-label]="taskCount() + ' tasks'">{{ taskCount() }}</span>
+  </header>
+
+  <!-- Drop zone indicator -->
   @if (isDragOver()) {
-    <div class="rounded-lg border-2 border-dashed flex items-center justify-center py-3
-                transition-all duration-150"
-         style="border-color: oklch(0.65 0.26 285 / 0.5);
-                background: oklch(0.65 0.26 285 / 0.05);">
-      <span class="text-xs font-medium" style="color: oklch(0.65 0.26 285 / 0.8);">
-        Drop here
-      </span>
+    <div class="kanban-drop-zone" role="status" aria-live="polite" aria-label="Drop here to move task">
+      <span class="material-symbols-rounded kanban-drop-zone-icon" aria-hidden="true">file_download</span>
+      <span class="kanban-drop-zone-label">Drop here</span>
     </div>
   }
 
-  <!-- Cards o empty state -->
-  <div class="flex flex-col gap-2 flex-1 overflow-y-auto">
+  <!-- Cards list -->
+  <div class="kanban-col-cards" role="list">
     @if (taskCount() === 0 && !isDragOver()) {
-      <app-empty-state icon="inbox" title="No tasks" size="sm" />
+      <div class="kanban-col-empty" role="listitem">
+        <span class="material-symbols-rounded kanban-col-empty-icon" aria-hidden="true">inbox</span>
+        <span class="kanban-col-empty-text">No tasks</span>
+      </div>
     } @else {
-      @for (task of tasks(); track task.taskId) {
-        <app-task-card [task]="task" [users]="users()" (deleteTask)="taskDeleted.emit($event)" />
+      @for (task of tasks(); track task.taskId; let i = $index) {
+        <div role="listitem" [class]="'stagger-' + ((i % 6) + 1)">
+          <app-task-card
+            [task]="task"
+            [users]="users()"
+            (deleteTask)="taskDeleted.emit($event)"
+          />
+        </div>
       }
     }
   </div>
 
-</div>
+</section>

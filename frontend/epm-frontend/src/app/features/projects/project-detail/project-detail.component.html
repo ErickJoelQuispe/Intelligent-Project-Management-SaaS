@@ -16,8 +16,8 @@
   @if (project()) {
     <app-button page-action variant="ghost" size="sm"
                 (click)="archiveProject()"
-                style="color: oklch(0.65 0.22 25);">
-      <span class="material-symbols-rounded text-sm" style="color: oklch(0.65 0.22 25);">archive</span>
+                style="color: var(--color-danger);">
+      <span class="material-symbols-rounded text-sm" style="color: var(--color-danger);">archive</span>
       Archive
     </app-button>
   }
@@ -63,7 +63,7 @@
 
         @if (teams().length === 0) {
           <p class="text-text-muted text-sm py-2">
-            No teams available. <a routerLink="/teams/new" class="underline" style="color: oklch(0.65 0.26 285);">Create a team</a> first.
+            No teams available. <a routerLink="/teams/new" class="underline" style="color: var(--color-accent);">Create a team</a> first.
           </p>
         } @else {
           <div class="flex items-center gap-3">
@@ -71,20 +71,18 @@
               [ngModel]="selectedTeamId()"
               (ngModelChange)="selectedTeamId.set($event)"
               data-testid="team-select"
-              class="flex-1 px-3 py-2 rounded-lg text-sm transition-all duration-200
+              class="project-select flex-1 px-3 py-2 rounded-lg text-sm transition-all duration-200
                      focus:outline-none appearance-none cursor-pointer"
-              style="background: oklch(0.11 0.025 268);
-                     border: 1px solid oklch(0.22 0.020 268);
-                     color: oklch(0.96 0.006 268);"
-              onfocus="this.style.borderColor='oklch(0.65 0.26 285)';this.style.boxShadow='0 0 0 2px oklch(0.65 0.26 285 / 0.15)'"
-              onblur="this.style.borderColor='oklch(0.22 0.020 268)';this.style.boxShadow='none'"
+              style="background: var(--color-bg-surface);
+                     border: 1px solid var(--color-border);
+                     color: var(--color-text-primary);"
             >
-              <option value="" style="background: oklch(0.13 0.025 268); color: oklch(0.55 0.015 268);">
+              <option value="" style="background: var(--color-bg-elevated); color: var(--color-text-secondary);">
                 Select a team...
               </option>
               @for (team of teams(); track team.id) {
                 <option [value]="team.id"
-                        style="background: oklch(0.13 0.025 268); color: oklch(0.96 0.006 268);">
+                        style="background: var(--color-bg-elevated); color: var(--color-text-primary);">
                   {{ team.name }}
                 </option>
               }
@@ -224,3 +222,11 @@
   }
 
 </div>
+
+<style>
+  .project-select:focus {
+    border-color: var(--color-accent) !important;
+    box-shadow: 0 0 0 2px var(--color-accent-subtle) !important;
+    outline: none;
+  }
+</style>

@@ -1,52 +1,318 @@
+/* ── Card shell ──────────────────────────── */
 .task-card {
-  margin-bottom: var(--task-card-gap, 8px);
-  cursor: pointer;
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  border-radius: 0.625rem;
+  overflow: hidden;
+  background: var(--glass-bg);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  border: 1px solid var(--color-border);
+  padding: 0.75rem 0.75rem 0.75rem 1rem;
+  cursor: grab;
+  transition:
+    border-color 0.15s ease,
+    box-shadow 0.15s ease,
+    transform 0.15s cubic-bezier(0.2, 0, 0, 1),
+    opacity 0.15s ease;
+  user-select: none;
 
   &:hover {
-    box-shadow: var(--mat-sys-level2);
+    border-color: var(--color-border-strong);
+    box-shadow: var(--shadow-md);
   }
 
-  &__header {
-    display: flex;
-    justify-content: space-between;
-    align-items: flex-start;
-    gap: 8px;
+  &:active { cursor: grabbing; }
+
+  /* Dragging state */
+  &.dragging {
+    opacity: 0.45;
+    transform: scale(0.96) rotate(-1.5deg);
+    box-shadow: var(--shadow-lg);
+    border-color: var(--color-border-glow);
+    cursor: grabbing;
   }
 
-  &__title {
-    font-size: 0.875rem;
-    font-weight: 500;
-    flex: 1;
+  /* Reveal delete on hover */
+  &:hover .task-card-delete-btn { opacity: 1; }
+}
+
+/* ── Priority bar (left edge) ────────────── */
+.task-card-priority-bar {
+  position: absolute;
+  left: 0;
+  top: 0.5rem;
+  bottom: 0.5rem;
+  width: 3px;
+  border-radius: 0 2px 2px 0;
+  transition: width 0.15s ease;
+
+  &[data-priority="HIGH"]   { background: linear-gradient(180deg, var(--color-danger),  color-mix(in oklch, var(--color-danger)  60%, transparent)); }
+  &[data-priority="MEDIUM"] { background: linear-gradient(180deg, var(--color-warning), color-mix(in oklch, var(--color-warning) 60%, transparent)); }
+  &[data-priority="LOW"]    { background: linear-gradient(180deg, var(--color-info),    color-mix(in oklch, var(--color-info)    60%, transparent)); }
+}
+.task-card:hover .task-card-priority-bar { width: 3.5px; }
+
+/* ── Header ──────────────────────────────── */
+.task-card-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.5rem;
+  cursor: pointer;
+  margin-bottom: 0.375rem;
+}
+
+.task-card-title {
+  font-size: 0.8125rem;
+  font-weight: 550;
+  line-height: 1.5;
+  color: var(--color-text-primary);
+  margin: 0;
+  flex: 1;
+  min-width: 0;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  letter-spacing: 0.005em;
+}
+
+.task-card-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  flex-shrink: 0;
+}
+
+/* Expand button */
+.task-card-expand-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.375rem;
+  height: 1.375rem;
+  border-radius: 0.3125rem;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  color: var(--color-text-muted);
+  transition: background 0.15s ease, color 0.15s ease;
+  padding: 0;
+
+  &:hover {
+    background: color-mix(in oklch, var(--color-bg-overlay) 80%, transparent);
+    color: var(--color-text-primary);
+  }
+  &:focus-visible {
+    outline: 2px solid var(--color-accent);
+    outline-offset: 1px;
+  }
+}
+
+.task-card-chevron {
+  font-size: 1rem;
+  transition: transform 0.22s cubic-bezier(0.4, 0, 0.2, 1);
+
+  &--open { transform: rotate(180deg); }
+}
+
+/* Delete button — visible on hover only */
+.task-card-delete-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.375rem;
+  height: 1.375rem;
+  border-radius: 0.3125rem;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  color: var(--color-text-disabled);
+  transition: background 0.15s ease, color 0.15s ease, opacity 0.15s ease;
+  padding: 0;
+  opacity: 0;
+
+  &:hover {
+    background: color-mix(in oklch, var(--color-danger) 12%, transparent);
+    color: var(--color-danger);
+  }
+  &:focus-visible {
+    outline: 2px solid var(--color-danger);
+    outline-offset: 1px;
+    opacity: 1;
   }
 
-  &__priority {
-    font-size: 0.7rem;
-    height: 20px;
-    color: #fff;
-    min-height: unset;
+  .material-symbols-rounded { font-size: 0.875rem; }
+
+  &--sm .material-symbols-rounded { font-size: 0.75rem; }
+}
+
+/* ── Meta row ────────────────────────────── */
+.task-card-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.375rem;
+  margin-bottom: 0.375rem;
+}
+
+.task-meta-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 0.1875rem 0.5rem;
+  border-radius: 9999px;
+  font-size: 0.6875rem;
+  font-weight: 500;
+  color: var(--color-text-muted);
+  background: color-mix(in oklch, var(--color-bg-overlay) 60%, transparent);
+  border: 1px solid color-mix(in oklch, var(--color-border) 50%, transparent);
+  font-family: 'JetBrains Mono', monospace;
+  font-feature-settings: 'tnum';
+
+  .material-symbols-rounded { font-size: 0.75rem; }
+
+  &--overdue {
+    color: var(--color-danger);
+    background: var(--color-danger-subtle);
+    border-color: color-mix(in oklch, var(--color-danger) 25%, transparent);
+  }
+}
+
+/* ── Assignee ────────────────────────────── */
+.task-card-assignee {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding-top: 0.5rem;
+  border-top: 1px solid color-mix(in oklch, var(--color-border) 40%, transparent);
+  margin-top: 0.25rem;
+}
+
+.task-card-assignee-name {
+  font-size: 0.75rem;
+  color: var(--color-text-muted);
+  font-weight: 500;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  flex: 1;
+  min-width: 0;
+}
+
+/* ── Subtasks section ────────────────────── */
+.task-card-subtasks {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  margin-top: 0.25rem;
+}
+
+.task-card-subtasks-divider {
+  height: 1px;
+  background: color-mix(in oklch, var(--color-border) 50%, transparent);
+  margin: 0 -0.25rem;
+}
+
+.task-card-subtasks-loading {
+  display: flex;
+  justify-content: center;
+  padding: 0.75rem 0;
+}
+
+.task-card-subtasks-empty {
+  font-size: 0.75rem;
+  color: var(--color-text-disabled);
+  margin: 0;
+  text-align: center;
+  padding: 0.5rem 0;
+}
+
+.task-card-subtasks-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.task-card-subtask-item {
+  display: flex;
+  align-items: center;
+  gap: 0.375rem;
+}
+
+.task-card-subtask-icon {
+  font-size: 0.875rem;
+  color: var(--color-text-disabled);
+  flex-shrink: 0;
+}
+
+.task-card-subtask-title {
+  font-size: 0.75rem;
+  color: var(--color-text-secondary);
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* ── Add subtask input ───────────────────── */
+.task-card-add-subtask {
+  display: flex;
+  gap: 0.375rem;
+  align-items: center;
+}
+
+.task-card-subtask-input {
+  flex: 1;
+  min-width: 0;
+  font-size: 0.75rem;
+  padding: 0.3125rem 0.625rem;
+  border-radius: 0.375rem;
+  border: 1px solid var(--color-border);
+  background: color-mix(in oklch, var(--color-bg-elevated) 80%, transparent);
+  color: var(--color-text-primary);
+  outline: none;
+  transition: border-color 0.15s ease;
+  font-family: inherit;
+
+  &::placeholder { color: var(--color-text-disabled); }
+  &:focus { border-color: var(--color-accent); }
+}
+
+.task-card-subtask-add-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.75rem;
+  height: 1.75rem;
+  border-radius: 0.375rem;
+  border: 1px solid var(--color-border);
+  background: color-mix(in oklch, var(--color-bg-elevated) 80%, transparent);
+  color: var(--color-text-secondary);
+  cursor: pointer;
+  transition: background 0.15s ease, border-color 0.15s ease, color 0.15s ease;
+  padding: 0;
+  flex-shrink: 0;
+
+  &:hover:not(:disabled) {
+    background: color-mix(in oklch, var(--color-accent) 12%, transparent);
+    border-color: color-mix(in oklch, var(--color-accent) 40%, transparent);
+    color: var(--color-accent);
+  }
+  &:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+  }
+  &:focus-visible {
+    outline: 2px solid var(--color-accent);
+    outline-offset: 1px;
   }
 
-  &__deadline,
-  &__assignee {
-    display: flex;
-    align-items: center;
-    gap: 4px;
-    margin-top: 6px;
-    font-size: 0.75rem;
-    color: var(--mat-sys-on-surface-variant, #666);
-  }
-
-  &__deadline-icon,
-  &__assignee-icon {
-    font-size: 14px;
-    width: 14px;
-    height: 14px;
-  }
-
-  &__assignee-id {
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-    max-width: 120px;
-  }
+  .material-symbols-rounded { font-size: 1rem; }
 }

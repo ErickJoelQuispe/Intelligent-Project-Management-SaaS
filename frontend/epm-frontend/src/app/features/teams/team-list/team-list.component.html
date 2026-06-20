@@ -40,7 +40,7 @@
             style="font-family: 'Outfit', sans-serif;">
         {{ teams().length }}
       </span>
-      <span class="text-sm" style="color: oklch(0.55 0.015 268);">
+      <span class="text-sm" style="color: var(--color-text-secondary);">
         {{ teams().length === 1 ? 'team' : 'teams' }}
       </span>
     </div>
@@ -52,40 +52,40 @@
           class="group relative flex flex-col gap-3 p-5 rounded-2xl border
                  cursor-pointer transition-all duration-200 animate-fade-up"
           [class]="'stagger-' + ((i % 6) + 1)"
-          style="background: oklch(0.10 0.025 268 / 0.7);
-                 border-color: oklch(0.22 0.020 268);
+          style="background: color-mix(in oklch, var(--color-bg-surface) 70%, transparent);
+                 border-color: var(--color-border);
                  backdrop-filter: blur(12px);"
-          (mouseenter)="$any($event.currentTarget).style.borderColor='oklch(0.65 0.26 285 / 0.4)';
-                        $any($event.currentTarget).style.background='oklch(0.12 0.025 268 / 0.8)'"
-          (mouseleave)="$any($event.currentTarget).style.borderColor='oklch(0.22 0.020 268)';
-                        $any($event.currentTarget).style.background='oklch(0.10 0.025 268 / 0.7)'"
+          (mouseenter)="$any($event.currentTarget).style.borderColor='var(--color-accent)';
+                        $any($event.currentTarget).style.background='var(--color-bg-elevated)'"
+          (mouseleave)="$any($event.currentTarget).style.borderColor='var(--color-border)';
+                        $any($event.currentTarget).style.background='color-mix(in oklch, var(--color-bg-surface) 70%, transparent)'"
         >
           <!-- Subtle glow on hover -->
           <div class="absolute inset-0 rounded-2xl opacity-0 group-hover:opacity-100 pointer-events-none
                       transition-opacity duration-300"
-               style="background: radial-gradient(ellipse at top left, oklch(0.65 0.26 285 / 0.06), transparent 60%);">
+               style="background: radial-gradient(ellipse at top left, color-mix(in oklch, var(--color-accent) 6%, transparent), transparent 60%);">
           </div>
 
           <!-- Header -->
           <div class="flex items-start justify-between gap-2">
             <div class="flex items-center gap-2.5">
               <div class="size-8 rounded-lg shrink-0 flex items-center justify-center"
-                   style="background: linear-gradient(135deg, oklch(0.65 0.26 285 / 0.2), oklch(0.78 0.18 200 / 0.2));
-                          border: 1px solid oklch(0.65 0.26 285 / 0.3);">
-                <span class="material-symbols-rounded text-sm"
-                      style="color: oklch(0.78 0.18 200);">group</span>
+                   style="background: linear-gradient(135deg, color-mix(in oklch, var(--color-accent) 20%, transparent), color-mix(in oklch, var(--color-cyan) 20%, transparent));
+                          border: 1px solid color-mix(in oklch, var(--color-accent) 30%, transparent);">
+                 <span class="material-symbols-rounded text-sm"
+                       style="color: var(--color-cyan);">group</span>
               </div>
               <h3 class="text-sm font-semibold leading-snug"
-                  style="color: oklch(0.96 0.006 268); font-family: 'Outfit', sans-serif;">
-                {{ team.name }}
+               style="color: var(--color-text-primary); font-family: 'Outfit', sans-serif;">
+                 {{ team.name }}
               </h3>
             </div>
 
             <!-- Member count badge -->
             <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[0.65rem] font-semibold shrink-0"
-                  style="background: oklch(0.65 0.26 285 / 0.12);
-                         color: oklch(0.72 0.18 285);
-                         border: 1px solid oklch(0.65 0.26 285 / 0.2);">
+                  style="background: color-mix(in oklch, var(--color-accent) 12%, transparent);
+                         color: var(--color-accent);
+                         border: 1px solid color-mix(in oklch, var(--color-accent) 20%, transparent);">
               <span class="material-symbols-rounded text-[10px]">person</span>
               {{ team.members.length }}
             </span>
@@ -94,11 +94,11 @@
           <!-- Description -->
           @if (team.description) {
             <p class="text-xs leading-relaxed line-clamp-2"
-               style="color: oklch(0.55 0.015 268);">
+               style="color: var(--color-text-secondary);">
               {{ team.description }}
             </p>
           } @else {
-            <p class="text-xs italic" style="color: oklch(0.38 0.010 268);">
+            <p class="text-xs italic" style="color: var(--color-text-muted);">
               No description
             </p>
           }

@@ -19,7 +19,7 @@
            class="flex flex-col items-center justify-center py-8 gap-2 rounded-lg
                   bg-bg-elevated/40 border border-border border-dashed">
         <span class="material-symbols-rounded text-2xl"
-              style="color: oklch(0.65 0.26 285 / 0.5)">chat</span>
+              style="color: color-mix(in oklch, var(--color-accent) 50%, transparent)">chat</span>
         <p class="text-text-muted text-xs text-center leading-relaxed max-w-xs">
           Ask the AI anything about this project
         </p>
@@ -36,9 +36,9 @@
                  class="self-end max-w-[80%] px-3 py-2 rounded-2xl rounded-tr-sm text-xs
                         text-white"
                  style="background: linear-gradient(135deg,
-                          oklch(0.62 0.28 290) 0%,
-                          oklch(0.50 0.24 255) 100%);
-                        box-shadow: 0 0 12px oklch(0.65 0.26 285 / 0.2);">
+                          var(--color-accent) 0%,
+                          var(--color-cyan) 100%);
+                        box-shadow: 0 0 12px color-mix(in oklch, var(--color-accent) 20%, transparent);">
               {{ msg.content }}
             </div>
 
@@ -47,14 +47,14 @@
             <div data-testid="message-assistant"
                  class="self-start max-w-[85%] px-3 py-2 rounded-2xl rounded-tl-sm text-xs
                         text-text-secondary"
-                 style="background: oklch(0.14 0.025 268 / 0.8);
-                        border: 1px solid oklch(0.28 0.022 268);
+                 style="background: color-mix(in oklch, var(--color-bg-surface) 80%, transparent);
+                        border: 1px solid var(--color-border-strong);
                         backdrop-filter: blur(8px);">
               {{ msg.content }}
               @if (msg.streaming) {
                 <!-- Streaming indicator — blinking cursor -->
                 <span class="inline-block w-1.5 h-3 ml-0.5 align-middle animate-pulse rounded-sm"
-                      style="background: oklch(0.65 0.26 285 / 0.7);"
+                      style="background: color-mix(in oklch, var(--color-accent) 70%, transparent);"
                       aria-label="Streaming"></span>
               }
             </div>

@@ -1,96 +1,131 @@
-<!-- draggable="true" enables HTML5 DnD on this element -->
-<div
+<!-- draggable="true" enables HTML5 DnD -->
+<article
   draggable="true"
   (dragstart)="onDragStart($event)"
   (dragend)="onDragEnd($event)"
-  class="task-card-drag"
+  class="task-card animate-card-in"
+  [attr.aria-label]="'Task: ' + task().title"
+  role="article"
 >
-  <app-card padding="sm" class="block cursor-grab active:cursor-grabbing
-             hover:border-glow transition-all duration-200 animate-card-in">
 
-    <!-- Header: click area to toggle expand -->
-    <div class="flex items-start justify-between gap-2 mb-3 cursor-pointer"
-         (click)="toggleExpand()">
-      <span class="text-text-primary text-sm font-medium leading-snug line-clamp-2 flex-1">
-        {{ task().title }}
-      </span>
-      <div class="flex items-center gap-1 shrink-0">
-        <app-task-priority-badge [priority]="task().priority" />
-        <!-- Chevron rotates when expanded -->
-        <span class="material-symbols-rounded text-sm transition-transform duration-200"
-              [style.transform]="expanded() ? 'rotate(180deg)' : 'rotate(0deg)'"
-              style="color: oklch(0.42 0.012 268);">
-          expand_more
-        </span>
-        <app-button variant="ghost" size="sm" (click)="onDelete($event)" title="Delete task"
-                    class="opacity-0 group-hover:opacity-100 transition-opacity duration-150">
-          <span class="material-symbols-rounded text-sm"
-                style="color: oklch(0.65 0.22 25); font-size: 14px;">delete</span>
-        </app-button>
-      </div>
+  <!-- Priority border (left edge) -->
+  <div class="task-card-priority-bar" [attr.data-priority]="task().priority" aria-hidden="true"></div>
+
+  <!-- ── Header ───────────────────────────── -->
+  <div class="task-card-header" (click)="toggleExpand()">
+
+    <p class="task-card-title">{{ task().title }}</p>
+
+    <div class="task-card-header-actions">
+      <app-task-priority-badge [priority]="task().priority" />
+
+      <button
+        class="task-card-expand-btn"
+        [attr.aria-expanded]="expanded()"
+        [attr.aria-label]="expanded() ? 'Collapse subtasks' : 'Expand subtasks'"
+        (click)="$event.stopPropagation(); toggleExpand()"
+      >
+        <span
+          class="material-symbols-rounded task-card-chevron"
+          [class.task-card-chevron--open]="expanded()"
+          aria-hidden="true"
+        >expand_more</span>
+      </button>
+
+      <button
+        class="task-card-delete-btn"
+        (click)="onDelete($event)"
+        title="Delete task"
+        [attr.aria-label]="'Delete task: ' + task().title"
+      >
+        <span class="material-symbols-rounded" aria-hidden="true">delete</span>
+      </button>
     </div>
 
-    <!-- Deadline — only if set -->
-    @if (task().deadline) {
-      <div class="flex items-center gap-1.5 text-text-muted text-xs mb-2">
-        <span class="material-symbols-rounded text-sm">schedule</span>
-        <span>{{ task().deadline | date: 'MMM d' }}</span>
-      </div>
-    }
+  </div>
 
-    <!-- Assignee -->
-    @if (task().assigneeId) {
-      <div class="flex items-center gap-2 mt-3 pt-3 border-t border-border">
-        <app-avatar size="xs" [name]="assigneeName() ?? ''" />
-        <span class="text-text-muted text-xs truncate">
-          {{ assigneeName() }}
-        </span>
-      </div>
-    }
+  <!-- ── Metadata row ──────────────────────── -->
+  @if (task().deadline || task().parentTaskId) {
+    <div class="task-card-meta">
 
-    <!-- Expanded subtasks section -->
-    @if (expanded()) {
-      <div class="border-t border-border mt-3 pt-3 flex flex-col gap-2"
-           (click)="$event.stopPropagation()">
-
-        @if (loadingSubtasks()) {
-          <app-spinner size="sm" />
-        } @else if (subtasks().length === 0) {
-          <p class="text-xs text-text-muted">No subtasks yet</p>
-        } @else {
-          @for (sub of subtasks(); track sub.id) {
-            <div class="flex items-center gap-2">
-              <span class="material-symbols-rounded text-sm text-text-muted">subdirectory_arrow_right</span>
-              <span class="text-xs text-text-primary flex-1 truncate">{{ sub.title }}</span>
-              <app-task-priority-badge [priority]="sub.priority" />
-              <app-button variant="ghost" size="sm" (click)="deleteSubtask(sub.id, $event)">
-                <span class="material-symbols-rounded"
-                      style="color: oklch(0.65 0.22 25); font-size: 12px;">delete</span>
-              </app-button>
-            </div>
-          }
-        }
-
-        <!-- Add subtask input -->
-        <div class="flex gap-2 mt-1">
-          <input
-            type="text"
-            placeholder="Add subtask..."
-            [value]="newSubtaskTitle()"
-            (input)="newSubtaskTitle.set($any($event.target).value)"
-            (keydown.enter)="addSubtask()"
-            class="flex-1 text-xs rounded px-2 py-1 bg-surface-2 border border-border focus:outline-none focus:border-glow"
-            style="color: oklch(0.92 0.008 268);"
-          />
-          <app-button variant="secondary" size="sm"
-                      [disabled]="addingSubtask() || !newSubtaskTitle().trim()"
-                      (click)="addSubtask()">
-            <span class="material-symbols-rounded text-sm">add</span>
-          </app-button>
+      @if (task().deadline) {
+        <div class="task-meta-chip" [class.task-meta-chip--overdue]="isOverdue()">
+          <span class="material-symbols-rounded" aria-hidden="true">schedule</span>
+          <span>{{ task().deadline | date: 'MMM d' }}</span>
         </div>
+      }
 
+      @if (task().parentTaskId) {
+        <div class="task-meta-chip" aria-label="This is a subtask">
+          <span class="material-symbols-rounded" aria-hidden="true">subdirectory_arrow_right</span>
+          <span>Subtask</span>
+        </div>
+      }
+
+    </div>
+  }
+
+  <!-- ── Assignee ──────────────────────────── -->
+  @if (task().assigneeId) {
+    <div class="task-card-assignee">
+      <app-avatar size="xs" [name]="assigneeName() ?? ''" />
+      <span class="task-card-assignee-name">{{ assigneeName() }}</span>
+    </div>
+  }
+
+  <!-- ── Subtasks (expanded) ───────────────── -->
+  @if (expanded()) {
+    <div class="task-card-subtasks" (click)="$event.stopPropagation()">
+
+      <div class="task-card-subtasks-divider" aria-hidden="true"></div>
+
+      @if (loadingSubtasks()) {
+        <div class="task-card-subtasks-loading">
+          <app-spinner size="sm" />
+        </div>
+      } @else if (subtasks().length === 0) {
+        <p class="task-card-subtasks-empty">No subtasks yet</p>
+      } @else {
+        <ul class="task-card-subtasks-list" aria-label="Subtasks">
+          @for (sub of subtasks(); track sub.id) {
+            <li class="task-card-subtask-item">
+              <span class="material-symbols-rounded task-card-subtask-icon" aria-hidden="true">subdirectory_arrow_right</span>
+              <span class="task-card-subtask-title">{{ sub.title }}</span>
+              <app-task-priority-badge [priority]="sub.priority" />
+              <button
+                class="task-card-delete-btn task-card-delete-btn--sm"
+                (click)="deleteSubtask(sub.id, $event)"
+                [attr.aria-label]="'Delete subtask: ' + sub.title"
+              >
+                <span class="material-symbols-rounded" aria-hidden="true">delete</span>
+              </button>
+            </li>
+          }
+        </ul>
+      }
+
+      <!-- Add subtask input -->
+      <div class="task-card-add-subtask">
+        <input
+          type="text"
+          placeholder="Add subtask..."
+          [value]="newSubtaskTitle()"
+          (input)="newSubtaskTitle.set($any($event.target).value)"
+          (keydown.enter)="addSubtask()"
+          class="task-card-subtask-input"
+          aria-label="New subtask title"
+        />
+        <button
+          class="task-card-subtask-add-btn"
+          [disabled]="addingSubtask() || !newSubtaskTitle().trim()"
+          (click)="addSubtask()"
+          aria-label="Add subtask"
+        >
+          <span class="material-symbols-rounded" aria-hidden="true">add</span>
+        </button>
       </div>
-    }
 
-  </app-card>
-</div>
+    </div>
+  }
+
+</article>

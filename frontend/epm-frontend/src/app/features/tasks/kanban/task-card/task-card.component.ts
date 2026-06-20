@@ -8,10 +8,8 @@ import {
   signal,
 } from '@angular/core';
 import { DatePipe } from '@angular/common';
-import { CardComponent } from '../../../../shared/components/card/card.component';
 import { AvatarComponent } from '../../../../shared/components/avatar/avatar.component';
 import { TaskPriorityBadgeComponent } from '../../../../shared/components/task-priority-badge/task-priority-badge.component';
-import { ButtonComponent } from '../../../../shared/components/button/button.component';
 import { SpinnerComponent } from '../../../../shared/components/spinner/spinner.component';
 import { Task, TaskSummary } from '../../../../core/models/task.models';
 import { TenantUser } from '../../../../core/models/user-profile.model';
@@ -22,7 +20,7 @@ import { TaskService } from '../../task.service';
   selector: 'app-task-card',
   standalone: true,
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [DatePipe, CardComponent, AvatarComponent, TaskPriorityBadgeComponent, ButtonComponent, SpinnerComponent],
+  imports: [DatePipe, AvatarComponent, TaskPriorityBadgeComponent, SpinnerComponent],
   templateUrl: './task-card.component.html',
   styleUrl: './task-card.component.scss',
 })
@@ -41,6 +39,12 @@ export class TaskCardComponent {
   newSubtaskTitle = signal('');
   addingSubtask   = signal(false);
   private subtasksLoaded = false;
+
+  isOverdue = computed(() => {
+    const deadline = this.task().deadline;
+    if (!deadline) return false;
+    return new Date(deadline) < new Date();
+  });
 
   assigneeName = computed(() => {
     const assigneeId = this.task().assigneeId;

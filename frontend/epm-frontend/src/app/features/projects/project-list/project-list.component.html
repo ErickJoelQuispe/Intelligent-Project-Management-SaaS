@@ -1,20 +1,20 @@
 <app-page-header
   title="Projects"
-  description="Manage your team's projects"
+  description="Manage and track your team's work"
 >
   <app-button page-action variant="ghost" (click)="toggleArchived()">
-    <span class="material-symbols-rounded text-sm">
+    <span class="material-symbols-rounded" aria-hidden="true">
       {{ showArchived() ? 'visibility_off' : 'inventory_2' }}
     </span>
-    {{ showArchived() ? 'Hide archived' : 'Show archived' }}
+    {{ showArchived() ? 'Hide archived' : 'Archived' }}
   </app-button>
   <app-button page-action variant="primary" (click)="goToCreate()">
-    <span class="material-symbols-rounded text-sm">add</span>
+    <span class="material-symbols-rounded" aria-hidden="true">add</span>
     New project
   </app-button>
 </app-page-header>
 
-<div class="p-6 flex flex-col gap-6">
+<div class="project-list-content">
 
   @if (loading()) {
     <app-spinner size="lg" [full]="true" label="Loading projects..." />
@@ -33,56 +33,53 @@
       description="Create your first project and start managing your work."
     >
       <app-button action variant="primary" (click)="goToCreate()">
-        <span class="material-symbols-rounded text-sm">add</span>
+        <span class="material-symbols-rounded" aria-hidden="true">add</span>
         New project
       </app-button>
     </app-empty-state>
 
   } @else {
 
-    <!-- Stats bar — da contexto rápido al usuario -->
-    <div class="flex items-center gap-6 px-1 animate-fade-up">
-      <div class="flex items-center gap-2">
-        <span class="text-2xl font-bold gradient-text"
-              style="font-family: 'Outfit', sans-serif;">
-          {{ projects().length }}
-        </span>
-        <span class="text-sm" style="color: oklch(0.55 0.015 268);">
-          {{ projects().length === 1 ? 'project' : 'projects' }}
-        </span>
+    <!-- Stats bar -->
+    <div class="stats-bar animate-fade-up" role="status" aria-live="polite">
+
+      <div class="stat-item">
+        <span class="stat-number gradient-text">{{ projects().length }}</span>
+        <span class="stat-label">{{ projects().length === 1 ? 'project' : 'projects' }}</span>
       </div>
 
-      <div class="h-6 w-px" style="background: oklch(0.22 0.020 268);"></div>
+      <div class="stat-divider" aria-hidden="true"></div>
 
-      <div class="flex items-center gap-1.5">
-        <span class="size-2 rounded-full animate-glow-pulse"
-              style="background: oklch(0.74 0.18 152);
-                     box-shadow: 0 0 6px oklch(0.74 0.18 152 / 0.6);">
-        </span>
-        <span class="text-sm" style="color: oklch(0.55 0.015 268);">
-          {{ activeCount() }} active
-        </span>
+      <div class="stat-item">
+        <span class="stat-dot stat-dot--active" aria-hidden="true"></span>
+        <span class="stat-count">{{ activeCount() }}</span>
+        <span class="stat-label">active</span>
       </div>
 
-      @if (showArchived() && archivedCount() > 0) {
-        <div class="h-6 w-px" style="background: oklch(0.22 0.020 268);"></div>
-        <div class="flex items-center gap-1.5">
-          <span class="material-symbols-rounded text-sm" style="color: oklch(0.55 0.015 268);">inventory_2</span>
-          <span class="text-sm" style="color: oklch(0.55 0.015 268);">
-            {{ archivedCount() }} archived
-          </span>
+      @if (archivedCount() > 0) {
+        <div class="stat-divider" aria-hidden="true"></div>
+        <div class="stat-item">
+          <span class="material-symbols-rounded stat-icon" aria-hidden="true">inventory_2</span>
+          <span class="stat-count">{{ archivedCount() }}</span>
+          <span class="stat-label">archived</span>
         </div>
       }
+
     </div>
 
-    <!-- Grid de cards -->
-    <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+    <!-- Project grid -->
+    <div
+      class="project-grid"
+      role="list"
+      aria-label="Projects"
+    >
       @for (project of projects(); track project.id; let i = $index) {
-        <app-project-card
-          [project]="project"
-          [class]="'stagger-' + ((i % 6) + 1)"
-          (projectArchived)="onProjectArchived($event)"
-        />
+        <div role="listitem" [class]="'stagger-' + ((i % 6) + 1)">
+          <app-project-card
+            [project]="project"
+            (projectArchived)="onProjectArchived($event)"
+          />
+        </div>
       }
     </div>
 

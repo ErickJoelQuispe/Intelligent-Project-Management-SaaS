@@ -1,47 +1,33 @@
-.kanban-board {
-  padding: 16px;
-  height: 100%;
+.kanban-board-content {
+  padding: 1.25rem 1.75rem 1.5rem;
   display: flex;
   flex-direction: column;
+}
 
-  &__toolbar {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 16px;
+.kanban-columns {
+  display: flex;
+  gap: 0.875rem;
+  overflow-x: auto;
+  padding-bottom: 0.75rem;
+  flex: 1;
+  align-items: flex-start;
+
+  /* Smooth horizontal scroll */
+  scroll-snap-type: x mandatory;
+  -webkit-overflow-scrolling: touch;
+
+  /* Hide scrollbar but keep it functional */
+  scrollbar-width: thin;
+  scrollbar-color: var(--color-border) transparent;
+
+  &::-webkit-scrollbar {
+    height: 4px;
   }
-
-  &__title {
-    margin: 0;
-    font-size: 1.5rem;
-    font-weight: 500;
+  &::-webkit-scrollbar-track {
+    background: transparent;
   }
-
-  &__actions {
-    display: flex;
-    gap: 8px;
-    align-items: center;
-  }
-
-  &__loading {
-    display: flex;
-    justify-content: center;
-    padding: 32px 0;
-  }
-
-  &__error {
-    color: var(--mat-sys-error, #b00020);
-    padding: 12px;
-    border: 1px solid var(--mat-sys-error, #b00020);
-    border-radius: 4px;
-    margin-bottom: 12px;
-  }
-
-  &__columns {
-    display: flex;
-    gap: 12px;
-    flex: 1;
-    overflow-x: auto;
-    padding-bottom: 8px;
+  &::-webkit-scrollbar-thumb {
+    background: var(--color-border);
+    border-radius: 9999px;
   }
 }

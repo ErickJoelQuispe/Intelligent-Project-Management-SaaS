@@ -10,15 +10,13 @@ import {
 import { TaskStatus, TaskSummary, TASK_STATUS_LABELS } from '../../../../core/models/task.models';
 import { TenantUser } from '../../../../core/models/user-profile.model';
 import { TaskCardComponent } from '../task-card/task-card.component';
-import { BadgeComponent } from '../../../../shared/components/badge/badge.component';
-import { EmptyStateComponent } from '../../../../shared/components/empty-state/empty-state.component';
 import { DragStateService } from '../drag/drag-state.service';
 
 @Component({
   selector: 'app-kanban-column',
   standalone: true,
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [TaskCardComponent, BadgeComponent, EmptyStateComponent],
+  imports: [TaskCardComponent],
   templateUrl: './kanban-column.component.html',
   styleUrl: './kanban-column.component.scss',
 })

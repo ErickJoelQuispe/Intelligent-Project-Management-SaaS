@@ -1,11 +1,12 @@
-<app-page-header title="Kanban Board">
+<app-page-header title="Kanban Board" description="Drag tasks between columns to update their status">
   <app-button
     page-action
     variant="ghost"
     size="sm"
     [routerLink]="['/projects', projectId, 'tasks']"
+    aria-label="Switch to list view"
   >
-    <span class="material-symbols-rounded text-sm">list</span>
+    <span class="material-symbols-rounded" aria-hidden="true">list</span>
     List view
   </app-button>
   <app-button
@@ -13,24 +14,28 @@
     variant="primary"
     size="sm"
     [routerLink]="['/projects', projectId, 'tasks', 'new']"
+    aria-label="Create new task"
   >
-    <span class="material-symbols-rounded text-sm">add</span>
+    <span class="material-symbols-rounded" aria-hidden="true">add</span>
     New task
   </app-button>
 </app-page-header>
 
-<div class="p-6">
+<div class="kanban-board-content">
 
   @if (store.isLoading()) {
     <app-spinner size="lg" [full]="true" label="Loading board..." />
+
   } @else if (store.error()) {
     <app-error-banner
       [message]="store.error()!"
       retryLabel="Retry"
       (retry)="store.loadKanban(projectId)"
     />
+
   } @else {
-    <div class="flex gap-4 overflow-x-auto pb-4">
+
+    <div class="kanban-columns" role="region" aria-label="Kanban board columns">
       @for (col of store.kanbanColumns(); track col.status) {
         <app-kanban-column
           [status]="col.status"
@@ -41,6 +46,7 @@
         />
       }
     </div>
+
   }
 
 </div>

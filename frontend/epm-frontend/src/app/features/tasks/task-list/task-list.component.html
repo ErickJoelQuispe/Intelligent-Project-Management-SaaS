@@ -37,16 +37,16 @@
   } @else {
 
     <div class="rounded-xl overflow-hidden"
-         style="border: 1px solid oklch(0.22 0.020 268);
+         style="border: 1px solid var(--color-border);
                 box-shadow: 0 4px 24px oklch(0 0 0 / 0.4);">
 
       <!-- Header -->
       <div class="grid grid-cols-[2fr_1fr_1fr_1fr_auto] px-5 py-3"
-           style="background: oklch(0.13 0.025 268);
-                  border-bottom: 1px solid oklch(0.22 0.020 268);">
+           style="background: var(--color-bg-elevated);
+                  border-bottom: 1px solid var(--color-border);">
         @for (col of tableHeaders; track $index) {
           <span class="text-xs font-semibold uppercase tracking-widest"
-                style="color: oklch(0.42 0.012 268); font-family: 'JetBrains Mono', monospace;">
+                style="color: var(--color-text-muted); font-family: 'JetBrains Mono', monospace;">
             {{ col }}
           </span>
         }
@@ -58,20 +58,20 @@
                     px-5 py-3.5 items-center
                     transition-all duration-150 cursor-default animate-card-in"
              [class]="'stagger-' + ((i % 6) + 1)"
-             style="border-bottom: 1px solid oklch(0.22 0.020 268 / 0.5);"
+             style="border-bottom: 1px solid color-mix(in oklch, var(--color-border) 50%, transparent);"
              [style.background]="i % 2 === 0
-               ? 'oklch(0.09 0.02 268)'
-               : 'oklch(0.10 0.022 268)'"
+               ? 'var(--color-bg-base)'
+               : 'var(--color-bg-surface)'"
         >
           <span class="text-sm font-medium truncate pr-4 group-hover:text-accent
                        transition-colors duration-150"
-                style="color: oklch(0.92 0.008 268);">
+                style="color: var(--color-text-primary);">
             {{ task.title }}
           </span>
           <app-task-status-badge [status]="task.status" />
           <app-task-priority-badge [priority]="task.priority" />
           <span class="text-xs font-mono"
-                style="color: oklch(0.42 0.012 268); font-family: 'JetBrains Mono', monospace;">
+                style="color: var(--color-text-muted); font-family: 'JetBrains Mono', monospace;">
             {{ task.deadline ? (task.deadline | date:'MMM d, yy') : '—' }}
           </span>
           <div class="flex items-center gap-1">
@@ -84,7 +84,7 @@
                         (click)="deleteTask(task.id, task.title)"
                         title="Delete task">
               <span class="material-symbols-rounded text-sm"
-                    style="color: oklch(0.65 0.22 25);">delete</span>
+                     style="color: var(--color-danger);">delete</span>
             </app-button>
           </div>
         </div>
@@ -94,7 +94,7 @@
     <!-- Paginación -->
     @if (totalPages > 1) {
       <div class="flex items-center justify-between mt-5">
-        <span class="text-xs font-mono" style="color: oklch(0.42 0.012 268); font-family: 'JetBrains Mono', monospace;">
+        <span class="text-xs font-mono" style="color: var(--color-text-muted); font-family: 'JetBrains Mono', monospace;">
           Page {{ pageIndex + 1 }} / {{ totalPages }}
         </span>
         <div class="flex gap-2">
