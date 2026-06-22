@@ -19,7 +19,7 @@ import { NotificationStore } from './features/notifications/store/notification.s
                radial-gradient(ellipse 40% 30% at 100% 100%, color-mix(in oklch, var(--color-cyan) 4%, transparent) 0%, transparent 50%);
              z-index: 0; pointer-events: none;">
         </div>
-        <div class="relative" style="z-index: 1;">
+        <div class="relative" style="z-index: 1; height: 100%;">
           <router-outlet />
         </div>
       </main>

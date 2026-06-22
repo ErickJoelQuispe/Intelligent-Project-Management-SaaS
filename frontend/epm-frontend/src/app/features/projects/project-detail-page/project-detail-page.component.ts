@@ -369,6 +369,14 @@ type ActiveTab = 'list' | 'kanban';
     }
 
     <style>
+      /* ── Host fills the main area absolutely ─────── */
+      :host {
+        display: block;
+        position: absolute;
+        inset: 0;
+        overflow: hidden;
+      }
+
       /* ── Shell ───────────────────────────────────── */
       .pdp-shell {
         display: flex;
