@@ -176,6 +176,6 @@ export class TaskFormComponent implements OnInit {
   }
 
   private goBack(): void {
-    this.router.navigate(['/projects', this.projectId, 'tasks']);
+    this.router.navigate(['/projects', this.projectId]);
   }
 }

@@ -4,6 +4,7 @@ import {
   inject,
   signal,
   computed,
+  viewChild,
 } from '@angular/core';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { forkJoin } from 'rxjs';
@@ -327,7 +328,7 @@ function nameToHue(name: string): number {
             <app-button
               variant="primary"
               size="sm"
-              [routerLink]="['/projects', p.id, 'tasks', 'new']"
+              (click)="taskPanel()?.openTaskDrawer('TODO')"
               aria-label="Create new task"
             >
               <span class="material-symbols-rounded" aria-hidden="true">add</span>
@@ -810,6 +811,8 @@ export class ProjectDetailPageComponent {
   private readonly aiService      = inject(AiService);
   private readonly taskService    = inject(TaskService);
   private readonly teamService    = inject(TeamService);
+
+  readonly taskPanel        = viewChild(TaskPanelComponent);
 
   readonly project          = signal<Project | null>(null);
   readonly loading          = signal(true);
