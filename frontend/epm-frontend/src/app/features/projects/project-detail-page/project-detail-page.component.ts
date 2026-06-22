@@ -20,7 +20,6 @@ import { ProjectStatusBadgeComponent } from '../../../shared/components/project-
 import { AiDraftTaskItemComponent } from '../../../shared/components/ai-draft-task-item/ai-draft-task-item.component';
 import { AiChatComponent } from '../../ai/chat/ai-chat.component';
 import { TaskPanelComponent } from '../../tasks/task-panel/task-panel.component';
-import { KanbanPanelComponent } from '../../tasks/kanban/kanban-panel/kanban-panel.component';
 import { FormsModule } from '@angular/forms';
 import { DatePipe } from '@angular/common';
 
@@ -33,8 +32,6 @@ function nameToHue(name: string): number {
   const raw = hash % 320;
   return raw < 30 ? raw + 90 : raw + 60;
 }
-
-type ActiveTab = 'list' | 'kanban';
 
 @Component({
   selector: 'app-project-detail-page',
@@ -51,7 +48,6 @@ type ActiveTab = 'list' | 'kanban';
     AiDraftTaskItemComponent,
     AiChatComponent,
     TaskPanelComponent,
-    KanbanPanelComponent,
   ],
   template: `
     @if (loading()) {
@@ -313,34 +309,19 @@ type ActiveTab = 'list' | 'kanban';
           <div class="pdp-right-header">
             <h2 class="pdp-tasks-title">Tasks</h2>
 
-            <!-- Tab switcher -->
-            <div class="pdp-tab-switcher" role="tablist" aria-label="Task view">
-              <button
-                class="pdp-tab"
-                [class.pdp-tab--active]="activeTab() === 'list'"
-                (click)="activeTab.set('list')"
-                role="tab"
-                [attr.aria-selected]="activeTab() === 'list'"
-                aria-label="List view"
-              >
-                <span class="material-symbols-rounded" aria-hidden="true">checklist</span>
-                List
-              </button>
-              <button
-                class="pdp-tab"
-                [class.pdp-tab--active]="activeTab() === 'kanban'"
-                (click)="activeTab.set('kanban')"
-                role="tab"
-                [attr.aria-selected]="activeTab() === 'kanban'"
-                aria-label="Board view"
-              >
-                <span class="material-symbols-rounded" aria-hidden="true">view_kanban</span>
-                Board
-              </button>
-            </div>
-
             <!-- Spacer -->
             <div class="pdp-right-header-spacer" aria-hidden="true"></div>
+
+            <!-- Board button -->
+            <app-button
+              variant="ghost"
+              size="sm"
+              [routerLink]="['/projects', p.id, 'board']"
+              aria-label="Open board view"
+            >
+              <span class="material-symbols-rounded" aria-hidden="true">view_kanban</span>
+              Board
+            </app-button>
 
             <!-- New task button -->
             <app-button
@@ -354,12 +335,8 @@ type ActiveTab = 'list' | 'kanban';
             </app-button>
           </div>
 
-          <div class="pdp-right-body" role="tabpanel">
-            @if (activeTab() === 'list') {
-              <app-task-panel [projectId]="p.id" />
-            } @else {
-              <app-kanban-panel [projectId]="p.id" />
-            }
+          <div class="pdp-right-body">
+            <app-task-panel [projectId]="p.id" />
           </div>
 
         </main>
@@ -813,39 +790,6 @@ type ActiveTab = 'list' | 'kanban';
         letter-spacing: -0.01em;
       }
 
-      .pdp-tab-switcher {
-        display: flex;
-        gap: 0.25rem;
-        background: color-mix(in oklch, var(--color-bg-overlay) 50%, transparent);
-        border: 1px solid var(--color-border);
-        border-radius: 0.5rem;
-        padding: 0.1875rem;
-      }
-
-      .pdp-tab {
-        display: inline-flex;
-        align-items: center;
-        gap: 0.375rem;
-        padding: 0.3125rem 0.75rem;
-        border-radius: 0.3125rem;
-        border: none;
-        background: transparent;
-        color: var(--color-text-muted);
-        font-size: 0.8125rem;
-        font-weight: 500;
-        font-family: 'Outfit', sans-serif;
-        cursor: pointer;
-        transition: background 0.15s ease, color 0.15s ease;
-        white-space: nowrap;
-      }
-      .pdp-tab .material-symbols-rounded { font-size: 1rem; }
-      .pdp-tab:hover { color: var(--color-text-primary); }
-      .pdp-tab--active {
-        background: var(--color-accent);
-        color: #fff;
-      }
-      .pdp-tab--active:hover { color: #fff; }
-
       .pdp-right-header-spacer {
         flex: 1;
       }
@@ -869,7 +813,6 @@ export class ProjectDetailPageComponent {
   readonly project          = signal<Project | null>(null);
   readonly loading          = signal(true);
   readonly error            = signal<string | null>(null);
-  readonly activeTab        = signal<ActiveTab>('list');
   readonly aiExpanded       = signal(false);
 
   // Team assignment

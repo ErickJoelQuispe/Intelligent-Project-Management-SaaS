@@ -61,6 +61,14 @@ export const routes: Routes = [
     canActivate: [authGuard],
   },
   {
+    path: 'projects/:projectId/board',
+    loadComponent: () =>
+      import('./features/tasks/kanban/kanban-board/kanban-board.component').then(
+        (m) => m.KanbanBoardComponent,
+      ),
+    canActivate: [authGuard],
+  },
+  {
     path: 'projects/:projectId',
     loadComponent: () =>
       import('./features/projects/project-detail-page/project-detail-page.component').then(
