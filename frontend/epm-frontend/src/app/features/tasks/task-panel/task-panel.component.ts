@@ -1,6 +1,7 @@
 import {
   Component,
   ChangeDetectionStrategy,
+  ViewEncapsulation,
   OnInit,
   inject,
   input,
@@ -35,6 +36,7 @@ interface StatusGroup {
   selector: 'app-task-panel',
   standalone: true,
   changeDetection: ChangeDetectionStrategy.OnPush,
+  encapsulation: ViewEncapsulation.None,
   imports: [
     DatePipe,
     RouterLink,
