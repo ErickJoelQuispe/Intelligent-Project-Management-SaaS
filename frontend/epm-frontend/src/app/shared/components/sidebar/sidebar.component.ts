@@ -2,8 +2,8 @@ import { Component, ChangeDetectionStrategy, inject, signal, computed } from '@a
 import { Router, RouterLink, RouterLinkActive } from '@angular/router';
 import { OAuthService } from 'angular-oauth2-oidc';
 import { AuthService } from '../../../core/auth/auth.service';
-import { ThemeService } from '../../../core/theme/theme.service';
 import { NotificationBellComponent } from '../../../features/notifications/components/notification-bell/notification-bell.component';
+import { ThemePickerComponent } from '../theme-picker/theme-picker.component';
 
 interface NavItem {
   label: string;
@@ -15,7 +15,7 @@ interface NavItem {
   selector: 'app-sidebar',
   standalone: true,
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [RouterLink, RouterLinkActive, NotificationBellComponent],
+  imports: [RouterLink, RouterLinkActive, NotificationBellComponent, ThemePickerComponent],
   template: `
     <aside
       class="sidebar-root relative flex flex-col h-screen shrink-0 overflow-hidden"
@@ -162,21 +162,8 @@ interface NavItem {
         <!-- Theme + Collapse row -->
         <div class="sidebar-controls mx-2 mb-1" [class.sidebar-controls--collapsed]="collapsed()">
 
-          <!-- Theme toggle -->
-          <button
-            (click)="themeService.toggle()"
-            class="ctrl-btn"
-            [class.ctrl-btn--icon-only]="collapsed()"
-            [title]="themeService.isDark() ? 'Switch to light mode' : 'Switch to dark mode'"
-            [attr.aria-label]="themeService.isDark() ? 'Switch to light mode' : 'Switch to dark mode'"
-          >
-            <span class="material-symbols-rounded ctrl-btn-icon" aria-hidden="true">
-              {{ themeService.isDark() ? 'light_mode' : 'dark_mode' }}
-            </span>
-            @if (!collapsed()) {
-              <span class="ctrl-btn-label">{{ themeService.isDark() ? 'Light mode' : 'Dark mode' }}</span>
-            }
-          </button>
+          <!-- Theme picker -->
+          <app-theme-picker [collapsed]="collapsed()" />
 
           <!-- Collapse toggle -->
           <button
@@ -621,8 +608,6 @@ interface NavItem {
   `,
 })
 export class SidebarComponent {
-  readonly themeService = inject(ThemeService);
-
   private readonly authService = inject(AuthService);
   private readonly oauth       = inject(OAuthService);
   private readonly router      = inject(Router);
