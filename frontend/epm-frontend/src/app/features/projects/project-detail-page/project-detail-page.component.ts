@@ -918,7 +918,7 @@ export class ProjectDetailPageComponent {
     this.aiError.set(null);
     this.draftTasks.set([]);
     this.saveSuccess.set(false);
-    this.aiService.generateTasks(p.id, p.description ?? p.name).subscribe({
+    this.aiService.generateTasks(p.id, p.description ?? p.name, true).subscribe({
       next:  (res) => { this.draftTasks.set(res.tasks); this.generating.set(false); },
       error: (err) => {
         this.aiError.set(err.status === 503
