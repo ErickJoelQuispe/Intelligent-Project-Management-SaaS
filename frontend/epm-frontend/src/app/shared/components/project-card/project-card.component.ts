@@ -7,7 +7,6 @@ import {
 } from '@angular/core';
 import { DatePipe } from '@angular/common';
 import { RouterLink } from '@angular/router';
-import { ButtonComponent } from '../button/button.component';
 import { ProjectStatusBadgeComponent } from '../project-status-badge/project-status-badge.component';
 import { Project, ProjectStatus } from '../../../core/models/project.model';
 
@@ -26,11 +25,12 @@ function nameToHue(name: string): number {
   selector: 'app-project-card',
   standalone: true,
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [DatePipe, RouterLink, ButtonComponent, ProjectStatusBadgeComponent],
+  imports: [DatePipe, RouterLink, ProjectStatusBadgeComponent],
   template: `
     <article
       class="project-card animate-card-in"
       [class.project-card--archived]="isArchived()"
+      [routerLink]="['/projects', project().id]"
     >
       <!-- Per-project color strip (top) -->
       <div
@@ -45,6 +45,16 @@ function nameToHue(name: string): number {
         [style.background]="hoverGlow()"
         aria-hidden="true"
       ></div>
+
+      <!-- Archive button — visible on hover, top-right -->
+      <button
+        class="project-card-archive-btn"
+        (click)="onArchive($event)"
+        title="Archive project"
+        aria-label="Archive {{ project().name }}"
+      >
+        <span class="material-symbols-rounded" aria-hidden="true">archive</span>
+      </button>
 
       <!-- ── Header ─────────────────────────────────── -->
       <header class="project-card-header">
@@ -92,46 +102,6 @@ function nameToHue(name: string): number {
 
       </div>
 
-      <!-- ── Actions ────────────────────────────────── -->
-      @if (showActions()) {
-        <footer class="project-card-actions">
-
-          <app-button variant="secondary" size="sm"
-                      [routerLink]="['/projects', project().id, 'tasks']"
-                      aria-label="View tasks for {{ project().name }}">
-            <span class="material-symbols-rounded" aria-hidden="true">checklist</span>
-            Tasks
-          </app-button>
-
-          <app-button variant="secondary" size="sm"
-                      [routerLink]="['/projects', project().id, 'tasks', 'kanban']"
-                      aria-label="View kanban for {{ project().name }}">
-            <span class="material-symbols-rounded" aria-hidden="true">view_kanban</span>
-            Board
-          </app-button>
-
-          <!-- Spacer -->
-          <div class="flex-1" aria-hidden="true"></div>
-
-          <app-button variant="ghost" size="sm"
-                      [routerLink]="['/projects', project().id]"
-                      title="AI Assistant & project details"
-                      aria-label="Open AI assistant for {{ project().name }}">
-            <span class="material-symbols-rounded ai-icon" aria-hidden="true">auto_awesome</span>
-            AI
-          </app-button>
-
-          <app-button variant="ghost" size="sm"
-                      (click)="onArchive($event)"
-                      title="Archive project"
-                      aria-label="Archive {{ project().name }}">
-            <span class="material-symbols-rounded archive-icon" aria-hidden="true">archive</span>
-          </app-button>
-
-          <ng-content select="[card-actions]" />
-        </footer>
-      }
-
     </article>
 
     <style>
@@ -150,7 +120,9 @@ function nameToHue(name: string): number {
           border-color 0.2s ease,
           box-shadow 0.2s ease,
           transform 0.18s cubic-bezier(0.2, 0, 0, 1);
-        cursor: default;
+        cursor: pointer;
+        text-decoration: none;
+        color: inherit;
       }
       .project-card:hover {
         border-color: var(--color-border-strong);
@@ -160,6 +132,21 @@ function nameToHue(name: string): number {
       .project-card--archived {
         opacity: 0.6;
         filter: saturate(0.4);
+      }
+
+      /* ── Hover overlay ────────────────────────────── */
+      .project-card::after {
+        content: '';
+        position: absolute;
+        inset: 0;
+        background: color-mix(in oklch, var(--color-text-primary) 3%, transparent);
+        opacity: 0;
+        pointer-events: none;
+        transition: opacity 0.2s ease;
+        z-index: 0;
+      }
+      .project-card:hover::after {
+        opacity: 1;
       }
 
       /* ── Color strip ─────────────────────────────── */
@@ -191,6 +178,42 @@ function nameToHue(name: string): number {
         opacity: 1;
       }
 
+      /* ── Archive button (hover-reveal, top-right) ── */
+      .project-card-archive-btn {
+        position: absolute;
+        top: 0.625rem;
+        right: 0.625rem;
+        z-index: 2;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        width: 1.75rem;
+        height: 1.75rem;
+        border-radius: 0.375rem;
+        border: none;
+        background: color-mix(in oklch, var(--color-bg-overlay) 70%, transparent);
+        color: var(--color-text-muted);
+        cursor: pointer;
+        opacity: 0;
+        transition: opacity 0.15s ease, background 0.15s ease, color 0.15s ease;
+        padding: 0;
+      }
+      .project-card:hover .project-card-archive-btn {
+        opacity: 1;
+      }
+      .project-card-archive-btn:hover {
+        background: color-mix(in oklch, var(--color-danger) 12%, var(--color-bg-overlay));
+        color: var(--color-danger);
+      }
+      .project-card-archive-btn:focus-visible {
+        outline: 2px solid var(--color-danger);
+        outline-offset: 1px;
+        opacity: 1;
+      }
+      .project-card-archive-btn .material-symbols-rounded {
+        font-size: 1rem;
+      }
+
       /* ── Header ──────────────────────────────────── */
       .project-card-header {
         position: relative;
@@ -206,6 +229,7 @@ function nameToHue(name: string): number {
         align-items: center;
         gap: 0.625rem;
         min-width: 0;
+        padding-right: 1.5rem; /* room for archive btn */
       }
 
       .project-color-dot {
@@ -298,29 +322,11 @@ function nameToHue(name: string): number {
       .project-card-date .material-symbols-rounded {
         font-size: 0.875rem;
       }
-
-      /* ── Actions footer ──────────────────────────── */
-      .project-card-actions {
-        position: relative;
-        z-index: 1;
-        display: flex;
-        align-items: center;
-        gap: 0.375rem;
-        padding: 0.625rem 1rem 0.875rem;
-        border-top: 1px solid color-mix(in oklch, var(--color-border) 45%, transparent);
-      }
-
-      /* AI button icon tint */
-      .ai-icon { color: var(--color-accent); }
-
-      /* Archive button icon tint */
-      .archive-icon { color: var(--color-danger); }
     </style>
   `,
 })
 export class ProjectCardComponent {
   project         = input.required<Project>();
-  showActions     = input<boolean>(true);
   projectArchived = output<Project>();
 
   isArchived = computed(() => this.project().status === ProjectStatus.ARCHIVED);

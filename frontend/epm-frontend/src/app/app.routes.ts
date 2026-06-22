@@ -45,22 +45,6 @@ export const routes: Routes = [
     canActivate: [authGuard],
   },
   {
-    path: 'projects/:projectId',
-    loadComponent: () =>
-      import('./features/projects/project-detail/project-detail.component').then(
-        (m) => m.ProjectDetailComponent,
-      ),
-    canActivate: [authGuard],
-  },
-  {
-    path: 'projects/:projectId/tasks/kanban',
-    loadComponent: () =>
-      import('./features/tasks/kanban/kanban-board/kanban-board.component').then(
-        (m) => m.KanbanBoardComponent,
-      ),
-    canActivate: [authGuard],
-  },
-  {
     path: 'projects/:projectId/tasks/new',
     loadComponent: () =>
       import('./features/tasks/task-form/task-form.component').then(
@@ -77,10 +61,10 @@ export const routes: Routes = [
     canActivate: [authGuard],
   },
   {
-    path: 'projects/:projectId/tasks',
+    path: 'projects/:projectId',
     loadComponent: () =>
-      import('./features/tasks/task-list/task-list.component').then(
-        (m) => m.TaskListComponent,
+      import('./features/projects/project-detail-page/project-detail-page.component').then(
+        (m) => m.ProjectDetailPageComponent,
       ),
     canActivate: [authGuard],
   },
