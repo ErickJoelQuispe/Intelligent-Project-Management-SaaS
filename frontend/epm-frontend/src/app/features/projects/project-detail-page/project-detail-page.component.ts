@@ -370,8 +370,9 @@ function nameToHue(name: string): number {
 
       /* ── Left panel ──────────────────────────────── */
       .pdp-left {
-        width: 360px;
-        min-width: 320px;
+        width: 40%;
+        min-width: 280px;
+        max-width: 420px;
         flex-shrink: 0;
         border-right: 1px solid var(--color-border);
         overflow-y: auto;
