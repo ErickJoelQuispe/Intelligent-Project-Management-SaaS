@@ -225,21 +225,10 @@ interface StatusGroup {
     <style>
       /* ── Panel wrapper ─────────────────────────── */
       .task-panel-content {
-        padding: 1.25rem 1.5rem;
+        padding: 1rem 1.25rem 1.5rem;
         display: flex;
         flex-direction: column;
-        gap: 0.75rem;
-        height: 100%;
-        box-sizing: border-box;
-        overflow-y: auto;
-        scrollbar-width: thin;
-        scrollbar-color: var(--color-border) transparent;
-      }
-      .task-panel-content::-webkit-scrollbar { width: 4px; }
-      .task-panel-content::-webkit-scrollbar-track { background: transparent; }
-      .task-panel-content::-webkit-scrollbar-thumb {
-        background: var(--color-border);
-        border-radius: 9999px;
+        gap: 0.625rem;
       }
 
       /* ── Group ─────────────────────────────────── */
