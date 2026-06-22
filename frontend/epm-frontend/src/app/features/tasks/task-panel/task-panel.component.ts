@@ -810,6 +810,7 @@ interface StatusGroup {
 
       /* ── Task drawer backdrop ──────────────────── */
       .task-drawer-backdrop {
+        isolation: isolate;
         position: fixed;
         inset: 0;
         background: oklch(0 0 0 / 0.35);
@@ -831,10 +832,12 @@ interface StatusGroup {
         bottom: 0;
         width: 380px;
         max-width: 90vw;
-        background: var(--color-bg-surface);
+        background: var(--bg-surface);
+        background-color: var(--bg-surface);
+        isolation: isolate;
         border-left: 1px solid var(--color-border);
-        box-shadow: var(--shadow-lg);
-        z-index: 51;
+        box-shadow: -8px 0 32px oklch(0 0 0 / 0.25);
+        z-index: 200;
         transform: translateX(100%);
         transition: transform 0.28s cubic-bezier(0.2, 0, 0, 1);
         display: flex;
