@@ -17,7 +17,7 @@
   }
 </app-page-header>
 
-<div class="p-6 flex flex-col gap-6 max-w-3xl">
+<div class="p-6 flex flex-col gap-8 max-w-3xl">
 
   @if (loading()) {
     <app-spinner size="lg" [full]="true" label="Loading team..." />
@@ -25,228 +25,219 @@
     <app-error-banner [message]="error()!" />
   } @else if (team(); as t) {
 
-    <!-- Team info card -->
-    <div class="td-section flex flex-col gap-2 p-5 rounded-2xl border animate-fade-up">
-      <div class="flex items-center gap-3">
-        <div class="td-section-icon size-10 rounded-xl shrink-0 flex items-center justify-center">
-          <span class="material-symbols-rounded"
-                style="color: var(--color-cyan);">group</span>
-        </div>
-        <div class="flex flex-col gap-0.5 min-w-0">
-          <h2 class="td-section-title text-base font-semibold truncate">
-            {{ t.name }}
-          </h2>
-          <span class="td-section-meta text-xs">
-            {{ t.members.length }} {{ t.members.length === 1 ? 'member' : 'members' }}
-          </span>
-        </div>
-      </div>
+    <!-- Team meta — inline, no card -->
+    <div class="flex flex-col gap-1 animate-fade-up">
       @if (t.description) {
-        <p class="td-section-description text-sm leading-relaxed mt-1">
-          {{ t.description }}
-        </p>
+        <p class="td-description text-sm leading-relaxed">{{ t.description }}</p>
       }
+      <p class="td-meta text-xs">
+        {{ t.members.length }} {{ t.members.length === 1 ? 'member' : 'members' }}
+      </p>
     </div>
 
-    <!-- Members card -->
-    <app-card>
-      <div card-header
-           class="flex items-center gap-3 px-6 py-4 border-b border-border">
-        <span class="material-symbols-rounded text-accent">people</span>
-        <span class="text-text-primary font-semibold text-sm">Members</span>
-        <span class="ml-auto inline-flex items-center px-2 py-0.5 rounded-full text-[0.65rem] font-semibold"
-              style="background: color-mix(in oklch, var(--color-accent) 12%, transparent);
-                     color: var(--color-accent);
-                     border: 1px solid color-mix(in oklch, var(--color-accent) 20%, transparent);">
-          {{ t.members.length }}
-        </span>
+    <!-- Members section -->
+    <section class="flex flex-col gap-4 animate-fade-up" style="animation-delay: 60ms">
+
+      <div class="flex items-center justify-between">
+        <h2 class="td-section-heading text-sm font-semibold uppercase tracking-wider">
+          Members
+        </h2>
       </div>
 
-      <div class="flex flex-col gap-4">
+      <!-- Error -->
+      @if (memberError()) {
+        <app-error-banner [message]="memberError()!" variant="inline" />
+      }
 
-        <!-- Member error -->
-        @if (memberError()) {
-          <app-error-banner [message]="memberError()!" variant="inline" />
-        }
+      <!-- Member list -->
+      @if (t.members.length === 0) {
+        <p class="td-meta text-sm py-2">No members yet.</p>
+      } @else {
+        <div class="td-table flex flex-col">
+          @for (member of t.members; track member.userId; let last = $last) {
+            <div class="flex items-center justify-between gap-4 py-3"
+                 [class.border-b]="!last"
+                 style="border-color: var(--color-border);">
 
-        <!-- Member list -->
-        @if (t.members.length === 0) {
-          <p class="text-text-muted text-sm text-center py-4">No members yet.</p>
-        } @else {
-          <div class="flex flex-col divide-y"
-               style="border-color: color-mix(in oklch, var(--color-border) 60%, transparent);">
-            @for (member of t.members; track member.userId) {
-              <div class="flex items-center justify-between gap-3 py-3">
-                 <!-- Avatar + info -->
-                <div class="flex items-center gap-3 min-w-0">
-                  <div class="td-member-avatar size-8 rounded-full shrink-0 flex items-center justify-center">
-                    <span class="td-member-initial text-xs font-bold">
-                      {{ member.userId.charAt(0).toUpperCase() }}
-                    </span>
-                  </div>
-                  <div class="flex flex-col gap-0.5 min-w-0">
-                     <span class="text-sm font-medium truncate"
-                           style="color: var(--color-text-primary);">
-                       {{ member.userId }}
-                     </span>
-                     <span class="text-xs" style="color: var(--color-text-muted);">
-                       Joined {{ member.joinedAt | slice:0:10 }}
-                     </span>
-                  </div>
+              <!-- Avatar + info -->
+              <div class="flex items-center gap-3 min-w-0">
+                <div class="td-avatar size-7 rounded-full shrink-0 flex items-center justify-center">
+                  <span class="td-avatar-initial text-[0.65rem] font-bold">
+                    {{ memberInitial(member) }}
+                  </span>
                 </div>
-
-                <!-- Role badge + remove button -->
-                <div class="flex items-center gap-2 shrink-0">
-                  <app-team-role-badge [role]="member.role" />
-                  @if (isOwner()) {
-                     <button
-                       (click)="onRemoveMember(member.userId)"
-                       [disabled]="removingMember() === member.userId"
-                       class="td-remove-btn flex items-center justify-center size-6 rounded transition-colors duration-150
-                              disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer"
-                       title="Remove member"
-                     >
-                       <span class="material-symbols-rounded text-sm">person_remove</span>
-                     </button>
-                   }
+                <div class="flex flex-col gap-0.5 min-w-0">
+                  <span class="text-sm font-medium truncate" style="color: var(--color-text-primary);">
+                    {{ memberDisplayName(member) }}
+                  </span>
+                  <span class="text-xs" style="color: var(--color-text-muted);">
+                    Joined {{ member.joinedAt | slice:0:10 }}
+                  </span>
                 </div>
               </div>
-            }
-          </div>
-        }
 
-        <!-- Divider -->
-        @if (isOwner()) {
-          <div class="border-t border-border"></div>
-
-          <!-- Add member form -->
-          <div class="flex flex-col gap-3">
-            <h3 class="text-text-primary text-sm font-semibold">Add member</h3>
-            <form [formGroup]="addMemberForm" (ngSubmit)="onAddMember()" novalidate
-                  class="flex flex-col gap-3 sm:flex-row sm:items-end">
-
-              <div class="flex flex-col gap-1.5 flex-1 min-w-0">
-                <label class="text-xs font-medium" style="color: var(--color-text-secondary);">
-                  User ID
-                </label>
-                <input
-                  type="text" formControlName="userId"
-                  placeholder="Enter user ID"
-                  data-testid="userId-input"
-                  class="team-field w-full px-3 py-2 rounded-lg text-sm transition-all duration-200 focus:outline-none"
-                />
+              <!-- Role + remove -->
+              <div class="flex items-center gap-3 shrink-0">
+                <app-team-role-badge [role]="member.role" />
+                @if (isOwner()) {
+                  <button
+                    (click)="onRemoveMember(member.userId)"
+                    [disabled]="removingMember() === member.userId"
+                    class="td-remove-btn"
+                    aria-label="Remove member"
+                    title="Remove member"
+                  >
+                    @if (removingMember() === member.userId) {
+                      <span class="td-remove-spinner" aria-hidden="true"></span>
+                    } @else {
+                      <span class="material-symbols-rounded" aria-hidden="true">person_remove</span>
+                    }
+                  </button>
+                }
               </div>
+            </div>
+          }
+        </div>
+      }
 
-              <div class="flex flex-col gap-1.5 w-36 shrink-0">
-                <label class="text-xs font-medium" style="color: var(--color-text-secondary);">
-                  Role
-                </label>
-                <select
-                  formControlName="role"
-                  data-testid="role-select"
-                  class="team-field w-full px-3 py-2 rounded-lg text-sm transition-all duration-200
-                         focus:outline-none appearance-none cursor-pointer"
-                >
-                  @for (r of roleOptions; track r) {
-                    <option [value]="r"
-                            style="background: var(--color-bg-elevated); color: var(--color-text-primary);">
-                      {{ r }}
-                    </option>
-                  }
-                </select>
-              </div>
+      <!-- Add member — only for owners -->
+      @if (isOwner()) {
+        <div class="td-add-section flex flex-col gap-3 pt-4 border-t" style="border-color: var(--color-border);">
+          <h3 class="td-section-heading text-xs font-semibold uppercase tracking-wider">Add member</h3>
+          <form [formGroup]="addMemberForm" (ngSubmit)="onAddMember()" novalidate
+                class="flex flex-col gap-3 sm:flex-row sm:items-end">
 
-              <app-button type="submit" variant="primary" size="sm"
-                          [loading]="addingMember()"
-                          data-testid="add-member-button">
-                <span class="material-symbols-rounded text-sm">person_add</span>
-                Add
-              </app-button>
+            <div class="flex flex-col gap-1.5 flex-1 min-w-0">
+              <label class="text-xs" style="color: var(--color-text-secondary);">Email</label>
+              <input
+                type="email" formControlName="email"
+                placeholder="user@example.com"
+                data-testid="email-input"
+                class="td-field w-full px-3 py-2 rounded-lg text-sm transition-all duration-200 focus:outline-none"
+              />
+            </div>
 
-            </form>
-            @if (addMemberForm.controls.userId.hasError('required') && addMemberForm.controls.userId.touched) {
-              <span class="text-xs" style="color: var(--color-danger);">User ID is required.</span>
-            }
-          </div>
-        }
+            <div class="flex flex-col gap-1.5 w-32 shrink-0">
+              <label class="text-xs" style="color: var(--color-text-secondary);">Role</label>
+              <select
+                formControlName="role"
+                data-testid="role-select"
+                class="td-field w-full px-3 py-2 rounded-lg text-sm transition-all duration-200
+                       focus:outline-none appearance-none cursor-pointer"
+              >
+                @for (r of roleOptions; track r) {
+                  <option [value]="r"
+                          style="background: var(--color-bg-elevated); color: var(--color-text-primary);">
+                    {{ r }}
+                  </option>
+                }
+              </select>
+            </div>
 
-      </div>
-    </app-card>
+            <app-button type="submit" variant="primary" size="sm"
+                        [loading]="addingMember()"
+                        data-testid="add-member-button">
+              <span class="material-symbols-rounded text-sm">person_add</span>
+              Add
+            </app-button>
+
+          </form>
+          @if (addMemberForm.controls.email.hasError('required') && addMemberForm.controls.email.touched) {
+            <span class="text-xs" style="color: var(--color-danger);">Email is required.</span>
+          } @else if (addMemberForm.controls.email.hasError('email') && addMemberForm.controls.email.touched) {
+            <span class="text-xs" style="color: var(--color-danger);">Enter a valid email address.</span>
+          }
+        </div>
+      }
+
+    </section>
 
   }
 
 </div>
 
 <style>
-  /* Team info section card */
-  .td-section {
-    background: color-mix(in oklch, var(--color-bg-surface) 70%, transparent);
-    border-color: var(--color-border);
-    backdrop-filter: blur(12px);
-  }
-
-  .td-section-icon {
-    background: linear-gradient(
-      135deg,
-      color-mix(in oklch, var(--color-accent) 20%, transparent),
-      color-mix(in oklch, var(--color-cyan) 20%, transparent)
-    );
-    border: 1px solid color-mix(in oklch, var(--color-accent) 30%, transparent);
-  }
-
-  .td-section-title {
-    color: var(--color-text-primary);
-    font-family: 'Outfit', sans-serif;
-  }
-
-  .td-section-meta {
+  .td-description {
     color: var(--color-text-secondary);
   }
 
-  .td-section-description {
-    color: var(--color-text-secondary);
+  .td-meta {
+    color: var(--color-text-muted);
   }
 
-  /* Member avatar with initial */
-  .td-member-avatar {
-    background: linear-gradient(
-      135deg,
-      color-mix(in oklch, var(--color-accent) 20%, transparent),
-      color-mix(in oklch, var(--color-cyan) 20%, transparent)
-    );
-    border: 1px solid color-mix(in oklch, var(--color-accent) 25%, transparent);
+  .td-section-heading {
+    color: var(--color-text-muted);
+    letter-spacing: 0.06em;
   }
 
-  .td-member-initial {
+  .td-avatar {
+    background: color-mix(in oklch, var(--color-accent) 12%, transparent);
+    border: 1px solid color-mix(in oklch, var(--color-accent) 20%, transparent);
+  }
+
+  .td-avatar-initial {
     color: var(--color-accent);
     font-family: 'Outfit', sans-serif;
     line-height: 1;
   }
 
-  /* Remove member button — danger hover */
-  .td-remove-btn {
-    color: var(--color-text-secondary);
-  }
 
-  .td-remove-btn:hover:not(:disabled) {
-    color: var(--color-danger);
-    background: color-mix(in oklch, var(--color-danger) 10%, transparent);
-  }
 
-  /* Form fields */
-  .team-field {
+  .td-field {
     background: var(--color-bg-surface);
     border: 1px solid var(--color-border);
     color: var(--color-text-primary);
   }
 
-  .team-field::placeholder {
+  .td-field::placeholder {
     color: var(--color-text-muted);
   }
 
-  .team-field:focus {
+  .td-field:focus {
     border-color: var(--color-accent) !important;
-    box-shadow: 0 0 0 2px var(--color-accent-subtle) !important;
-    outline: none;
+    box-shadow: 0 0 0 2px color-mix(in oklch, var(--color-accent) 15%, transparent) !important;
   }
+  .td-remove-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 1.75rem;
+    height: 1.75rem;
+    border-radius: 0.375rem;
+    border: none;
+    background: transparent;
+    cursor: pointer;
+    opacity: 0.55;
+    color: var(--color-text-muted);
+    transition: opacity 0.15s ease, background 0.15s ease, color 0.15s ease;
+    padding: 0;
+    flex-shrink: 0;
+  }
+
+  .td-remove-btn .material-symbols-rounded { font-size: 1.1rem; }
+
+  .td-remove-btn:hover:not(:disabled) {
+    opacity: 1;
+    background: color-mix(in oklch, var(--color-danger) 10%, transparent);
+    color: var(--color-danger);
+  }
+
+  .td-remove-btn:disabled {
+    opacity: 0.25;
+    cursor: not-allowed;
+  }
+
+  .td-remove-spinner {
+    display: block;
+    width: 0.875rem;
+    height: 0.875rem;
+    border-radius: 9999px;
+    flex-shrink: 0;
+    animation: td-spin 0.65s linear infinite;
+    background: conic-gradient(from 0deg, currentColor 0%, transparent 70%);
+    mask: radial-gradient(farthest-side, transparent 55%, black 56%);
+    -webkit-mask: radial-gradient(farthest-side, transparent 55%, black 56%);
+  }
+
+  @keyframes td-spin { to { transform: rotate(360deg); } }
 </style>

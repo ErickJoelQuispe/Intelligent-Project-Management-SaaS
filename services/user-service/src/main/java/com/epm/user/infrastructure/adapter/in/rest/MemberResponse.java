@@ -8,5 +8,6 @@ import com.epm.user.domain.model.TeamRole;
 /**
  * Team member response DTO.
  */
-public record MemberResponse(UUID userId, TeamRole role, Instant joinedAt) {
+public record MemberResponse(UUID userId, TeamRole role, Instant joinedAt,
+                              String firstName, String lastName, String email) {
 }

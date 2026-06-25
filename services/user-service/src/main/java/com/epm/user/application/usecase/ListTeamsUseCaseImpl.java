@@ -34,7 +34,7 @@ public class ListTeamsUseCaseImpl implements ListTeamsUseCase {
     private TeamResult toResult(Team team) {
         List<MemberResult> members = team.getMemberships().stream()
                 .filter(m -> m.isActive())
-                .map(m -> new MemberResult(m.getUserId(), m.getRole(), m.getJoinedAt()))
+                .map(m -> new MemberResult(m.getUserId(), m.getRole(), m.getJoinedAt(), null, null, null))
                 .toList();
         return new TeamResult(team.getId(), team.getTenantId(), team.getOwnerId(),
                 team.getName(), team.getDescription(), members);

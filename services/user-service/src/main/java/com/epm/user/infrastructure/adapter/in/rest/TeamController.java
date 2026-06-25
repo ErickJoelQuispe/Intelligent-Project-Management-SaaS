@@ -129,7 +129,8 @@ public class TeamController {
 
     private TeamResponse toResponse(TeamResult result) {
         List<MemberResponse> members = result.members().stream()
-                .map(m -> new MemberResponse(m.userId(), m.role(), m.joinedAt()))
+                .map(m -> new MemberResponse(m.userId(), m.role(), m.joinedAt(),
+                        m.firstName(), m.lastName(), m.email()))
                 .toList();
         return new TeamResponse(result.id(), result.tenantId(), result.ownerId(),
                 result.name(), result.description(), members);

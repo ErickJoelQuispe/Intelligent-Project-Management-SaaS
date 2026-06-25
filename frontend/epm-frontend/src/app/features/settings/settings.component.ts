@@ -17,7 +17,7 @@ import { UpdateProfileRequest } from '../../core/models/user-profile.model';
 import { NotificationPreference, NotificationChannel, NotificationType } from '../notifications/models/notification.model';
 import { PageHeaderComponent } from '../../shared/components/page-header/page-header.component';
 import { CardComponent } from '../../shared/components/card/card.component';
-import { BadgeComponent, BadgeVariant } from '../../shared/components/badge/badge.component';
+import { BadgeVariant } from '../../shared/components/badge/badge.component';
 import { SpinnerComponent } from '../../shared/components/spinner/spinner.component';
 import { EmptyStateComponent } from '../../shared/components/empty-state/empty-state.component';
 import { AvatarComponent } from '../../shared/components/avatar/avatar.component';
@@ -59,7 +59,6 @@ interface AccentSwatch {
     MatSlideToggleModule,
     PageHeaderComponent,
     CardComponent,
-    BadgeComponent,
     SpinnerComponent,
     EmptyStateComponent,
     AvatarComponent,

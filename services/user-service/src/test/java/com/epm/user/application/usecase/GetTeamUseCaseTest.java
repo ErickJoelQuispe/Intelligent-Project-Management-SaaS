@@ -11,6 +11,7 @@ import com.epm.user.domain.exception.TeamNotFoundException;
 import com.epm.user.domain.model.Team;
 import com.epm.user.domain.port.in.result.TeamResult;
 import com.epm.user.domain.port.out.TeamRepository;
+import com.epm.user.domain.port.out.UserProfileRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -27,11 +28,14 @@ class GetTeamUseCaseTest {
     @Mock
     private TeamRepository teamRepository;
 
+    @Mock
+    private UserProfileRepository profileRepository;
+
     private GetTeamUseCaseImpl useCase;
 
     @BeforeEach
     void setUp() {
-        useCase = new GetTeamUseCaseImpl(teamRepository);
+        useCase = new GetTeamUseCaseImpl(teamRepository, profileRepository);
     }
 
     @Test

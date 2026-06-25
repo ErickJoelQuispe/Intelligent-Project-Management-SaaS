@@ -4,6 +4,9 @@ export interface TeamMember {
   userId: string;
   role: TeamRole;
   joinedAt: string;
+  firstName: string | null;
+  lastName: string | null;
+  email: string | null;
 }
 
 export interface Team {

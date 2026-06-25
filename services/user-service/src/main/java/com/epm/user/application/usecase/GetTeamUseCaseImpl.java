@@ -5,10 +5,12 @@ import java.util.UUID;
 
 import com.epm.user.domain.exception.TeamNotFoundException;
 import com.epm.user.domain.model.Team;
+import com.epm.user.domain.model.UserProfile;
 import com.epm.user.domain.port.in.GetTeamUseCase;
 import com.epm.user.domain.port.in.result.MemberResult;
 import com.epm.user.domain.port.in.result.TeamResult;
 import com.epm.user.domain.port.out.TeamRepository;
+import com.epm.user.domain.port.out.UserProfileRepository;
 
 /**
  * Implementation of {@link GetTeamUseCase}.
@@ -20,9 +22,12 @@ import com.epm.user.domain.port.out.TeamRepository;
 public class GetTeamUseCaseImpl implements GetTeamUseCase {
 
     private final TeamRepository teamRepository;
+    private final UserProfileRepository profileRepository;
 
-    public GetTeamUseCaseImpl(TeamRepository teamRepository) {
+    public GetTeamUseCaseImpl(TeamRepository teamRepository,
+                               UserProfileRepository profileRepository) {
         this.teamRepository = teamRepository;
+        this.profileRepository = profileRepository;
     }
 
     @Override
@@ -37,15 +42,24 @@ public class GetTeamUseCaseImpl implements GetTeamUseCase {
             throw new TeamNotFoundException(teamId);
         }
 
-        return toResult(team);
+        return toResult(team, tenantId);
     }
 
     // ── Helpers ──────────────────────────────────────────────────────────────
 
-    private TeamResult toResult(Team team) {
+    private TeamResult toResult(Team team, UUID tenantId) {
         List<MemberResult> members = team.getMemberships().stream()
                 .filter(m -> m.isActive())
-                .map(m -> new MemberResult(m.getUserId(), m.getRole(), m.getJoinedAt()))
+                .map(m -> {
+                    UserProfile profile = profileRepository
+                            .findByIdAndTenantId(m.getUserId(), tenantId)
+                            .orElse(null);
+                    String firstName = profile != null ? profile.getFirstName() : null;
+                    String lastName  = profile != null ? profile.getLastName()  : null;
+                    String email     = profile != null ? profile.getEmail()     : null;
+                    return new MemberResult(m.getUserId(), m.getRole(), m.getJoinedAt(),
+                            firstName, lastName, email);
+                })
                 .toList();
         return new TeamResult(team.getId(), team.getTenantId(), team.getOwnerId(),
                 team.getName(), team.getDescription(), members);

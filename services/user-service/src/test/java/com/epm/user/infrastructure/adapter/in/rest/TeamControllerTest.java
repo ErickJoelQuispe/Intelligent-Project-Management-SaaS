@@ -84,7 +84,7 @@ class TeamControllerTest {
     @Test
     void createTeamReturns201() throws Exception {
         UUID teamId = UUID.randomUUID();
-        MemberResult member = new MemberResult(ownerId, TeamRole.OWNER, Instant.now());
+        MemberResult member = new MemberResult(ownerId, TeamRole.OWNER, Instant.now(), null, null, null);
         TeamResult result = new TeamResult(teamId, tenantId, ownerId, "Alpha Team", "desc", List.of(member));
         when(createTeamUseCase.createTeam(any(), any(), any())).thenReturn(result);
 
@@ -108,7 +108,7 @@ class TeamControllerTest {
     @Test
     void listTeamsReturns200() throws Exception {
         UUID teamId = UUID.randomUUID();
-        MemberResult member = new MemberResult(ownerId, TeamRole.OWNER, Instant.now());
+        MemberResult member = new MemberResult(ownerId, TeamRole.OWNER, Instant.now(), null, null, null);
         when(listTeamsUseCase.listTeams(any(), any())).thenReturn(
                 List.of(new TeamResult(teamId, tenantId, ownerId, "Alpha", null, List.of(member))));
 
@@ -125,7 +125,7 @@ class TeamControllerTest {
     @Test
     void getTeamReturns200() throws Exception {
         UUID teamId = UUID.randomUUID();
-        MemberResult member = new MemberResult(ownerId, TeamRole.OWNER, Instant.now());
+        MemberResult member = new MemberResult(ownerId, TeamRole.OWNER, Instant.now(), null, null, null);
         when(getTeamUseCase.getTeam(any(), any(), any())).thenReturn(
                 new TeamResult(teamId, tenantId, ownerId, "Alpha", null, List.of(member)));
 

@@ -51,8 +51,9 @@ public class UseCaseConfig {
     }
 
     @Bean
-    GetTeamUseCaseImpl getTeamUseCase(TeamRepository teamRepository) {
-        return new GetTeamUseCaseImpl(teamRepository);
+    GetTeamUseCaseImpl getTeamUseCase(TeamRepository teamRepository,
+            UserProfileRepository profileRepository) {
+        return new GetTeamUseCaseImpl(teamRepository, profileRepository);
     }
 
     @Bean
