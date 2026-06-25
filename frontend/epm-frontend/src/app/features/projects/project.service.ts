@@ -31,6 +31,10 @@ export class ProjectService {
     return this.http.delete<void>(`${this.baseUrl}/${id}`);
   }
 
+  restore(id: string): Observable<Project> {
+    return this.http.patch<Project>(`${this.baseUrl}/${id}/restore`, {});
+  }
+
   assignTeam(projectId: string, teamId: string): Observable<void> {
     return this.http.post<void>(`${this.baseUrl}/${projectId}/teams`, { teamId });
   }

@@ -10,6 +10,7 @@ import com.epm.project.domain.port.in.AssignTeamToProjectUseCase;
 import com.epm.project.domain.port.in.CreateProjectUseCase;
 import com.epm.project.domain.port.in.GetProjectUseCase;
 import com.epm.project.domain.port.in.ListProjectsUseCase;
+import com.epm.project.domain.port.in.RestoreProjectUseCase;
 import com.epm.project.domain.port.in.UpdateProjectUseCase;
 import com.epm.project.domain.port.in.command.AssignTeamCommand;
 import com.epm.project.domain.port.in.command.CreateProjectCommand;
@@ -45,6 +46,7 @@ public class ProjectController {
     private final GetProjectUseCase getProjectUseCase;
     private final UpdateProjectUseCase updateProjectUseCase;
     private final ArchiveProjectUseCase archiveProjectUseCase;
+    private final RestoreProjectUseCase restoreProjectUseCase;
     private final AssignTeamToProjectUseCase assignTeamToProjectUseCase;
     private final JwtClaimsExtractor jwtClaimsExtractor;
 
@@ -53,6 +55,7 @@ public class ProjectController {
             GetProjectUseCase getProjectUseCase,
             UpdateProjectUseCase updateProjectUseCase,
             ArchiveProjectUseCase archiveProjectUseCase,
+            RestoreProjectUseCase restoreProjectUseCase,
             AssignTeamToProjectUseCase assignTeamToProjectUseCase,
             JwtClaimsExtractor jwtClaimsExtractor) {
         this.createProjectUseCase = createProjectUseCase;
@@ -60,6 +63,7 @@ public class ProjectController {
         this.getProjectUseCase = getProjectUseCase;
         this.updateProjectUseCase = updateProjectUseCase;
         this.archiveProjectUseCase = archiveProjectUseCase;
+        this.restoreProjectUseCase = restoreProjectUseCase;
         this.assignTeamToProjectUseCase = assignTeamToProjectUseCase;
         this.jwtClaimsExtractor = jwtClaimsExtractor;
     }
@@ -133,6 +137,16 @@ public class ProjectController {
         UUID callerId = jwtClaimsExtractor.getUserId(jwt);
         UUID tenantId = jwtClaimsExtractor.getTenantId(jwt);
         archiveProjectUseCase.execute(id, callerId, tenantId);
+    }
+
+    /** PATCH /api/v1/projects/{id}/restore → 200 */
+    @PatchMapping("/{id}/restore")
+    public ProjectResponse restoreProject(
+            @AuthenticationPrincipal Jwt jwt,
+            @PathVariable UUID id) {
+        UUID callerId = jwtClaimsExtractor.getUserId(jwt);
+        UUID tenantId = jwtClaimsExtractor.getTenantId(jwt);
+        return toResponse(restoreProjectUseCase.execute(id, callerId, tenantId));
     }
 
     /** POST /api/v1/projects/{id}/teams → 201 */

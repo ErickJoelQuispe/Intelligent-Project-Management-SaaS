@@ -51,12 +51,33 @@ public class ProjectPersistenceAdapter implements ProjectRepository {
 
     @Override
     public Project save(Project project) {
-        projectJpaRepo.save(toProjectEntity(project));
+        // Use a direct UPDATE query for existing rows to avoid @Version merge conflicts.
+        // For new rows (insert), fall back to the standard save path.
+        Instant updatedAt = project.getUpdatedAt() != null ? project.getUpdatedAt() : Instant.now();
+        int updated = projectJpaRepo.updateFields(
+                project.getId(),
+                project.getName(),
+                project.getDescription(),
+                project.getStatus().name(),
+                project.getVisibility().name(),
+                updatedAt,
+                project.getDeletedAt());
+        if (updated == 0) {
+            projectJpaRepo.save(toProjectEntity(project));
+        }
         for (ProjectTeam t : project.getTeams()) {
-            teamJpaRepo.save(toTeamEntity(t, project.getTenantId()));
+            // Only insert new teams — never overwrite existing rows to avoid stale-version conflicts.
+            if (!teamJpaRepo.existsById(t.getId())) {
+                teamJpaRepo.save(toTeamEntity(t, project.getTenantId()));
+            }
         }
         for (ProjectMember m : project.getMembers()) {
-            memberJpaRepo.save(toMemberEntity(m, project.getTenantId()));
+            // Only insert new members — never overwrite existing rows to avoid stale-version conflicts.
+            // Existing member mutations (e.g. soft-delete via removeMember) are handled by dedicated
+            // repository calls, not through the aggregate save path.
+            if (!memberJpaRepo.existsById(m.getId())) {
+                memberJpaRepo.save(toMemberEntity(m, project.getTenantId()));
+            }
         }
         return findByIdAndTenantId(project.getId(), project.getTenantId())
                 .orElseThrow(() -> new IllegalStateException("Failed to reload project after save"));

@@ -6,6 +6,7 @@ import com.epm.project.application.usecase.CheckProjectMembershipUseCaseImpl;
 import com.epm.project.application.usecase.CreateProjectUseCaseImpl;
 import com.epm.project.application.usecase.GetProjectUseCaseImpl;
 import com.epm.project.application.usecase.ListProjectsUseCaseImpl;
+import com.epm.project.application.usecase.RestoreProjectUseCaseImpl;
 import com.epm.project.application.usecase.UpdateProjectUseCaseImpl;
 import com.epm.project.domain.port.out.ProjectRepository;
 import com.epm.project.domain.port.out.TransactionalOutboxWriter;
@@ -48,6 +49,12 @@ public class UseCaseConfig {
     ArchiveProjectUseCaseImpl archiveProjectUseCase(ProjectRepository projectRepository,
             TransactionalOutboxWriter outboxWriter) {
         return new ArchiveProjectUseCaseImpl(projectRepository, outboxWriter);
+    }
+
+    @Bean
+    RestoreProjectUseCaseImpl restoreProjectUseCase(ProjectRepository projectRepository,
+            TransactionalOutboxWriter outboxWriter) {
+        return new RestoreProjectUseCaseImpl(projectRepository, outboxWriter);
     }
 
     @Bean

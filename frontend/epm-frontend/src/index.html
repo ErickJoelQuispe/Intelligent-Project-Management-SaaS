@@ -8,6 +8,16 @@
   <link rel="icon" type="image/svg+xml" href="favicon.svg">
   <link rel="icon" type="image/x-icon" href="favicon.ico">
   <title>EPM — Project Management</title>
+  <script>
+    // Apply stored theme before Angular bootstraps to avoid flash of unstyled content
+    try {
+      var t = localStorage.getItem('epm-theme');
+      var valid = ['midnight','amber','catppuccin','nord','rose'];
+      document.documentElement.setAttribute('data-theme', valid.includes(t) ? t : 'midnight');
+    } catch(e) {
+      document.documentElement.setAttribute('data-theme', 'midnight');
+    }
+  </script>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">

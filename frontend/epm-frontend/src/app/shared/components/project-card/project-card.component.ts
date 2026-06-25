@@ -46,15 +46,26 @@ function nameToHue(name: string): number {
         aria-hidden="true"
       ></div>
 
-      <!-- Archive button — visible on hover, top-right -->
-      <button
-        class="project-card-archive-btn"
-        (click)="onArchive($event)"
-        title="Archive project"
-        aria-label="Archive {{ project().name }}"
-      >
-        <span class="material-symbols-rounded" aria-hidden="true">archive</span>
-      </button>
+      <!-- Archive / Restore button — visible on hover, top-right -->
+      @if (isArchived()) {
+        <button
+          class="project-card-archive-btn project-card-archive-btn--restore"
+          (click)="onRestore($event)"
+          title="Restore project"
+          aria-label="Restore {{ project().name }}"
+        >
+          <span class="material-symbols-rounded" aria-hidden="true">settings_backup_restore</span>
+        </button>
+      } @else {
+        <button
+          class="project-card-archive-btn"
+          (click)="onArchive($event)"
+          title="Archive project"
+          aria-label="Archive {{ project().name }}"
+        >
+          <span class="material-symbols-rounded" aria-hidden="true">archive</span>
+        </button>
+      }
 
       <!-- ── Header ─────────────────────────────────── -->
       <header class="project-card-header">
@@ -210,6 +221,13 @@ function nameToHue(name: string): number {
         outline-offset: 1px;
         opacity: 1;
       }
+      .project-card-archive-btn--restore:hover {
+        background: color-mix(in oklch, var(--color-accent) 12%, var(--color-bg-overlay));
+        color: var(--color-accent);
+      }
+      .project-card-archive-btn--restore:focus-visible {
+        outline: 2px solid var(--color-accent);
+      }
       .project-card-archive-btn .material-symbols-rounded {
         font-size: 1rem;
       }
@@ -326,8 +344,9 @@ function nameToHue(name: string): number {
   `,
 })
 export class ProjectCardComponent {
-  project         = input.required<Project>();
-  projectArchived = output<Project>();
+  project          = input.required<Project>();
+  projectArchived  = output<Project>();
+  projectRestored  = output<Project>();
 
   isArchived = computed(() => this.project().status === ProjectStatus.ARCHIVED);
 
@@ -362,5 +381,10 @@ export class ProjectCardComponent {
   onArchive(event: MouseEvent): void {
     event.stopPropagation();
     this.projectArchived.emit(this.project());
+  }
+
+  onRestore(event: MouseEvent): void {
+    event.stopPropagation();
+    this.projectRestored.emit(this.project());
   }
 }

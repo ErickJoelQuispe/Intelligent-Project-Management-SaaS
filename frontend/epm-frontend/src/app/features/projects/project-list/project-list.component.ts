@@ -77,4 +77,11 @@ export class ProjectListComponent implements OnInit {
       error: () => this.error.set('Failed to archive project. Please try again.'),
     });
   }
+
+  onProjectRestored(project: Project): void {
+    this.projectService.restore(project.id).subscribe({
+      next:  () => this.loadProjects(),
+      error: () => this.error.set('Failed to restore project. Please try again.'),
+    });
+  }
 }

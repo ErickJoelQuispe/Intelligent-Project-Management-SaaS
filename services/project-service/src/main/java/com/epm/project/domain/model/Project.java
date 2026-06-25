@@ -9,6 +9,7 @@ import java.util.UUID;
 
 import com.epm.project.domain.event.ProjectArchived;
 import com.epm.project.domain.event.ProjectCreated;
+import com.epm.project.domain.event.ProjectRestored;
 import com.epm.project.domain.event.ProjectUpdated;
 import com.epm.project.domain.event.TeamAssignedToProject;
 import com.epm.project.domain.exception.DuplicateProjectMemberException;
@@ -152,6 +153,27 @@ public class Project {
         this.status = ProjectStatus.ARCHIVED;
         this.updatedAt = Instant.now();
         domainEvents.add(new ProjectArchived(
+                UuidCreator.getTimeOrderedEpoch(), id, this.name, this.ownerProfileId, tenantId, Instant.now()));
+    }
+
+    /**
+     * Restores this project to ACTIVE status. Only an OWNER may restore.
+     *
+     * <p>Idempotent: if the project is already ACTIVE, this method is a no-op
+     * and does NOT emit a duplicate {@link ProjectRestored} event. Authorization
+     * is checked first so a non-owner cannot restore (authz before short-circuit).
+     *
+     * @param callerProfileId the profile requesting the restore
+     * @throws UnauthorizedProjectAccessException if caller is not OWNER
+     */
+    public void restore(UUID callerProfileId) {
+        guardRole(callerProfileId, ProjectRole.OWNER); // authz first — non-owners are always rejected
+        if (this.status == ProjectStatus.ACTIVE) {
+            return; // idempotent — no duplicate event emitted
+        }
+        this.status = ProjectStatus.ACTIVE;
+        this.updatedAt = Instant.now();
+        domainEvents.add(new ProjectRestored(
                 UuidCreator.getTimeOrderedEpoch(), id, this.name, this.ownerProfileId, tenantId, Instant.now()));
     }
 

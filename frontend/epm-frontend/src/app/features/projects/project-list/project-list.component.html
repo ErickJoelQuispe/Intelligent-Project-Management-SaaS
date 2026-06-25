@@ -78,6 +78,7 @@
           <app-project-card
             [project]="project"
             (projectArchived)="onProjectArchived($event)"
+            (projectRestored)="onProjectRestored($event)"
           />
         </div>
       }

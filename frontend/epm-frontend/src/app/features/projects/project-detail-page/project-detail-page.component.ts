@@ -7,7 +7,7 @@ import {
   viewChild,
 } from '@angular/core';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
-import { forkJoin } from 'rxjs';
+import { forkJoin, of, catchError } from 'rxjs';
 import { ProjectService } from '../project.service';
 import { AiService, TaskDraft } from '../../ai/ai.service';
 import { TaskService } from '../../tasks/task.service';
@@ -23,6 +23,8 @@ import { AiChatComponent } from '../../ai/chat/ai-chat.component';
 import { TaskPanelComponent } from '../../tasks/task-panel/task-panel.component';
 import { FormsModule } from '@angular/forms';
 import { DatePipe } from '@angular/common';
+
+type Visibility = 'PRIVATE' | 'TEAM' | 'PUBLIC';
 
 /** Deterministic hue from project name — same name always gets same color */
 function nameToHue(name: string): number {
@@ -68,13 +70,34 @@ function nameToHue(name: string): number {
         <!-- ══ LEFT PANEL ══════════════════════════════════ -->
         <aside class="pdp-left" aria-label="Project overview">
 
-          <!-- Back link -->
-          <a class="pdp-back-link" routerLink="/projects" aria-label="Back to projects">
-            <span class="material-symbols-rounded" aria-hidden="true">arrow_back</span>
-            Projects
-          </a>
+          <!-- Back link + archive/restore action -->
+          <div class="pdp-top-bar">
+            <a class="pdp-back-link" routerLink="/projects" aria-label="Back to projects">
+              <span class="material-symbols-rounded" aria-hidden="true">arrow_back</span>
+              Projects
+            </a>
 
-          <!-- Project name + dot -->
+            @if (p.status === 'ARCHIVED') {
+              <app-button variant="ghost" size="sm"
+                          [loading]="restoring()"
+                          (click)="restoreProject()"
+                          aria-label="Restore project"
+                          title="Restore project"
+                          style="color: var(--color-accent);">
+                <span class="material-symbols-rounded" aria-hidden="true">settings_backup_restore</span>
+              </app-button>
+            } @else {
+              <app-button variant="danger" size="sm"
+                          [loading]="archiving()"
+                          (click)="archiveProject()"
+                          aria-label="Archive project"
+                          title="Archive project">
+                <span class="material-symbols-rounded" aria-hidden="true">inventory_2</span>
+              </app-button>
+            }
+          </div>
+
+          <!-- Project name + dot (inline editable) -->
           <div class="pdp-project-title-row">
             <span
               class="pdp-project-dot"
@@ -82,21 +105,85 @@ function nameToHue(name: string): number {
               [style.box-shadow]="accentShadow()"
               aria-hidden="true"
             ></span>
-            <h1 class="pdp-project-name">{{ p.name }}</h1>
+            @if (editingName()) {
+              <input
+                class="pdp-name-input"
+                [(ngModel)]="editNameValue"
+                (keydown.enter)="commitName()"
+                (keydown.escape)="cancelName()"
+                (blur)="commitName()"
+                [attr.aria-label]="'Edit project name'"
+                autofocus
+              />
+            } @else {
+              <h1
+                class="pdp-project-name pdp-editable"
+                (click)="startEditName()"
+                title="Click to edit name"
+                tabindex="0"
+                (keydown.enter)="startEditName()"
+                (keydown.space)="startEditName()"
+                role="button"
+                aria-label="Project name — click to edit"
+              >
+                {{ p.name }}
+                <span class="pdp-edit-hint material-symbols-rounded" aria-hidden="true">edit</span>
+              </h1>
+            }
           </div>
 
-          <!-- Status + visibility -->
+          <!-- Inline save error -->
+          @if (inlineSaveError()) {
+            <p class="pdp-inline-error">
+              <span class="material-symbols-rounded" aria-hidden="true">error</span>
+              {{ inlineSaveError() }}
+            </p>
+          }
+
+          <!-- Status + visibility (visibility is clickable to cycle) -->
           <div class="pdp-meta-row">
             <app-project-status-badge [status]="p.status" />
-            <span class="pdp-visibility-chip" [attr.aria-label]="'Visibility: ' + p.visibility">
-              <span class="material-symbols-rounded" aria-hidden="true">{{ visibilityIcon() }}</span>
+            <button
+              class="pdp-visibility-chip pdp-visibility-chip--btn"
+              (click)="cycleVisibility()"
+              [attr.aria-label]="'Visibility: ' + p.visibility + ' — click to change'"
+              title="Click to change visibility"
+            >
+              @if (savingInline()) {
+                <span class="pdp-saving-dot" aria-hidden="true"></span>
+              } @else {
+                <span class="material-symbols-rounded" aria-hidden="true">{{ visibilityIcon() }}</span>
+              }
               {{ visibilityLabel() }}
-            </span>
+            </button>
           </div>
 
-          <!-- Description -->
-          @if (p.description) {
-            <p class="pdp-description">{{ p.description }}</p>
+          <!-- Description (inline editable) -->
+          @if (editingDesc()) {
+            <textarea
+              class="pdp-desc-textarea"
+              [(ngModel)]="editDescValue"
+              (keydown.escape)="cancelDesc()"
+              (blur)="commitDesc()"
+              rows="3"
+              placeholder="Add a description…"
+              aria-label="Edit project description"
+            ></textarea>
+          } @else {
+            <p
+              class="pdp-description pdp-editable"
+              [class.pdp-description--empty]="!p.description"
+              (click)="startEditDesc()"
+              title="Click to edit description"
+              tabindex="0"
+              (keydown.enter)="startEditDesc()"
+              (keydown.space)="startEditDesc()"
+              role="button"
+              aria-label="Project description — click to edit"
+            >
+              {{ p.description || 'Add a description…' }}
+              <span class="pdp-edit-hint material-symbols-rounded" aria-hidden="true">edit</span>
+            </p>
           }
 
           <!-- Created date -->
@@ -164,25 +251,6 @@ function nameToHue(name: string): number {
 
             </div>
           </section>
-
-          <!-- ── Action buttons ──────────────────── -->
-          <div class="pdp-actions">
-            <app-button variant="ghost" size="sm"
-                        [routerLink]="['/projects', p.id, 'edit']"
-                        aria-label="Edit project">
-              <span class="material-symbols-rounded" aria-hidden="true">edit</span>
-              Edit
-            </app-button>
-            <app-button variant="ghost" size="sm"
-                        (click)="archiveProject()"
-                        aria-label="Archive project"
-                        style="color: var(--color-danger);">
-              <span class="material-symbols-rounded" aria-hidden="true" style="color: var(--color-danger);">inventory_2</span>
-              Archive
-            </app-button>
-          </div>
-
-          <div class="pdp-divider" aria-hidden="true"></div>
 
           <!-- ── AI Assistant (collapsible) ─────── -->
           <section class="pdp-ai-section" aria-label="AI Assistant">
@@ -391,6 +459,14 @@ function nameToHue(name: string): number {
         border-radius: 9999px;
       }
 
+      /* ── Top bar (back link + archive action) ────── */
+      .pdp-top-bar {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 0.5rem;
+      }
+
       /* ── Back link ───────────────────────────────── */
       .pdp-back-link {
         display: inline-flex;
@@ -401,10 +477,47 @@ function nameToHue(name: string): number {
         color: var(--color-text-muted);
         text-decoration: none;
         transition: color 0.15s ease;
-        width: fit-content;
       }
       .pdp-back-link:hover { color: var(--color-text-primary); }
       .pdp-back-link .material-symbols-rounded { font-size: 1rem; }
+
+      /* ── Top action button (archive / restore) ───── */
+      .pdp-top-action {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        width: 1.75rem;
+        height: 1.75rem;
+        border-radius: 0.375rem;
+        border: none;
+        background: transparent;
+        cursor: pointer;
+        opacity: 0.55;
+        transition: opacity 0.15s ease, background 0.15s ease, color 0.15s ease;
+        padding: 0;
+        flex-shrink: 0;
+      }
+      .pdp-top-action .material-symbols-rounded { font-size: 1rem; }
+      .pdp-top-action:hover { opacity: 1; }
+      .pdp-top-action:disabled { opacity: 0.3; cursor: not-allowed; }
+
+      .pdp-top-action--archive {
+        color: var(--color-text-muted);
+      }
+      .pdp-top-action--archive:hover {
+        background: color-mix(in oklch, var(--color-danger) 10%, transparent);
+        color: var(--color-danger);
+      }
+
+      .pdp-top-action--restore {
+        color: var(--color-text-muted);
+      }
+      .pdp-top-action--restore:hover {
+        background: color-mix(in oklch, var(--color-accent) 10%, transparent);
+        color: var(--color-accent);
+      }
+
+
 
       /* ── Project title ───────────────────────────── */
       .pdp-project-title-row {
@@ -434,6 +547,92 @@ function nameToHue(name: string): number {
         white-space: nowrap;
       }
 
+      /* ── Inline editable shared ──────────────────── */
+      .pdp-editable {
+        cursor: pointer;
+        border-radius: 0.375rem;
+        transition: background 0.15s ease;
+        position: relative;
+      }
+      .pdp-editable:hover,
+      .pdp-editable:focus {
+        background: color-mix(in oklch, var(--color-accent) 6%, transparent);
+        outline: none;
+      }
+      .pdp-edit-hint {
+        font-size: 0.75rem;
+        opacity: 0;
+        color: var(--color-text-muted);
+        margin-left: 0.25rem;
+        vertical-align: middle;
+        transition: opacity 0.15s ease;
+      }
+      .pdp-editable:hover .pdp-edit-hint,
+      .pdp-editable:focus .pdp-edit-hint {
+        opacity: 1;
+      }
+
+      /* ── Name input ──────────────────────────────── */
+      .pdp-name-input {
+        flex: 1;
+        min-width: 0;
+        font-family: 'Outfit', sans-serif;
+        font-size: 1.25rem;
+        font-weight: 700;
+        color: var(--color-text-primary);
+        letter-spacing: -0.02em;
+        line-height: 1.25;
+        background: var(--color-bg-elevated);
+        border: 1.5px solid var(--color-accent);
+        border-radius: 0.375rem;
+        padding: 0.125rem 0.5rem;
+        outline: none;
+        box-shadow: 0 0 0 3px var(--color-accent-subtle);
+        width: 100%;
+      }
+
+      /* ── Description textarea ────────────────────── */
+      .pdp-desc-textarea {
+        width: 100%;
+        font-family: 'Outfit', sans-serif;
+        font-size: 0.875rem;
+        line-height: 1.6;
+        color: var(--color-text-primary);
+        background: var(--color-bg-elevated);
+        border: 1.5px solid var(--color-accent);
+        border-radius: 0.375rem;
+        padding: 0.375rem 0.5rem;
+        outline: none;
+        resize: vertical;
+        box-shadow: 0 0 0 3px var(--color-accent-subtle);
+        box-sizing: border-box;
+      }
+
+      /* ── Inline error ────────────────────────────── */
+      .pdp-inline-error {
+        display: flex;
+        align-items: center;
+        gap: 0.375rem;
+        font-size: 0.75rem;
+        color: var(--color-danger);
+        margin: 0;
+      }
+      .pdp-inline-error .material-symbols-rounded { font-size: 0.875rem; }
+
+      /* ── Saving dot ──────────────────────────────── */
+      .pdp-saving-dot {
+        display: inline-block;
+        width: 0.625rem;
+        height: 0.625rem;
+        border-radius: 50%;
+        border: 1.5px solid currentColor;
+        border-top-color: transparent;
+        animation: pdp-spin 0.6s linear infinite;
+      }
+      @keyframes pdp-spin {
+        to { transform: rotate(360deg); }
+      }
+
       /* ── Meta row ────────────────────────────────── */
       .pdp-meta-row {
         display: flex;
@@ -457,12 +656,34 @@ function nameToHue(name: string): number {
       }
       .pdp-visibility-chip .material-symbols-rounded { font-size: 0.75rem; }
 
+      .pdp-visibility-chip--btn {
+        cursor: pointer;
+        font-family: inherit;
+        transition: background 0.15s ease, border-color 0.15s ease;
+      }
+      .pdp-visibility-chip--btn:hover:not(:disabled) {
+        background: color-mix(in oklch, var(--color-accent) 10%, var(--color-bg-overlay));
+        border-color: color-mix(in oklch, var(--color-accent) 35%, transparent);
+        color: var(--color-text-primary);
+      }
+      .pdp-visibility-chip--btn:disabled {
+        opacity: 0.6;
+        cursor: not-allowed;
+      }
+
       /* ── Description ─────────────────────────────── */
       .pdp-description {
         font-size: 0.875rem;
         line-height: 1.6;
         color: var(--color-text-secondary);
         margin: 0;
+        padding: 0.125rem 0.375rem;
+        white-space: pre-wrap;
+        word-break: break-word;
+      }
+      .pdp-description--empty {
+        color: var(--color-text-muted);
+        font-style: italic;
       }
 
       /* ── Date ────────────────────────────────────── */
@@ -616,6 +837,18 @@ function nameToHue(name: string): number {
       .pdp-actions {
         display: flex;
         gap: 0.5rem;
+      }
+
+      .pdp-archive-confirm {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        flex-wrap: wrap;
+      }
+      .pdp-archive-confirm-text {
+        font-size: 0.8125rem;
+        color: var(--color-text-secondary);
+        white-space: nowrap;
       }
 
       /* ── AI section ──────────────────────────────── */
@@ -835,6 +1068,130 @@ export class ProjectDetailPageComponent {
   readonly summary          = signal<string | null>(null);
   readonly aiError          = signal<string | null>(null);
 
+  // ── Inline edit state ─────────────────────────────────────────────────
+  readonly editingName      = signal(false);
+  readonly editingDesc      = signal(false);
+  readonly savingInline     = signal(false);
+  readonly savingField      = signal<'name' | 'description' | 'visibility' | null>(null);
+  readonly inlineSaveError  = signal<string | null>(null);
+  readonly archiving = signal(false);
+  readonly restoring         = signal(false);
+  editNameValue             = '';
+  editDescValue             = '';
+
+  startEditName(): void {
+    this.editNameValue = this.project()?.name ?? '';
+    this.editingName.set(true);
+    this.inlineSaveError.set(null);
+  }
+
+  cancelName(): void {
+    this.editingName.set(false);
+  }
+
+  commitName(): void {
+    const name = this.editNameValue.trim();
+    this.editingName.set(false);
+    if (!name || name === this.project()?.name) return;
+    this.saveInline({ name });
+  }
+
+  startEditDesc(): void {
+    this.editDescValue = this.project()?.description ?? '';
+    this.editingDesc.set(true);
+    this.inlineSaveError.set(null);
+  }
+
+  cancelDesc(): void {
+    this.editingDesc.set(false);
+  }
+
+  commitDesc(): void {
+    const desc = this.editDescValue.trim();
+    this.editingDesc.set(false);
+    if (desc === (this.project()?.description ?? '')) return;
+    this.saveInline({ description: desc });
+  }
+
+  cycleVisibility(): void {
+    // Use the optimistic value as current if there's a pending change not yet confirmed
+    const current = (this.optimisticVisibility() ?? this.project()?.visibility ?? 'PRIVATE') as Visibility;
+    const next: Record<Visibility, Visibility> = {
+      PRIVATE: 'TEAM',
+      TEAM:    'PUBLIC',
+      PUBLIC:  'PRIVATE',
+    };
+    const nextVis = next[current];
+    this.optimisticVisibility.set(nextVis);
+    this.saveInline({ visibility: nextVis });
+  }
+
+  // Pending patch — accumulates all field changes while a save is in-flight.
+  // When the in-flight save finishes, the accumulated patch is sent as one single PATCH.
+  private pendingPatch: { name?: string; description?: string; visibility?: string } | null = null;
+  private isSaving = false;
+  // Optimistic visibility — shows the intended value immediately, before server confirms
+  readonly optimisticVisibility = signal<Visibility | null>(null);
+
+  private flushPending(): void {
+    if (!this.pendingPatch) {
+      this.savingInline.set(false);
+      this.savingField.set(null);
+      return;
+    }
+
+    const p = this.project();
+    if (!p) {
+      this.pendingPatch = null;
+      this.savingInline.set(false);
+      this.savingField.set(null);
+      return;
+    }
+
+    const patch = this.pendingPatch;
+    this.pendingPatch = null;
+    this.inlineSaveError.set(null);
+    this.isSaving = true;
+
+    const payload = {
+      name:        patch.name        ?? p.name,
+      description: patch.description !== undefined ? patch.description : p.description,
+      visibility:  patch.visibility  ?? p.visibility,
+    };
+
+    this.projectService
+      .update(p.id, payload as { name: string; description?: string; visibility: string })
+      .pipe(catchError(() => {
+        this.inlineSaveError.set('Could not save. Please try again.');
+        return of(null);
+      }))
+      .subscribe(updated => {
+        if (updated) {
+          this.project.set(updated);
+          // Clear optimistic value — server response is now the source of truth
+          if (!this.pendingPatch?.visibility) {
+            this.optimisticVisibility.set(null);
+          }
+        }
+        this.isSaving = false;
+        this.flushPending();
+      });
+  }
+
+  private saveInline(
+    patch: { name?: string; description?: string; visibility?: string },
+  ): void {
+    // Merge into the pending patch — last write wins per field
+    this.pendingPatch = { ...this.pendingPatch, ...patch };
+    this.savingInline.set(true);
+
+    if (!this.isSaving) {
+      this.flushPending();
+    }
+    // If already saving, flushPending() will be called automatically when the
+    // in-flight request completes, picking up the merged pending patch.
+  }
+
   // Accent color computeds
   private readonly hue = computed(() => {
     const name = this.project()?.name ?? '';
@@ -844,7 +1201,7 @@ export class ProjectDetailPageComponent {
   accentShadow = computed(() => `0 0 10px oklch(0.68 0.20 ${this.hue()} / 0.5)`);
 
   visibilityIcon = computed(() => {
-    switch (this.project()?.visibility) {
+    switch (this.optimisticVisibility() ?? this.project()?.visibility) {
       case 'PUBLIC': return 'public';
       case 'TEAM':   return 'group';
       default:       return 'lock';
@@ -852,7 +1209,7 @@ export class ProjectDetailPageComponent {
   });
 
   visibilityLabel = computed(() => {
-    switch (this.project()?.visibility) {
+    switch (this.optimisticVisibility() ?? this.project()?.visibility) {
       case 'PUBLIC': return 'Public';
       case 'TEAM':   return 'Team';
       default:       return 'Private';
@@ -975,12 +1332,32 @@ export class ProjectDetailPageComponent {
   }
 
   archiveProject(): void {
-    if (!confirm('Archive this project? It will be hidden from the project list.')) return;
+    const p = this.project();
+    if (!p) return;
+    if (!confirm(`Archive "${p.name}"? It will be hidden from the project list.`)) return;
+    this.archiving.set(true);
+    this.projectService.archive(p.id).subscribe({
+      next:  () => this.router.navigate(['/projects']),
+      error: () => {
+        this.error.set('Failed to archive project. Please try again.');
+        this.archiving.set(false);
+      },
+    });
+  }
+
+  restoreProject(): void {
     const id = this.project()?.id;
     if (!id) return;
-    this.projectService.archive(id).subscribe({
-      next:  () => this.router.navigate(['/projects']),
-      error: () => this.error.set('Failed to archive project. Please try again.'),
+    this.restoring.set(true);
+    this.projectService.restore(id).subscribe({
+      next: (updated) => {
+        this.project.set(updated);
+        this.restoring.set(false);
+      },
+      error: () => {
+        this.error.set('Failed to restore project. Please try again.');
+        this.restoring.set(false);
+      },
     });
   }
 }

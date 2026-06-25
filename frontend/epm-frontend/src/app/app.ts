@@ -3,6 +3,7 @@ import { RouterOutlet } from '@angular/router';
 import { OAuthService } from 'angular-oauth2-oidc';
 import { SidebarComponent } from './shared/components/sidebar/sidebar.component';
 import { NotificationStore } from './features/notifications/store/notification.store';
+import { ThemeService } from './core/theme/theme.service';
 
 @Component({
   selector: 'app-root',
@@ -29,6 +30,10 @@ import { NotificationStore } from './features/notifications/store/notification.s
 export class App implements OnInit {
   private readonly oauth = inject(OAuthService);
   private readonly notificationStore = inject(NotificationStore);
+  // Inject ThemeService at root level to force initialization on bootstrap —
+  // without this, the service constructor (which applies data-theme) is deferred
+  // until the first component that uses it, causing a flash of unstyled content.
+  private readonly _theme = inject(ThemeService);
 
   ngOnInit(): void {
     // Cargar notificaciones y conectar WebSocket al iniciar la app
