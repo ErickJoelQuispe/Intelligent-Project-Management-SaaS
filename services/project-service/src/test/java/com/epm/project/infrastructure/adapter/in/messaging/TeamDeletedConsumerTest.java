@@ -17,6 +17,7 @@ import com.epm.project.infrastructure.adapter.out.persistence.ProjectMemberJpaEn
 import com.epm.project.infrastructure.adapter.out.persistence.ProjectTeamJpaEntity;
 import org.apache.kafka.clients.producer.ProducerRecord;
 import com.epm.project.infrastructure.AbstractPostgresIT;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -61,6 +62,14 @@ class TeamDeletedConsumerTest extends AbstractPostgresIT {
     private UUID tenantId;
     private UUID teamId;
     private UUID projectId;
+
+    @AfterEach
+    void cleanup() {
+        processedEventRepo.deleteAll();
+        teamRepo.deleteAll();
+        memberRepo.deleteAll();
+        projectRepo.deleteAll();
+    }
 
     @BeforeEach
     void setUp() {

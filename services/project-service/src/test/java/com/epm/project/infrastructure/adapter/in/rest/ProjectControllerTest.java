@@ -26,6 +26,7 @@ import com.epm.project.domain.port.in.AssignTeamToProjectUseCase;
 import com.epm.project.domain.port.in.CreateProjectUseCase;
 import com.epm.project.domain.port.in.GetProjectUseCase;
 import com.epm.project.domain.port.in.ListProjectsUseCase;
+import com.epm.project.domain.port.in.RestoreProjectUseCase;
 import com.epm.project.domain.port.in.UpdateProjectUseCase;
 import com.epm.project.domain.port.in.result.ProjectMemberResult;
 import com.epm.project.domain.port.in.result.ProjectResult;
@@ -75,6 +76,9 @@ class ProjectControllerTest {
 
     @MockitoBean
     private AssignTeamToProjectUseCase assignTeamToProjectUseCase;
+
+    @MockitoBean
+    private RestoreProjectUseCase restoreProjectUseCase;
 
     @MockitoBean
     private JwtDecoder jwtDecoder;
