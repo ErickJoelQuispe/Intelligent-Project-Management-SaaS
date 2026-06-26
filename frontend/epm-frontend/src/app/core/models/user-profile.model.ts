@@ -1,3 +1,17 @@
+export interface UserPreferences {
+  language: string;
+  timezone: string;
+  dateFormat: string;
+  startOfWeek: string;
+}
+
+export const DEFAULT_PREFERENCES: UserPreferences = {
+  language: 'en',
+  timezone: 'UTC',
+  dateFormat: 'ISO',
+  startOfWeek: 'MONDAY',
+};
+
 export interface UserProfile {
   id: string;
   tenantId: string;
@@ -7,6 +21,7 @@ export interface UserProfile {
   bio: string | null;
   avatarUrl: string | null;
   version: number;
+  preferences: UserPreferences | null;
 }
 
 export interface TenantUser {
@@ -22,4 +37,5 @@ export interface UpdateProfileRequest {
   bio?: string;
   avatarUrl?: string;
   version: number; // required — optimistic lock
+  preferences?: UserPreferences;
 }

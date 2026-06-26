@@ -9,6 +9,7 @@ import { AuthService } from '../../core/auth/auth.service';
 import { provideHttpClient } from '@angular/common/http';
 import { provideHttpClientTesting } from '@angular/common/http/testing';
 import { signal } from '@angular/core';
+import { UserProfile, UserPreferences } from '../../core/models/user-profile.model';
 
 /**
  * Angular Material 21 renders mat-slide-toggle with the aria-label and
@@ -142,5 +143,129 @@ describe('SettingsComponent — appearance wiring', () => {
     const twoFaToggleBtn = findToggleButton(compiled, 'Toggle two-factor authentication');
 
     expect(twoFaToggleBtn).toBeUndefined();
+  });
+});
+
+// ── Workspace preferences wiring ──────────────────────────────────────────────
+
+describe('SettingsComponent — workspace preferences wiring', () => {
+  let fixture: ComponentFixture<SettingsComponent>;
+  let compiled: HTMLElement;
+  let profileStoreMock: {
+    loading: ReturnType<typeof signal<boolean>>;
+    saving: ReturnType<typeof signal<boolean>>;
+    saveSuccess: ReturnType<typeof signal<boolean>>;
+    error: ReturnType<typeof signal<string | null>>;
+    profile: ReturnType<typeof signal<UserProfile | null>>;
+    loadProfile: ReturnType<typeof vi.fn>;
+    saveProfile: ReturnType<typeof vi.fn>;
+  };
+
+  function setup(profile: UserProfile | null = null) {
+    profileStoreMock = {
+      loading:     signal(false),
+      saving:      signal(false),
+      saveSuccess: signal(false),
+      error:       signal(null),
+      profile:     signal(profile),
+      loadProfile: vi.fn(),
+      saveProfile: vi.fn(),
+    };
+
+    TestBed.configureTestingModule({
+      imports: [SettingsComponent],
+      providers: [
+        provideHttpClient(),
+        provideHttpClientTesting(),
+        { provide: AppPreferencesService,
+          useValue: {
+            compactMode: signal(false), reduceAnimations: signal(false),
+            setCompactMode: vi.fn(), setReduceAnimations: vi.fn(),
+          }
+        },
+        { provide: ThemeService, useValue: { theme: signal('midnight'), setTheme: vi.fn(), isDark: signal(true) } },
+        { provide: NotificationPreferencesStore,
+          useValue: { loading: signal(false), preferences: signal([]), loadPreferences: vi.fn() }
+        },
+        { provide: ProfileStore, useValue: profileStoreMock },
+        { provide: OAuthService,
+          useValue: { getIdentityClaims: vi.fn().mockReturnValue({}), getAccessTokenExpiration: vi.fn().mockReturnValue(Date.now() + 3600000) }
+        },
+        { provide: AuthService, useValue: { logout: vi.fn() } },
+      ],
+    });
+
+    fixture = TestBed.createComponent(SettingsComponent);
+    compiled = fixture.nativeElement as HTMLElement;
+    fixture.detectChanges();
+  }
+
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  function goToWorkspace() {
+    const buttons = Array.from(compiled.querySelectorAll('button.settings-nav-item'));
+    const btn = buttons.find(b => b.textContent?.includes('Workspace')) as HTMLButtonElement;
+    btn?.click();
+    fixture.detectChanges();
+  }
+
+  // ── Save button calls saveProfile with preferences object ─────────────────
+
+  it('workspace Save button calls profileStore.saveProfile with preferences object', () => {
+    const profile: UserProfile = {
+      id: '11111111-1111-1111-1111-111111111111',
+      tenantId: '22222222-2222-2222-2222-222222222222',
+      email: 'alice@example.com',
+      firstName: 'Alice',
+      lastName: 'Smith',
+      bio: null,
+      avatarUrl: null,
+      version: 2,
+      preferences: { language: 'en', timezone: 'UTC', dateFormat: 'ISO', startOfWeek: 'MONDAY' },
+    };
+    setup(profile);
+    goToWorkspace();
+
+    const saveBtn = Array.from(compiled.querySelectorAll('app-button'))
+      .find(el => el.textContent?.includes('Save workspace preferences'));
+    expect(saveBtn).toBeTruthy();
+
+    (saveBtn as HTMLElement).click();
+    fixture.detectChanges();
+
+    expect(profileStoreMock.saveProfile).toHaveBeenCalledOnce();
+    const callArg = profileStoreMock.saveProfile.mock.calls[0][0];
+    expect(callArg.preferences).toMatchObject({
+      language: 'en',
+      timezone: 'UTC',
+      dateFormat: 'ISO',
+      startOfWeek: 'MONDAY',
+    });
+  });
+
+  // ── TRIANGULATE: preferences from profile populate signals on load ─────────
+
+  it('workspace signals are populated from profile preferences when profile loads', () => {
+    const profile: UserProfile = {
+      id: '11111111-1111-1111-1111-111111111111',
+      tenantId: '22222222-2222-2222-2222-222222222222',
+      email: 'bob@example.com',
+      firstName: 'Bob',
+      lastName: 'Jones',
+      bio: null,
+      avatarUrl: null,
+      version: 1,
+      preferences: { language: 'es', timezone: 'America/New_York', dateFormat: 'DD/MM/YYYY', startOfWeek: 'SUNDAY' },
+    };
+    setup(profile);
+    goToWorkspace();
+
+    // The SUNDAY start-of-week pill should be active
+    const sundayPill = Array.from(compiled.querySelectorAll('button.week-pill'))
+      .find(b => b.textContent?.trim() === 'Sunday') as HTMLButtonElement;
+    expect(sundayPill).toBeTruthy();
+    expect(sundayPill.classList.contains('week-pill--active')).toBe(true);
   });
 });

@@ -16,6 +16,7 @@ const mockProfile: UserProfile = {
   bio: 'Software engineer',
   avatarUrl: null,
   version: 1,
+  preferences: null,
 };
 
 describe('ProfileStore', () => {

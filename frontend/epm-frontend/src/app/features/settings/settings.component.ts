@@ -14,7 +14,7 @@ import { AuthService } from '../../core/auth/auth.service';
 import { ThemeService, Theme } from '../../core/theme/theme.service';
 import { NotificationPreferencesStore } from '../notifications/store/notification-preferences.store';
 import { ProfileStore } from './store/profile.store';
-import { UpdateProfileRequest } from '../../core/models/user-profile.model';
+import { DEFAULT_PREFERENCES, UpdateProfileRequest, UserPreferences } from '../../core/models/user-profile.model';
 import { NotificationPreference, NotificationChannel, NotificationType } from '../notifications/models/notification.model';
 import { PageHeaderComponent } from '../../shared/components/page-header/page-header.component';
 import { CardComponent } from '../../shared/components/card/card.component';
@@ -532,10 +532,14 @@ interface AccentSwatch {
                     Language
                   </label>
                   <div class="settings-select-wrapper">
-                    <select id="ws-language" class="settings-select">
-                      <option value="en" selected>English</option>
+                    <select
+                      id="ws-language"
+                      class="settings-select"
+                      [value]="selectedLanguage()"
+                      (change)="selectedLanguage.set($any($event.target).value)"
+                    >
+                      <option value="en">English</option>
                       <option value="es">Spanish</option>
-                      <option value="fr">French</option>
                       <option value="pt">Portuguese</option>
                     </select>
                     <span class="settings-select-chevron material-symbols-rounded">expand_more</span>
@@ -550,17 +554,22 @@ interface AccentSwatch {
                     Timezone
                   </label>
                   <div class="settings-select-wrapper">
-                    <select id="ws-timezone" class="settings-select">
-                      <option value="utc">UTC+0 — Universal Time</option>
-                      <option value="america/argentina/buenos_aires" selected>UTC-3 — Buenos Aires</option>
-                      <option value="america/new_york">UTC-5 — New York</option>
-                      <option value="america/los_angeles">UTC-8 — Los Angeles</option>
-                      <option value="europe/london">UTC+0 — London</option>
-                      <option value="europe/paris">UTC+1 — Paris</option>
-                      <option value="europe/berlin">UTC+1 — Berlin</option>
-                      <option value="asia/shanghai">UTC+8 — Shanghai</option>
-                      <option value="asia/tokyo">UTC+9 — Tokyo</option>
-                      <option value="australia/sydney">UTC+10 — Sydney</option>
+                    <select
+                      id="ws-timezone"
+                      class="settings-select"
+                      [value]="selectedTimezone()"
+                      (change)="selectedTimezone.set($any($event.target).value)"
+                    >
+                      <option value="UTC">UTC+0 — Universal Time</option>
+                      <option value="America/Argentina/Buenos_Aires">UTC-3 — Buenos Aires</option>
+                      <option value="America/New_York">UTC-5 — New York</option>
+                      <option value="America/Los_Angeles">UTC-8 — Los Angeles</option>
+                      <option value="Europe/London">UTC+0 — London</option>
+                      <option value="Europe/Paris">UTC+1 — Paris</option>
+                      <option value="Europe/Berlin">UTC+1 — Berlin</option>
+                      <option value="Asia/Shanghai">UTC+8 — Shanghai</option>
+                      <option value="Asia/Tokyo">UTC+9 — Tokyo</option>
+                      <option value="Australia/Sydney">UTC+10 — Sydney</option>
                     </select>
                     <span class="settings-select-chevron material-symbols-rounded">expand_more</span>
                   </div>
@@ -576,8 +585,8 @@ interface AccentSwatch {
                 <div class="grid grid-cols-3 gap-3">
 
                   <button
-                    (click)="selectedDateFormat.set('MDY')"
-                    [class.date-format-card--active]="selectedDateFormat() === 'MDY'"
+                    (click)="selectedDateFormat.set('MM/DD/YYYY')"
+                    [class.date-format-card--active]="selectedDateFormat() === 'MM/DD/YYYY'"
                     class="date-format-card flex flex-col gap-1.5 p-4 rounded-xl border cursor-pointer transition-all duration-200 text-left"
                   >
                     <span class="text-text-primary text-xs font-semibold font-mono">MM/DD/YYYY</span>
@@ -585,8 +594,8 @@ interface AccentSwatch {
                   </button>
 
                   <button
-                    (click)="selectedDateFormat.set('DMY')"
-                    [class.date-format-card--active]="selectedDateFormat() === 'DMY'"
+                    (click)="selectedDateFormat.set('DD/MM/YYYY')"
+                    [class.date-format-card--active]="selectedDateFormat() === 'DD/MM/YYYY'"
                     class="date-format-card flex flex-col gap-1.5 p-4 rounded-xl border cursor-pointer transition-all duration-200 text-left"
                   >
                     <span class="text-text-primary text-xs font-semibold font-mono">DD/MM/YYYY</span>
@@ -612,27 +621,51 @@ interface AccentSwatch {
                 <span class="text-text-primary text-sm font-semibold">Start of week</span>
                 <div class="flex gap-2">
                   <button
-                    (click)="selectedStartOfWeek.set('sunday')"
-                    [class.week-pill--active]="selectedStartOfWeek() === 'sunday'"
+                    (click)="selectedStartOfWeek.set('SUNDAY')"
+                    [class.week-pill--active]="selectedStartOfWeek() === 'SUNDAY'"
                     class="week-pill px-5 py-2 rounded-full text-sm font-medium cursor-pointer transition-all duration-200 border"
                   >
                     Sunday
                   </button>
                   <button
-                    (click)="selectedStartOfWeek.set('monday')"
-                    [class.week-pill--active]="selectedStartOfWeek() === 'monday'"
+                    (click)="selectedStartOfWeek.set('MONDAY')"
+                    [class.week-pill--active]="selectedStartOfWeek() === 'MONDAY'"
                     class="week-pill px-5 py-2 rounded-full text-sm font-medium cursor-pointer transition-all duration-200 border"
                   >
                     Monday
+                  </button>
+                  <button
+                    (click)="selectedStartOfWeek.set('SATURDAY')"
+                    [class.week-pill--active]="selectedStartOfWeek() === 'SATURDAY'"
+                    class="week-pill px-5 py-2 rounded-full text-sm font-medium cursor-pointer transition-all duration-200 border"
+                  >
+                    Saturday
                   </button>
                 </div>
               </div>
             </app-card>
 
+            <!-- Save button -->
+            <div class="flex justify-end">
+              <app-button
+                variant="primary"
+                size="sm"
+                [loading]="profileStore.saving()"
+                [disabled]="profileStore.saving()"
+                (click)="saveWorkspacePreferences()"
+              >
+                Save workspace preferences
+              </app-button>
+            </div>
+
+            @if (profileStore.error()) {
+              <app-error-banner [message]="profileStore.error()!" variant="inline" />
+            }
+
             <!-- Info note -->
             <div class="rounded-xl px-4 py-3 text-xs flex items-start gap-2 settings-workspace-note">
               <span class="material-symbols-rounded text-sm shrink-0 mt-0.5">info</span>
-              Workspace preferences are saved locally and apply to your browser session only.
+              Workspace preferences are synced to your account and apply across all devices.
             </div>
           </div>
         }
@@ -998,9 +1031,11 @@ export class SettingsComponent implements OnInit {
   // Appearance signals
   selectedAccent = signal<string>('violet');
 
-  // Workspace signals
-  selectedDateFormat  = signal<'MDY' | 'DMY' | 'ISO'>('DMY');
-  selectedStartOfWeek = signal<'sunday' | 'monday'>('monday');
+  // Workspace signals — initialised from profile preferences on load
+  selectedLanguage    = signal<string>(DEFAULT_PREFERENCES.language);
+  selectedTimezone    = signal<string>(DEFAULT_PREFERENCES.timezone);
+  selectedDateFormat  = signal<string>(DEFAULT_PREFERENCES.dateFormat);
+  selectedStartOfWeek = signal<string>(DEFAULT_PREFERENCES.startOfWeek);
 
   readonly sections = [
     { id: 'profile'       as SettingsSection, label: 'Profile',       icon: 'person' },
@@ -1059,6 +1094,17 @@ export class SettingsComponent implements OnInit {
         this.isEditing.set(false);
       }
     });
+
+    // Populate workspace preference signals when profile loads
+    effect(() => {
+      const profile = this.profileStore.profile();
+      if (profile?.preferences) {
+        this.selectedLanguage.set(profile.preferences.language);
+        this.selectedTimezone.set(profile.preferences.timezone);
+        this.selectedDateFormat.set(profile.preferences.dateFormat);
+        this.selectedStartOfWeek.set(profile.preferences.startOfWeek);
+      }
+    });
   }
 
   ngOnInit(): void {
@@ -1104,6 +1150,27 @@ export class SettingsComponent implements OnInit {
     if (lastName  !== null && lastName  !== undefined && lastName  !== '') req.lastName  = lastName;
     if (bio       !== null && bio       !== undefined && bio       !== '') req.bio       = bio;
     if (avatarUrl !== null && avatarUrl !== undefined && avatarUrl !== '') req.avatarUrl = avatarUrl;
+
+    this.profileStore.saveProfile(req);
+  }
+
+  // ─── Workspace methods ─────────────────────────────────────────────────────
+
+  saveWorkspacePreferences(): void {
+    const profile = this.profileStore.profile();
+    if (!profile) return;
+
+    const preferences: UserPreferences = {
+      language:    this.selectedLanguage(),
+      timezone:    this.selectedTimezone(),
+      dateFormat:  this.selectedDateFormat(),
+      startOfWeek: this.selectedStartOfWeek(),
+    };
+
+    const req: UpdateProfileRequest = {
+      version: profile.version,
+      preferences,
+    };
 
     this.profileStore.saveProfile(req);
   }
