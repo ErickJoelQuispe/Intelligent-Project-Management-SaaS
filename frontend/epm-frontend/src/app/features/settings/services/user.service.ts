@@ -20,4 +20,14 @@ export class UserService {
   listTenantUsers(): Observable<TenantUser[]> {
     return this.http.get<TenantUser[]>(this.baseUrl);
   }
+
+  /**
+   * Soft-deletes the authenticated user's own profile.
+   *
+   * Step 2 of the frontend-orchestrated account deletion flow.
+   * Returns 204 No Content on success.
+   */
+  deleteOwnProfile(): Observable<void> {
+    return this.http.delete<void>(`${this.baseUrl}/me`);
+  }
 }

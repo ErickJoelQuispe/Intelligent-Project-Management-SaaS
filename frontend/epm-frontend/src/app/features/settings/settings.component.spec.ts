@@ -6,9 +6,13 @@ import { NotificationPreferencesStore } from '../notifications/store/notificatio
 import { ProfileStore } from './store/profile.store';
 import { OAuthService } from 'angular-oauth2-oidc';
 import { AuthService } from '../../core/auth/auth.service';
+import { AuthApiService } from '../../core/services/auth-api.service';
+import { UserService } from './services/user.service';
+import { MatDialog } from '@angular/material/dialog';
 import { provideHttpClient } from '@angular/common/http';
 import { provideHttpClientTesting } from '@angular/common/http/testing';
 import { signal } from '@angular/core';
+import { of, throwError } from 'rxjs';
 import { UserProfile, UserPreferences } from '../../core/models/user-profile.model';
 
 /**
@@ -267,5 +271,114 @@ describe('SettingsComponent — workspace preferences wiring', () => {
       .find(b => b.textContent?.trim() === 'Sunday') as HTMLButtonElement;
     expect(sundayPill).toBeTruthy();
     expect(sundayPill.classList.contains('week-pill--active')).toBe(true);
+  });
+});
+
+// ── Delete account flow ────────────────────────────────────────────────────────
+
+describe('SettingsComponent — delete account flow', () => {
+  let fixture: ComponentFixture<SettingsComponent>;
+  let compiled: HTMLElement;
+  let authApiServiceMock: { disableAccount: ReturnType<typeof vi.fn> };
+  let userServiceMock: { deleteOwnProfile: ReturnType<typeof vi.fn> };
+  let authServiceMock: { logout: ReturnType<typeof vi.fn> };
+  let dialogMock: { open: ReturnType<typeof vi.fn> };
+  let profileStoreMock: {
+    loading: ReturnType<typeof signal<boolean>>;
+    saving: ReturnType<typeof signal<boolean>>;
+    saveSuccess: ReturnType<typeof signal<boolean>>;
+    error: ReturnType<typeof signal<string | null>>;
+    profile: ReturnType<typeof signal<UserProfile | null>>;
+    loadProfile: ReturnType<typeof vi.fn>;
+    saveProfile: ReturnType<typeof vi.fn>;
+  };
+
+  function setup(dialogResult: boolean | undefined = true) {
+    authApiServiceMock = { disableAccount: vi.fn().mockReturnValue(of(undefined)) };
+    userServiceMock = { deleteOwnProfile: vi.fn().mockReturnValue(of(undefined)) };
+    authServiceMock = { logout: vi.fn() };
+    dialogMock = {
+      open: vi.fn().mockReturnValue({ afterClosed: () => of(dialogResult) }),
+    };
+    profileStoreMock = {
+      loading:     signal(false),
+      saving:      signal(false),
+      saveSuccess: signal(false),
+      error:       signal(null),
+      profile:     signal(null),
+      loadProfile: vi.fn(),
+      saveProfile: vi.fn(),
+    };
+
+    TestBed.configureTestingModule({
+      imports: [SettingsComponent],
+      providers: [
+        provideHttpClient(),
+        provideHttpClientTesting(),
+        { provide: AppPreferencesService, useValue: { compactMode: signal(false), reduceAnimations: signal(false), setCompactMode: vi.fn(), setReduceAnimations: vi.fn() } },
+        { provide: ThemeService, useValue: { theme: signal('midnight'), setTheme: vi.fn(), isDark: signal(true) } },
+        { provide: NotificationPreferencesStore, useValue: { loading: signal(false), preferences: signal([]), loadPreferences: vi.fn() } },
+        { provide: ProfileStore, useValue: profileStoreMock },
+        { provide: OAuthService, useValue: { getIdentityClaims: vi.fn().mockReturnValue({}), getAccessTokenExpiration: vi.fn().mockReturnValue(Date.now() + 3600000) } },
+        { provide: AuthService, useValue: authServiceMock },
+        { provide: AuthApiService, useValue: authApiServiceMock },
+        { provide: UserService, useValue: userServiceMock },
+        { provide: MatDialog, useValue: dialogMock },
+      ],
+    });
+
+    fixture = TestBed.createComponent(SettingsComponent);
+    compiled = fixture.nativeElement as HTMLElement;
+    fixture.detectChanges();
+  }
+
+  afterEach(() => vi.restoreAllMocks());
+
+  function goToSecurity() {
+    const buttons = Array.from(compiled.querySelectorAll('button.settings-nav-item'));
+    const btn = buttons.find(b => b.textContent?.includes('Security')) as HTMLButtonElement;
+    btn?.click();
+    fixture.detectChanges();
+  }
+
+  // ── RED: cancel dialog aborts — no service calls made ─────────────────────
+
+  it('when dialog is cancelled, no service calls are made', async () => {
+    setup(false); // dialog returns false (cancelled)
+    goToSecurity();
+
+    await fixture.componentInstance.confirmDeleteAccount();
+
+    expect(authApiServiceMock.disableAccount).not.toHaveBeenCalled();
+    expect(userServiceMock.deleteOwnProfile).not.toHaveBeenCalled();
+    expect(authServiceMock.logout).not.toHaveBeenCalled();
+  });
+
+  // ── TRIANGULATE: step-1 failure shows error and stops ─────────────────────
+
+  it('when disableAccount fails, shows deleteError and does not call deleteOwnProfile', async () => {
+    setup(true);
+    authApiServiceMock.disableAccount.mockReturnValue(throwError(() => new Error('503')));
+    goToSecurity();
+
+    await fixture.componentInstance.confirmDeleteAccount();
+    fixture.detectChanges();
+
+    expect(userServiceMock.deleteOwnProfile).not.toHaveBeenCalled();
+    expect(authServiceMock.logout).not.toHaveBeenCalled();
+    expect(fixture.componentInstance.deleteError()).toBeTruthy();
+  });
+
+  // ── TRIANGULATE: full success path calls logout ────────────────────────────
+
+  it('when both steps succeed, logout is called', async () => {
+    setup(true);
+    goToSecurity();
+
+    await fixture.componentInstance.confirmDeleteAccount();
+
+    expect(authApiServiceMock.disableAccount).toHaveBeenCalledOnce();
+    expect(userServiceMock.deleteOwnProfile).toHaveBeenCalledOnce();
+    expect(authServiceMock.logout).toHaveBeenCalledOnce();
   });
 });

@@ -6,14 +6,19 @@ import {
   signal,
   effect,
 } from '@angular/core';
+import { firstValueFrom } from 'rxjs';
 import { AppPreferencesService } from '../../core/services/app-preferences.service';
+import { AuthApiService } from '../../core/services/auth-api.service';
 import { FormBuilder, ReactiveFormsModule } from '@angular/forms';
+import { MatDialog } from '@angular/material/dialog';
 import { MatSlideToggleModule, MatSlideToggleChange } from '@angular/material/slide-toggle';
 import { OAuthService } from 'angular-oauth2-oidc';
 import { AuthService } from '../../core/auth/auth.service';
 import { ThemeService, Theme } from '../../core/theme/theme.service';
 import { NotificationPreferencesStore } from '../notifications/store/notification-preferences.store';
 import { ProfileStore } from './store/profile.store';
+import { UserService } from './services/user.service';
+import { ConfirmDeleteAccountDialogComponent } from './components/confirm-delete-account-dialog/confirm-delete-account-dialog.component';
 import { DEFAULT_PREFERENCES, UpdateProfileRequest, UserPreferences } from '../../core/models/user-profile.model';
 import { NotificationPreference, NotificationChannel, NotificationType } from '../notifications/models/notification.model';
 import { PageHeaderComponent } from '../../shared/components/page-header/page-header.component';
@@ -65,6 +70,7 @@ interface AccentSwatch {
     AvatarComponent,
     ButtonComponent,
     ErrorBannerComponent,
+    ConfirmDeleteAccountDialogComponent,
   ],
   template: `
     <app-page-header
@@ -723,11 +729,20 @@ interface AccentSwatch {
                   </div>
                   <button
                     (click)="confirmDeleteAccount()"
+                    [disabled]="isDeletingAccount()"
                     class="settings-danger-btn px-4 py-2 rounded-lg text-sm font-medium cursor-pointer transition-all duration-150 shrink-0"
                   >
-                    Delete account
+                    @if (isDeletingAccount()) {
+                      Deleting...
+                    } @else {
+                      Delete account
+                    }
                   </button>
                 </div>
+
+                @if (deleteError()) {
+                  <app-error-banner [message]="deleteError()!" variant="inline" />
+                }
               </div>
             </app-card>
 
@@ -1019,6 +1034,9 @@ interface AccentSwatch {
 export class SettingsComponent implements OnInit {
   private readonly oauth            = inject(OAuthService);
   private readonly authService      = inject(AuthService);
+  private readonly authApiService   = inject(AuthApiService);
+  private readonly userService      = inject(UserService);
+  private readonly dialog           = inject(MatDialog);
   private readonly fb               = inject(FormBuilder);
   readonly themeService             = inject(ThemeService);
   readonly prefStore                = inject(NotificationPreferencesStore);
@@ -1027,6 +1045,10 @@ export class SettingsComponent implements OnInit {
 
   activeSection = signal<SettingsSection>('profile');
   isEditing     = signal(false);
+
+  // Delete account signals
+  isDeletingAccount = signal(false);
+  deleteError       = signal<string | null>(null);
 
   // Appearance signals
   selectedAccent = signal<string>('violet');
@@ -1191,8 +1213,33 @@ export class SettingsComponent implements OnInit {
 
   // ─── Security methods ──────────────────────────────────────────────────────
 
-  confirmDeleteAccount(): void {
-    window.confirm('Are you sure you want to permanently delete your account? This action cannot be undone.');
+  async confirmDeleteAccount(): Promise<void> {
+    const dialogRef = this.dialog.open(ConfirmDeleteAccountDialogComponent);
+    const confirmed = await firstValueFrom(dialogRef.afterClosed());
+    if (!confirmed) return;
+
+    // Step 1: disable Keycloak user
+    this.isDeletingAccount.set(true);
+    this.deleteError.set(null);
+    try {
+      await firstValueFrom(this.authApiService.disableAccount());
+    } catch {
+      this.deleteError.set('Could not deactivate account. Please try again later.');
+      this.isDeletingAccount.set(false);
+      return;
+    }
+
+    // Step 2: soft-delete profile in user-service
+    try {
+      await firstValueFrom(this.userService.deleteOwnProfile());
+    } catch {
+      this.deleteError.set('Account deactivated but profile deletion failed. Contact support.');
+      this.isDeletingAccount.set(false);
+      return;
+    }
+
+    // Step 3: logout
+    this.authService.logout();
   }
 
   // ─── Shared helpers ────────────────────────────────────────────────────────
