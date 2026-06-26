@@ -1,19 +1,23 @@
 package com.epm.auth.infrastructure.adapter.out.identity;
 
+import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
 
 import com.epm.auth.domain.exception.IdentityProviderException;
+import com.epm.auth.domain.model.UserSession;
 import com.epm.auth.domain.port.out.IdentityProviderPort;
 import com.epm.auth.infrastructure.config.KeycloakProperties;
 import io.github.resilience4j.circuitbreaker.annotation.CircuitBreaker;
 import jakarta.ws.rs.core.Response;
 import org.keycloak.admin.client.Keycloak;
 import org.keycloak.admin.client.KeycloakBuilder;
+import org.keycloak.admin.client.resource.RealmResource;
 import org.keycloak.admin.client.resource.UserResource;
 import org.keycloak.representations.idm.CredentialRepresentation;
 import org.keycloak.representations.idm.RoleRepresentation;
 import org.keycloak.representations.idm.UserRepresentation;
+import org.keycloak.representations.idm.UserSessionRepresentation;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
@@ -150,6 +154,50 @@ public class KeycloakAdminAdapter implements IdentityProviderPort {
         throw new IdentityProviderException("Keycloak unavailable: " + ex.getMessage(), 30);
     }
 
+    /**
+     * {@inheritDoc}
+     *
+     * <p>Retrieves all active sessions for the user from Keycloak and maps them
+     * to {@link UserSession} domain records. {@code start} and {@code lastAccess}
+     * fields from Keycloak are epoch milliseconds.
+     */
+    @Override
+    @CircuitBreaker(name = "keycloak", fallbackMethod = "getUserSessionsFallback")
+    public List<UserSession> getUserSessions(UUID keycloakUserId) {
+        List<UserSessionRepresentation> representations = getUserResource(keycloakUserId).getUserSessions();
+        return representations.stream()
+                .map(rep -> new UserSession(
+                        rep.getId(),
+                        rep.getIpAddress(),
+                        Instant.ofEpochMilli(rep.getStart()),
+                        Instant.ofEpochMilli(rep.getLastAccess())
+                ))
+                .toList();
+    }
+
+    /** Fallback for getUserSessions — returns empty list so the UI gracefully shows no sessions. */
+    public List<UserSession> getUserSessionsFallback(UUID keycloakUserId, Exception ex) {
+        log.warn("getUserSessions fallback triggered for user {}. Cause: {}", keycloakUserId, ex.getMessage());
+        return List.of();
+    }
+
+    /**
+     * {@inheritDoc}
+     *
+     * <p>Deletes the Keycloak session by ID. If Keycloak returns 404 (session already expired),
+     * this is treated as success at the adapter level — the caller does not need to handle it.
+     */
+    @Override
+    @CircuitBreaker(name = "keycloak", fallbackMethod = "revokeSessionFallback")
+    public void revokeSession(String sessionId) {
+        getRealmResource().deleteSession(sessionId, false);
+    }
+
+    /** Fallback for revokeSession — called when circuit breaker opens. */
+    public void revokeSessionFallback(String sessionId, Exception ex) {
+        throw new IdentityProviderException("Keycloak unavailable: " + ex.getMessage(), 30);
+    }
+
     // ── Helpers ──────────────────────────────────────────────────────────────
 
     /**
@@ -160,6 +208,17 @@ public class KeycloakAdminAdapter implements IdentityProviderPort {
     protected UserResource getUserResource(UUID keycloakUserId) {
         try (Keycloak keycloak = buildAdminClient()) {
             return keycloak.realm(props.realm()).users().get(keycloakUserId.toString());
+        }
+    }
+
+    /**
+     * Returns the {@link RealmResource} for the configured realm.
+     *
+     * <p>Protected to allow unit tests to override without a real Keycloak connection.
+     */
+    protected RealmResource getRealmResource() {
+        try (Keycloak keycloak = buildAdminClient()) {
+            return keycloak.realm(props.realm());
         }
     }
 

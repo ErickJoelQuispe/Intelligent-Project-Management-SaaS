@@ -1,6 +1,9 @@
 package com.epm.auth.domain.port.out;
 
+import java.util.List;
 import java.util.UUID;
+
+import com.epm.auth.domain.model.UserSession;
 
 /**
  * Driven port: identity provider (Keycloak) contract.
@@ -58,4 +61,20 @@ public interface IdentityProviderPort {
      * @param keycloakUserId the Keycloak user UUID to disable
      */
     void disableUser(UUID keycloakUserId);
+
+    /**
+     * Retrieves all active sessions for the given Keycloak user.
+     *
+     * @param keycloakUserId the Keycloak user UUID (JWT {@code sub} claim)
+     * @return list of active sessions; empty list if none or on circuit-breaker fallback
+     */
+    List<UserSession> getUserSessions(UUID keycloakUserId);
+
+    /**
+     * Revokes (deletes) a specific Keycloak session.
+     *
+     * @param sessionId the Keycloak session ID to revoke
+     * @throws com.epm.auth.domain.exception.IdentityProviderException if the call fails
+     */
+    void revokeSession(String sessionId);
 }
