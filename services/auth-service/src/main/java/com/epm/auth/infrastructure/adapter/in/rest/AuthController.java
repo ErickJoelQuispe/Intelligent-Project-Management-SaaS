@@ -1,17 +1,25 @@
 package com.epm.auth.infrastructure.adapter.in.rest;
 
+import java.time.format.DateTimeFormatter;
+import java.util.List;
 import java.util.UUID;
 
+import com.epm.auth.domain.model.UserSession;
 import com.epm.auth.domain.port.in.DisableOwnAccountUseCase;
+import com.epm.auth.domain.port.in.GetUserSessionsUseCase;
 import com.epm.auth.domain.port.in.LogoutAccountUseCase;
 import com.epm.auth.domain.port.in.RegisterAccountUseCase;
+import com.epm.auth.domain.port.in.RevokeSessionUseCase;
 import com.epm.auth.domain.port.in.command.RegisterAccountCommand;
 import com.epm.auth.domain.port.in.result.RegisterAccountResult;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.web.bind.annotation.DeleteMapping;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestHeader;
@@ -32,12 +40,20 @@ public class AuthController {
     private final RegisterAccountUseCase registerUseCase;
     private final LogoutAccountUseCase logoutUseCase;
     private final DisableOwnAccountUseCase disableOwnAccountUseCase;
+    private final GetUserSessionsUseCase getUserSessionsUseCase;
+    private final RevokeSessionUseCase revokeSessionUseCase;
 
-    public AuthController(RegisterAccountUseCase registerUseCase, LogoutAccountUseCase logoutUseCase,
-            DisableOwnAccountUseCase disableOwnAccountUseCase) {
+    public AuthController(
+            RegisterAccountUseCase registerUseCase,
+            LogoutAccountUseCase logoutUseCase,
+            DisableOwnAccountUseCase disableOwnAccountUseCase,
+            GetUserSessionsUseCase getUserSessionsUseCase,
+            RevokeSessionUseCase revokeSessionUseCase) {
         this.registerUseCase = registerUseCase;
         this.logoutUseCase = logoutUseCase;
         this.disableOwnAccountUseCase = disableOwnAccountUseCase;
+        this.getUserSessionsUseCase = getUserSessionsUseCase;
+        this.revokeSessionUseCase = revokeSessionUseCase;
     }
 
     /**
@@ -90,5 +106,44 @@ public class AuthController {
     public void deleteOwnAccount(@AuthenticationPrincipal Jwt jwt) {
         UUID keycloakUserId = UUID.fromString(jwt.getSubject());
         disableOwnAccountUseCase.execute(keycloakUserId);
+    }
+
+    /**
+     * Returns all active Keycloak sessions for the authenticated user.
+     *
+     * @param jwt the authenticated JWT principal
+     * @return 200 with list of sessions (may be empty)
+     */
+    @GetMapping("/sessions")
+    public ResponseEntity<List<UserSessionResponse>> getSessions(@AuthenticationPrincipal Jwt jwt) {
+        UUID keycloakUserId = UUID.fromString(jwt.getSubject());
+        List<UserSession> sessions = getUserSessionsUseCase.execute(keycloakUserId);
+        List<UserSessionResponse> responses = sessions.stream()
+                .map(s -> new UserSessionResponse(
+                        s.sessionId(),
+                        s.ipAddress(),
+                        DateTimeFormatter.ISO_INSTANT.format(s.started()),
+                        DateTimeFormatter.ISO_INSTANT.format(s.lastAccess())
+                ))
+                .toList();
+        return ResponseEntity.ok(responses);
+    }
+
+    /**
+     * Revokes a specific Keycloak session.
+     *
+     * <p>On success returns 204. On Keycloak failure returns 503 with {@code Retry-After: 30}.
+     * If the session has already expired (Keycloak 404), the exception is treated
+     * as 204 (success) — the caller should not care about already-expired sessions.
+     *
+     * @param sessionId the Keycloak session ID to revoke
+     * @param jwt       the authenticated JWT principal
+     */
+    @DeleteMapping("/sessions/{sessionId}")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    public void revokeSession(
+            @PathVariable String sessionId,
+            @AuthenticationPrincipal Jwt jwt) {
+        revokeSessionUseCase.execute(sessionId);
     }
 }
