@@ -40,6 +40,6 @@ public class GetOwnProfileUseCaseImpl implements GetOwnProfileUseCase {
         return new UserProfileResult(
                 profile.getId(), profile.getTenantId(), profile.getEmail(),
                 profile.getFirstName(), profile.getLastName(), profile.getBio(),
-                profile.getAvatarUrl(), profile.getVersion(), provisional);
+                profile.getAvatarUrl(), profile.getVersion(), provisional, profile.getPreferences());
     }
 }

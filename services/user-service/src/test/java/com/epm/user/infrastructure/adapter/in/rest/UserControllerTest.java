@@ -11,7 +11,9 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 import java.util.UUID;
 
+import com.epm.user.domain.exception.InvalidPreferencesException;
 import com.epm.user.domain.exception.OptimisticLockException;
+import com.epm.user.domain.model.UserPreferences;
 import com.epm.user.domain.port.in.GetOwnProfileUseCase;
 import com.epm.user.domain.port.in.ListTenantUsersUseCase;
 import com.epm.user.domain.port.in.UpdateOwnProfileUseCase;
@@ -199,5 +201,70 @@ class UserControllerTest {
                                 .subject(userId.toString())
                                 .claim("tenant_id", tenantId.toString()))))
                 .andExpect(status().isOk());
+    }
+
+    // ── PATCH /me with valid preferences → 200 ───────────────────────────────
+
+    @Test
+    void updateOwnProfileWithValidPreferencesReturns200() throws Exception {
+        UUID userId = UUID.randomUUID();
+        UUID tenantId = UUID.randomUUID();
+        UserPreferences prefs = new UserPreferences("es", "UTC", "DD/MM/YYYY", "SUNDAY");
+        UserProfileResult result = new UserProfileResult(userId, tenantId, "alice@example.com",
+                "Alice", "Smith", null, null, 1L, false, prefs);
+        when(updateOwnProfileUseCase.updateProfile(any(), any(), any())).thenReturn(result);
+
+        mockMvc.perform(patch("/api/v1/users/me")
+                        .with(jwt().jwt(j -> j
+                                .subject(userId.toString())
+                                .claim("tenant_id", tenantId.toString())))
+                        .contentType(org.springframework.http.MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "firstName": "Alice",
+                                  "lastName": "Smith",
+                                  "version": 0,
+                                  "preferences": {
+                                    "language": "es",
+                                    "timezone": "UTC",
+                                    "dateFormat": "DD/MM/YYYY",
+                                    "startOfWeek": "SUNDAY"
+                                  }
+                                }
+                                """))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.preferences.language").value("es"))
+                .andExpect(jsonPath("$.preferences.timezone").value("UTC"));
+    }
+
+    // ── PATCH /me with invalid timezone → 400 with field error ───────────────
+
+    @Test
+    void updateOwnProfileWithInvalidTimezoneReturns400WithFieldError() throws Exception {
+        UUID userId = UUID.randomUUID();
+        UUID tenantId = UUID.randomUUID();
+        when(updateOwnProfileUseCase.updateProfile(any(), any(), any()))
+                .thenThrow(new InvalidPreferencesException("timezone", "Not/AZone"));
+
+        mockMvc.perform(patch("/api/v1/users/me")
+                        .with(jwt().jwt(j -> j
+                                .subject(userId.toString())
+                                .claim("tenant_id", tenantId.toString())))
+                        .contentType(org.springframework.http.MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "firstName": "Alice",
+                                  "lastName": "Smith",
+                                  "version": 0,
+                                  "preferences": {
+                                    "language": "en",
+                                    "timezone": "Not/AZone",
+                                    "dateFormat": "ISO",
+                                    "startOfWeek": "MONDAY"
+                                  }
+                                }
+                                """))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.field").value("preferences.timezone"));
     }
 }

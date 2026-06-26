@@ -5,10 +5,12 @@ import static org.assertj.core.api.Assertions.assertThat;
 import java.util.Optional;
 import java.util.UUID;
 
+import com.epm.user.domain.model.UserPreferences;
 import com.epm.user.domain.model.UserProfile;
 import com.epm.user.infrastructure.AbstractPostgresIT;
 import com.epm.user.infrastructure.adapter.out.persistence.UserProfileJpaRepository;
 import com.epm.user.infrastructure.adapter.out.persistence.UserProfilePersistenceAdapter;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -22,7 +24,7 @@ import org.springframework.test.context.TestPropertySource;
  * <p>Verifies CRUD operations and tenant isolation for user profiles.
  */
 @DataJpaTest
-@Import({UserProfilePersistenceAdapter.class})
+@Import({UserProfilePersistenceAdapter.class, ObjectMapper.class})
 @TestPropertySource(properties = {
     "spring.config.import=",
     "spring.cloud.config.enabled=false",

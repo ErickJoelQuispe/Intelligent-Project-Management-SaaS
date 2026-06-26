@@ -3,6 +3,7 @@ package com.epm.user.infrastructure.adapter.in.rest;
 import java.util.List;
 import java.util.UUID;
 
+import com.epm.user.domain.exception.InvalidPreferencesException;
 import com.epm.user.domain.port.in.GetOwnProfileUseCase;
 import com.epm.user.domain.port.in.ListTenantUsersUseCase;
 import com.epm.user.domain.port.in.UpdateOwnProfileUseCase;
@@ -15,6 +16,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.validation.annotation.Validated;
+import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -78,7 +80,7 @@ public class UserController {
 
         UpdateProfileCommand command = new UpdateProfileCommand(
                 request.firstName(), request.lastName(), request.bio(),
-                request.avatarUrl(), request.version());
+                request.avatarUrl(), request.version(), request.preferences());
         UserProfileResult result = updateOwnProfileUseCase.updateProfile(userId, tenantId, command);
 
         return ResponseEntity.ok()
@@ -101,11 +103,37 @@ public class UserController {
                 .toList();
     }
 
+    /**
+     * Handles invalid workspace preferences — returns 400 with field error detail.
+     */
+    @ExceptionHandler(InvalidPreferencesException.class)
+    public ResponseEntity<PreferencesErrorResponse> handleInvalidPreferences(InvalidPreferencesException ex) {
+        return ResponseEntity.badRequest()
+                .body(new PreferencesErrorResponse("preferences." + extractField(ex), ex.getMessage()));
+    }
+
     // ── Helpers ──────────────────────────────────────────────────────────────
 
     private UserProfileResponse toResponse(UserProfileResult result) {
         return new UserProfileResponse(result.id(), result.tenantId(), result.email(),
                 result.firstName(), result.lastName(), result.bio(), result.avatarUrl(),
-                result.version());
+                result.version(), result.preferences());
     }
+
+    private String extractField(InvalidPreferencesException ex) {
+        // Exception message format: "Invalid value for field 'fieldName': value"
+        String msg = ex.getMessage();
+        if (msg == null) return "unknown";
+        int start = msg.indexOf('\'');
+        int end = msg.indexOf('\'', start + 1);
+        if (start >= 0 && end > start) {
+            return msg.substring(start + 1, end);
+        }
+        return "unknown";
+    }
+
+    /**
+     * Simple error response for invalid preferences.
+     */
+    public record PreferencesErrorResponse(String field, String message) {}
 }

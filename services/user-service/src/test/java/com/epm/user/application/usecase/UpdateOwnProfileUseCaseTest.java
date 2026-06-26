@@ -9,8 +9,10 @@ import static org.mockito.Mockito.when;
 import java.util.Optional;
 import java.util.UUID;
 
+import com.epm.user.domain.exception.InvalidPreferencesException;
 import com.epm.user.domain.exception.OptimisticLockException;
 import com.epm.user.domain.exception.ProfileNotFoundException;
+import com.epm.user.domain.model.UserPreferences;
 import com.epm.user.domain.model.UserProfile;
 import com.epm.user.domain.port.in.command.UpdateProfileCommand;
 import com.epm.user.domain.port.in.result.UserProfileResult;
@@ -94,5 +96,38 @@ class UpdateOwnProfileUseCaseTest {
         UpdateProfileCommand cmd = new UpdateProfileCommand("Bob", "Jones", null, null, 0);
         assertThatThrownBy(() -> useCase.updateProfile(userId, tenantId, cmd))
                 .isInstanceOf(ProfileNotFoundException.class);
+    }
+
+    @Test
+    void invalidPreferencesThrowsBeforeSaving() {
+        UUID userId = UUID.randomUUID();
+        UUID tenantId = UUID.randomUUID();
+        UserProfile profile = UserProfile.create(userId, tenantId, "alice@example.com", "Alice", "Smith");
+        when(profileRepository.findByIdAndTenantId(userId, tenantId)).thenReturn(Optional.of(profile));
+
+        UserPreferences invalid = new UserPreferences("fr", "UTC", "ISO", "MONDAY"); // "fr" is invalid
+        UpdateProfileCommand cmd = new UpdateProfileCommand("Alice", "Smith", null, null, 0, invalid);
+
+        assertThatThrownBy(() -> useCase.updateProfile(userId, tenantId, cmd))
+                .isInstanceOf(InvalidPreferencesException.class);
+
+        // outboxWriter must NOT have been called — validation failed before save
+        verify(outboxWriter, org.mockito.Mockito.never()).saveProfileAndPublish(any());
+    }
+
+    @Test
+    void validPreferencesSavedWithProfile() {
+        UUID userId = UUID.randomUUID();
+        UUID tenantId = UUID.randomUUID();
+        UserProfile profile = UserProfile.create(userId, tenantId, "alice@example.com", "Alice", "Smith");
+        when(profileRepository.findByIdAndTenantId(userId, tenantId)).thenReturn(Optional.of(profile));
+        when(outboxWriter.saveProfileAndPublish(any())).thenAnswer(inv -> inv.getArgument(0));
+
+        UserPreferences prefs = new UserPreferences("es", "UTC", "DD/MM/YYYY", "SUNDAY");
+        UpdateProfileCommand cmd = new UpdateProfileCommand("Alice", "Smith", null, null, 0, prefs);
+        UserProfileResult result = useCase.updateProfile(userId, tenantId, cmd);
+
+        assertThat(result.preferences()).isNotNull();
+        assertThat(result.preferences().language()).isEqualTo("es");
     }
 }

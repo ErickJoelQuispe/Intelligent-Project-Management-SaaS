@@ -1,5 +1,6 @@
 package com.epm.user.infrastructure.adapter.in.rest;
 
+import com.epm.user.domain.model.UserPreferences;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
 
@@ -11,5 +12,6 @@ public record UpdateProfileRequest(
         @Size(max = 100) String lastName,
         @Size(max = 2000) String bio,
         @Size(max = 500) String avatarUrl,
-        @NotNull Long version) {
+        @NotNull Long version,
+        UserPreferences preferences) {
 }

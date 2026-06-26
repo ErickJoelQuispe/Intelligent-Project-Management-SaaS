@@ -5,8 +5,10 @@ import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
+import com.epm.user.domain.model.UserPreferences;
 import com.epm.user.domain.model.UserProfile;
 import com.epm.user.domain.port.out.UserProfileRepository;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Component;
 
@@ -14,14 +16,18 @@ import org.springframework.stereotype.Component;
  * Adapter implementing {@link UserProfileRepository} port using JPA.
  *
  * <p>Maps between {@link UserProfile} domain object and {@link UserProfileJpaEntity}.
+ * Preferences are stored as a JSONB column and serialized/deserialized via Jackson.
  */
 @Component
 public class UserProfilePersistenceAdapter implements UserProfileRepository {
 
     private final UserProfileJpaRepository jpaRepository;
+    private final ObjectMapper objectMapper;
 
-    public UserProfilePersistenceAdapter(UserProfileJpaRepository jpaRepository) {
+    public UserProfilePersistenceAdapter(UserProfileJpaRepository jpaRepository,
+            ObjectMapper objectMapper) {
         this.jpaRepository = jpaRepository;
+        this.objectMapper = objectMapper;
     }
 
     @Override
@@ -98,10 +104,12 @@ public class UserProfilePersistenceAdapter implements UserProfileRepository {
         entity.setUpdatedBy("system");
         entity.setVersion(profile.getVersion());
         entity.setDeletedAt(profile.getDeletedAt());
+        entity.setPreferencesJson(serializePreferences(profile.getPreferences()));
         return entity;
     }
 
     private UserProfile toDomain(UserProfileJpaEntity entity) {
+        UserPreferences preferences = deserializePreferences(entity.getPreferencesJson());
         return UserProfile.reconstitute(
                 entity.getId(),
                 entity.getTenantId(),
@@ -113,6 +121,38 @@ public class UserProfilePersistenceAdapter implements UserProfileRepository {
                 entity.getVersion(),
                 entity.getCreatedAt(),
                 entity.getUpdatedAt(),
-                entity.getDeletedAt());
+                entity.getDeletedAt(),
+                preferences);
+    }
+
+    private String serializePreferences(UserPreferences preferences) {
+        try {
+            return objectMapper.writeValueAsString(preferences);
+        } catch (Exception e) {
+            throw new RuntimeException("Failed to serialize UserPreferences", e);
+        }
+    }
+
+    private UserPreferences deserializePreferences(String json) {
+        if (json == null || json.isBlank()) {
+            return UserPreferences.defaults();
+        }
+        try {
+            return objectMapper.readValue(json, UserPreferences.class);
+        } catch (Exception e) {
+            return UserPreferences.defaults();
+        }
+    }
+
+    // ── Test helpers (package-private) ────────────────────────────────────────
+
+    /** Exposed for unit tests to verify the mapping without a running database. */
+    UserProfileJpaEntity toEntityForTest(UserProfile profile) {
+        return toEntity(profile);
+    }
+
+    /** Exposed for unit tests to verify the mapping without a running database. */
+    UserProfile toDomainForTest(UserProfileJpaEntity entity) {
+        return toDomain(entity);
     }
 }

@@ -31,13 +31,18 @@ public class UpdateOwnProfileUseCaseImpl implements UpdateOwnProfileUseCase {
         UserProfile profile = profileRepository.findByIdAndTenantId(userId, tenantId)
                 .orElseThrow(() -> new ProfileNotFoundException(userId));
 
+        // Validate preferences before mutating — throws InvalidPreferencesException if invalid
+        if (command.preferences() != null) {
+            command.preferences().validate();
+        }
+
         profile.update(command.firstName(), command.lastName(), command.bio(),
-                command.avatarUrl(), command.version());
+                command.avatarUrl(), command.version(), command.preferences());
 
         UserProfile saved = outboxWriter.saveProfileAndPublish(profile);
 
         return new UserProfileResult(saved.getId(), saved.getTenantId(), saved.getEmail(),
                 saved.getFirstName(), saved.getLastName(), saved.getBio(),
-                saved.getAvatarUrl(), saved.getVersion(), false);
+                saved.getAvatarUrl(), saved.getVersion(), false, saved.getPreferences());
     }
 }

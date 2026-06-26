@@ -8,6 +8,8 @@ import jakarta.persistence.Entity;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
 import jakarta.persistence.Version;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
 
 /**
  * JPA entity mapping to the {@code user_profiles} table.
@@ -59,6 +61,10 @@ public class UserProfileJpaEntity {
     @Column(name = "deleted_at")
     private Instant deletedAt;
 
+    @JdbcTypeCode(SqlTypes.JSON)
+    @Column(name = "preferences", columnDefinition = "jsonb")
+    private String preferencesJson;
+
     // ── Getters & Setters ────────────────────────────────────────────────────
 
     public UUID getId() { return id; }
@@ -99,4 +105,7 @@ public class UserProfileJpaEntity {
 
     public Instant getDeletedAt() { return deletedAt; }
     public void setDeletedAt(Instant deletedAt) { this.deletedAt = deletedAt; }
+
+    public String getPreferencesJson() { return preferencesJson; }
+    public void setPreferencesJson(String preferencesJson) { this.preferencesJson = preferencesJson; }
 }
