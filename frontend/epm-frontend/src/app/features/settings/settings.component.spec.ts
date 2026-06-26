@@ -405,6 +405,33 @@ describe('SettingsComponent — delete account flow', () => {
     expect(userServiceMock.deleteOwnProfile).toHaveBeenCalledOnce();
     expect(authServiceMock.logout).toHaveBeenCalledOnce();
   });
+
+  // ── Step-2 failure: Keycloak disabled but profile deletion fails ───────────
+
+  it('should show support reference error when step 2 (deleteOwnProfile) fails after step 1 succeeds', async () => {
+    setup(true);
+    // step 1 succeeds (default mock), step 2 fails
+    userServiceMock.deleteOwnProfile.mockReturnValue(throwError(() => new Error('server error')));
+    goToSecurity();
+
+    await fixture.componentInstance.confirmDeleteAccount();
+    fixture.detectChanges();
+
+    // logout must NOT have been called — user is still "logged in" (Keycloak is disabled)
+    expect(authServiceMock.logout).not.toHaveBeenCalled();
+
+    // deleteError signal must contain a support-reference message
+    const errorMessage = fixture.componentInstance.deleteError();
+    expect(errorMessage).toBeTruthy();
+    expect(errorMessage?.toLowerCase()).toContain('support');
+
+    // isDeletingAccount must be false after the error (spinner/disabled state cleared)
+    expect(fixture.componentInstance.isDeletingAccount()).toBe(false);
+
+    // error banner should be visible in the DOM
+    const banner = compiled.querySelector('app-error-banner');
+    expect(banner).not.toBeNull();
+  });
 });
 
 // ── Sessions UI wiring ────────────────────────────────────────────────────────
@@ -496,5 +523,35 @@ describe('SettingsComponent — sessions UI wiring', () => {
     fixture.detectChanges();
 
     expect(sessionsStoreMock.revokeSession).toHaveBeenCalled();
+  });
+
+  // ── TRIANGULATE: revoking current session passes isCurrent=true ───────────
+
+  it('should call revokeSession with isCurrent=true when revoking the current session', () => {
+    const currentSession: UserSession = {
+      sessionId: 'sid-current',
+      ipAddress: '10.1.2.3',
+      started: '2024-11-14T20:00:00.000Z',
+      lastAccess: '2024-11-14T21:00:00.000Z',
+    };
+
+    // currentSessionId() returns the same ID as the session in the list
+    setup({
+      sessions: signal<UserSession[]>([currentSession]),
+      currentSessionId: vi.fn().mockReturnValue('sid-current'),
+    });
+    goToSecurity();
+
+    // Find the Revoke button for the current session
+    const revokeButtons = Array.from(compiled.querySelectorAll<HTMLButtonElement>('button'))
+      .filter(b => b.textContent?.trim() === 'Revoke');
+
+    expect(revokeButtons.length).toBe(1);
+    revokeButtons[0].click();
+    fixture.detectChanges();
+
+    // Component computes isCurrent = sessionId === sessionsStore.currentSessionId()
+    // → must call revokeSession('sid-current', true)
+    expect(sessionsStoreMock.revokeSession).toHaveBeenCalledWith('sid-current', true);
   });
 });
