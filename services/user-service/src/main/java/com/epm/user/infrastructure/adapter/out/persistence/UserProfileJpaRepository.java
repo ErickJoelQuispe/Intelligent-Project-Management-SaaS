@@ -15,6 +15,8 @@ public interface UserProfileJpaRepository extends JpaRepository<UserProfileJpaEn
 
     Optional<UserProfileJpaEntity> findByIdAndTenantIdAndDeletedAtIsNull(UUID id, UUID tenantId);
 
+    Optional<UserProfileJpaEntity> findByIdAndDeletedAtIsNull(UUID id);
+
     List<UserProfileJpaEntity> findAllByTenantIdAndDeletedAtIsNull(UUID tenantId);
 
     /**

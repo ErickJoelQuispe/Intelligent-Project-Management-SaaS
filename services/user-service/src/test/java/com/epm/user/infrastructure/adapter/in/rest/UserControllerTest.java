@@ -1,8 +1,10 @@
 package com.epm.user.infrastructure.adapter.in.rest;
 
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.when;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.jwt;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
@@ -13,7 +15,9 @@ import java.util.UUID;
 
 import com.epm.user.domain.exception.InvalidPreferencesException;
 import com.epm.user.domain.exception.OptimisticLockException;
+import com.epm.user.domain.exception.ProfileNotFoundException;
 import com.epm.user.domain.model.UserPreferences;
+import com.epm.user.domain.port.in.DeleteOwnProfileUseCase;
 import com.epm.user.domain.port.in.GetOwnProfileUseCase;
 import com.epm.user.domain.port.in.ListTenantUsersUseCase;
 import com.epm.user.domain.port.in.UpdateOwnProfileUseCase;
@@ -54,6 +58,9 @@ class UserControllerTest {
 
     @MockitoBean
     private ListTenantUsersUseCase listTenantUsersUseCase;
+
+    @MockitoBean
+    private DeleteOwnProfileUseCase deleteOwnProfileUseCase;
 
     @MockitoBean
     private JwtDecoder jwtDecoder;
@@ -235,6 +242,35 @@ class UserControllerTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.preferences.language").value("es"))
                 .andExpect(jsonPath("$.preferences.timezone").value("UTC"));
+    }
+
+    // ── DELETE /me with valid JWT → 204 ──────────────────────────────────────
+
+    @Test
+    void deleteOwnProfileWithValidJwtReturns204() throws Exception {
+        UUID userId = UUID.randomUUID();
+        UUID tenantId = UUID.randomUUID();
+
+        mockMvc.perform(delete("/api/v1/users/me")
+                        .with(jwt().jwt(j -> j
+                                .subject(userId.toString())
+                                .claim("tenant_id", tenantId.toString()))))
+                .andExpect(status().isNoContent());
+    }
+
+    // ── DELETE /me when profile not found → 404 ───────────────────────────────
+
+    @Test
+    void deleteOwnProfileWhenNotFoundReturns404() throws Exception {
+        UUID userId = UUID.randomUUID();
+        UUID tenantId = UUID.randomUUID();
+        doThrow(new ProfileNotFoundException(userId)).when(deleteOwnProfileUseCase).execute(any());
+
+        mockMvc.perform(delete("/api/v1/users/me")
+                        .with(jwt().jwt(j -> j
+                                .subject(userId.toString())
+                                .claim("tenant_id", tenantId.toString()))))
+                .andExpect(status().isNotFound());
     }
 
     // ── PATCH /me with invalid timezone → 400 with field error ───────────────

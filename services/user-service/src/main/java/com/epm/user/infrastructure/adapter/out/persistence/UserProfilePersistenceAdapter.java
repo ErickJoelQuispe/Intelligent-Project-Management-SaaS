@@ -37,6 +37,12 @@ public class UserProfilePersistenceAdapter implements UserProfileRepository {
     }
 
     @Override
+    public Optional<UserProfile> findById(UUID id) {
+        return jpaRepository.findByIdAndDeletedAtIsNull(id)
+                .map(this::toDomain);
+    }
+
+    @Override
     public List<UserProfile> findAllByTenantId(UUID tenantId) {
         return jpaRepository.findAllByTenantIdAndDeletedAtIsNull(tenantId)
                 .stream()

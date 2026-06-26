@@ -13,6 +13,17 @@ public interface UserProfileRepository {
 
     Optional<UserProfile> findByIdAndTenantId(UUID id, UUID tenantId);
 
+    /**
+     * Finds an active (non-deleted) user profile by its ID, regardless of tenant.
+     *
+     * <p>Used in account deletion where the authenticated user's ID is the JWT {@code sub} claim
+     * — tenant scoping is not needed since the user can only delete their own account.
+     *
+     * @param id the user/account UUID
+     * @return the user profile if active, or empty if not found or already deleted
+     */
+    Optional<UserProfile> findById(UUID id);
+
     List<UserProfile> findAllByTenantId(UUID tenantId);
 
     /**

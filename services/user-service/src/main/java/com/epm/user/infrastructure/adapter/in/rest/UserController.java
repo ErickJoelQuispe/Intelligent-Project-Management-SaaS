@@ -4,6 +4,8 @@ import java.util.List;
 import java.util.UUID;
 
 import com.epm.user.domain.exception.InvalidPreferencesException;
+import com.epm.user.domain.exception.ProfileNotFoundException;
+import com.epm.user.domain.port.in.DeleteOwnProfileUseCase;
 import com.epm.user.domain.port.in.GetOwnProfileUseCase;
 import com.epm.user.domain.port.in.ListTenantUsersUseCase;
 import com.epm.user.domain.port.in.UpdateOwnProfileUseCase;
@@ -12,16 +14,19 @@ import com.epm.user.domain.port.in.dto.JwtClaimsDto;
 import com.epm.user.domain.port.in.result.UserProfileResult;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Min;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.validation.annotation.Validated;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 
 /**
@@ -38,15 +43,18 @@ public class UserController {
     private final GetOwnProfileUseCase getOwnProfileUseCase;
     private final UpdateOwnProfileUseCase updateOwnProfileUseCase;
     private final ListTenantUsersUseCase listTenantUsersUseCase;
+    private final DeleteOwnProfileUseCase deleteOwnProfileUseCase;
     private final JwtClaimsExtractor jwtClaimsExtractor;
 
     public UserController(GetOwnProfileUseCase getOwnProfileUseCase,
             UpdateOwnProfileUseCase updateOwnProfileUseCase,
             ListTenantUsersUseCase listTenantUsersUseCase,
+            DeleteOwnProfileUseCase deleteOwnProfileUseCase,
             JwtClaimsExtractor jwtClaimsExtractor) {
         this.getOwnProfileUseCase = getOwnProfileUseCase;
         this.updateOwnProfileUseCase = updateOwnProfileUseCase;
         this.listTenantUsersUseCase = listTenantUsersUseCase;
+        this.deleteOwnProfileUseCase = deleteOwnProfileUseCase;
         this.jwtClaimsExtractor = jwtClaimsExtractor;
     }
 
@@ -101,6 +109,21 @@ public class UserController {
         return listTenantUsersUseCase.listTenantUsers(tenantId, page, size).stream()
                 .map(u -> new TenantUserResponse(u.getId(), u.getEmail(), u.getFirstName(), u.getLastName()))
                 .toList();
+    }
+
+    /**
+     * Soft-deletes the authenticated user's own profile.
+     *
+     * <p>Step 2 of the frontend-orchestrated account deletion flow.
+     * On success returns 204. If the profile does not exist, returns 404.
+     *
+     * @param jwt the authenticated JWT principal
+     */
+    @DeleteMapping("/me")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    public void deleteOwnProfile(@AuthenticationPrincipal Jwt jwt) {
+        UUID userId = jwtClaimsExtractor.getUserId(jwt);
+        deleteOwnProfileUseCase.execute(userId);
     }
 
     /**
