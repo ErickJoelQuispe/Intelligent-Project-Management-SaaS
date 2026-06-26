@@ -6,6 +6,7 @@ import {
   signal,
   effect,
 } from '@angular/core';
+import { AppPreferencesService } from '../../core/services/app-preferences.service';
 import { FormBuilder, ReactiveFormsModule } from '@angular/forms';
 import { MatSlideToggleModule, MatSlideToggleChange } from '@angular/material/slide-toggle';
 import { OAuthService } from 'angular-oauth2-oidc';
@@ -491,7 +492,11 @@ interface AccentSwatch {
                     <span class="text-text-primary text-sm font-medium">Compact mode</span>
                     <span class="text-text-muted text-xs">Reduce padding and spacing across the UI</span>
                   </div>
-                  <mat-slide-toggle aria-label="Toggle compact mode" />
+                  <mat-slide-toggle
+                    aria-label="Toggle compact mode"
+                    [checked]="appPreferencesService.compactMode()"
+                    (change)="appPreferencesService.setCompactMode($event.checked)"
+                  />
                 </div>
 
                 <!-- Reduce animations -->
@@ -500,7 +505,11 @@ interface AccentSwatch {
                     <span class="text-text-primary text-sm font-medium">Reduce animations</span>
                     <span class="text-text-muted text-xs">Minimize motion for accessibility or performance</span>
                   </div>
-                  <mat-slide-toggle aria-label="Toggle reduce animations" />
+                  <mat-slide-toggle
+                    aria-label="Toggle reduce animations"
+                    [checked]="appPreferencesService.reduceAnimations()"
+                    (change)="appPreferencesService.setReduceAnimations($event.checked)"
+                  />
                 </div>
 
               </div>
@@ -664,35 +673,6 @@ interface AccentSwatch {
                   </button>
                 </div>
 
-              </div>
-            </app-card>
-
-            <!-- Two-factor authentication -->
-            <app-card>
-              <div class="flex flex-col gap-4">
-                <h3 class="text-text-primary text-sm font-semibold">Two-factor authentication</h3>
-
-                <div class="flex items-start justify-between gap-4">
-                  <div class="flex flex-col gap-1">
-                    @if (!twoFactorEnabled()) {
-                      <span class="text-text-primary text-sm font-medium">Enable 2FA for extra account security</span>
-                      <span class="text-text-muted text-xs">Protect your account with an authenticator app.</span>
-                    } @else {
-                      <div class="flex items-center gap-2">
-                        <span class="text-text-primary text-sm font-medium">Two-factor authentication</span>
-                        <span class="settings-2fa-enabled-badge">Enabled</span>
-                      </div>
-                      <button class="settings-reconfigure-btn mt-2 px-3 py-1.5 rounded-lg text-xs font-medium cursor-pointer transition-all duration-150 text-left w-fit">
-                        Reconfigure
-                      </button>
-                    }
-                  </div>
-                  <mat-slide-toggle
-                    [checked]="twoFactorEnabled()"
-                    (change)="twoFactorEnabled.set($event.checked)"
-                    aria-label="Toggle two-factor authentication"
-                  />
-                </div>
               </div>
             </app-card>
 
@@ -951,31 +931,6 @@ interface AccentSwatch {
         border-color: var(--color-danger);
       }
 
-      /* ─── Security: 2FA enabled badge ────────────────────────────────────── */
-      .settings-2fa-enabled-badge {
-        display: inline-flex;
-        align-items: center;
-        padding: 0.125rem 0.5rem;
-        border-radius: 9999px;
-        font-size: 0.625rem;
-        font-weight: 600;
-        background: color-mix(in oklch, var(--color-success) 12%, transparent);
-        color: var(--color-success);
-        border: 1px solid color-mix(in oklch, var(--color-success) 25%, transparent);
-      }
-
-      /* ─── Security: Reconfigure button ───────────────────────────────────── */
-      .settings-reconfigure-btn {
-        background: color-mix(in oklch, var(--color-accent) 10%, transparent);
-        color: var(--color-accent);
-        border: 1px solid color-mix(in oklch, var(--color-accent) 25%, transparent);
-      }
-
-      .settings-reconfigure-btn:hover {
-        background: color-mix(in oklch, var(--color-accent) 18%, transparent);
-        border-color: var(--color-accent);
-      }
-
       /* ─── Security: Danger zone ───────────────────────────────────────────── */
       .settings-danger-title {
         color: var(--color-danger);
@@ -1029,12 +984,13 @@ interface AccentSwatch {
   `,
 })
 export class SettingsComponent implements OnInit {
-  private readonly oauth       = inject(OAuthService);
-  private readonly authService = inject(AuthService);
-  private readonly fb          = inject(FormBuilder);
-  readonly themeService        = inject(ThemeService);
-  readonly prefStore           = inject(NotificationPreferencesStore);
-  readonly profileStore        = inject(ProfileStore);
+  private readonly oauth            = inject(OAuthService);
+  private readonly authService      = inject(AuthService);
+  private readonly fb               = inject(FormBuilder);
+  readonly themeService             = inject(ThemeService);
+  readonly prefStore                = inject(NotificationPreferencesStore);
+  readonly profileStore             = inject(ProfileStore);
+  readonly appPreferencesService    = inject(AppPreferencesService);
 
   activeSection = signal<SettingsSection>('profile');
   isEditing     = signal(false);
@@ -1045,9 +1001,6 @@ export class SettingsComponent implements OnInit {
   // Workspace signals
   selectedDateFormat  = signal<'MDY' | 'DMY' | 'ISO'>('DMY');
   selectedStartOfWeek = signal<'sunday' | 'monday'>('monday');
-
-  // Security signals
-  twoFactorEnabled = signal(false);
 
   readonly sections = [
     { id: 'profile'       as SettingsSection, label: 'Profile',       icon: 'person' },
