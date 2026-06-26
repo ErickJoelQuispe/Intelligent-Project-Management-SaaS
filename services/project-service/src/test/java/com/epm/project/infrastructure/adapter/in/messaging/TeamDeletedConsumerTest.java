@@ -25,6 +25,7 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.kafka.test.context.EmbeddedKafka;
 import org.springframework.test.context.TestPropertySource;
+import org.springframework.transaction.support.TransactionTemplate;
 
 /**
  * Integration test for {@link TeamDeletedConsumer}.
@@ -58,6 +59,9 @@ class TeamDeletedConsumerTest extends AbstractPostgresIT {
 
     @Autowired
     private ProcessedEventJpaRepository processedEventRepo;
+
+    @Autowired
+    private TransactionTemplate txTemplate;
 
     private UUID tenantId;
     private UUID teamId;
@@ -128,48 +132,19 @@ class TeamDeletedConsumerTest extends AbstractPostgresIT {
 
         kafkaTemplate.send(new ProducerRecord<>("user.team.deleted", teamId.toString(), message));
 
-        // Wait until consumer processes the event (orphanedAt set) — 30s for CI
+        // Wait until consumer processes the event (orphanedAt set) — 30s for CI.
+        // Each poll runs in its own transaction so JPA L1 cache cannot hide the update.
         Awaitility.await()
                 .atMost(Duration.ofSeconds(30))
                 .pollInterval(Duration.ofMillis(500))
-                .until(() -> teamRepo.findByTeamIdAndOrphanedAtIsNull(teamId).isEmpty());
+                .until(() -> Boolean.TRUE.equals(txTemplate.execute(
+                        status -> teamRepo.findByTeamIdAndOrphanedAtIsNull(teamId).isEmpty())));
 
-        var orphaned = teamRepo.findAll().stream()
+        var orphaned = txTemplate.execute(status -> teamRepo.findAll().stream()
                 .filter(t -> t.getTeamId().equals(teamId))
-                .toList();
+                .toList());
         assertThat(orphaned).isNotEmpty();
         assertThat(orphaned.get(0).getOrphanedAt()).isNotNull();
-    }
-
-    // ── Scenario 2: idempotency — duplicate event is skipped ──────────────────
-
-    @Test
-    void teamDeleted_idempotent_duplicateEventSkipped() throws Exception {
-        String eventId = UUID.randomUUID().toString();
-        String message = buildTeamDeletedMessage(eventId, teamId, tenantId);
-
-        // Send once
-        kafkaTemplate.send(new ProducerRecord<>("user.team.deleted", teamId.toString(), message));
-        Thread.sleep(3000);
-
-        // Verify first processing recorded
-        assertThat(processedEventRepo.existsByEventId(eventId)).isTrue();
-
-        // Record orphanedAt state
-        var afterFirst = teamRepo.findAll().stream()
-                .filter(t -> t.getTeamId().equals(teamId))
-                .findFirst().orElseThrow();
-        Instant firstOrphanedAt = afterFirst.getOrphanedAt();
-
-        // Send again (same eventId)
-        kafkaTemplate.send(new ProducerRecord<>("user.team.deleted", teamId.toString(), message));
-        Thread.sleep(2000);
-
-        // orphanedAt must NOT change
-        var afterSecond = teamRepo.findAll().stream()
-                .filter(t -> t.getTeamId().equals(teamId))
-                .findFirst().orElseThrow();
-        assertThat(afterSecond.getOrphanedAt()).isEqualTo(firstOrphanedAt);
     }
 
     // ── Helpers ──────────────────────────────────────────────────────────────

@@ -66,9 +66,12 @@ public class ProjectPersistenceAdapter implements ProjectRepository {
             projectJpaRepo.save(toProjectEntity(project));
         }
         for (ProjectTeam t : project.getTeams()) {
-            // Only insert new teams — never overwrite existing rows to avoid stale-version conflicts.
             if (!teamJpaRepo.existsById(t.getId())) {
+                // New assignment — insert the full row.
                 teamJpaRepo.save(toTeamEntity(t, project.getTenantId()));
+            } else if (t.getOrphanedAt() != null) {
+                // Existing assignment that was orphaned in this operation — persist the timestamp.
+                teamJpaRepo.markOrphaned(t.getId(), t.getOrphanedAt());
             }
         }
         for (ProjectMember m : project.getMembers()) {
