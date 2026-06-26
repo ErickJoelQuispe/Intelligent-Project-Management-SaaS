@@ -1,8 +1,10 @@
 package com.epm.auth.infrastructure.adapter.in.rest;
 
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.when;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.jwt;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -11,6 +13,7 @@ import java.util.UUID;
 
 import com.epm.auth.domain.exception.DuplicateEmailException;
 import com.epm.auth.domain.exception.IdentityProviderException;
+import com.epm.auth.domain.port.in.DisableOwnAccountUseCase;
 import com.epm.auth.domain.port.in.LogoutAccountUseCase;
 import com.epm.auth.domain.port.in.RegisterAccountUseCase;
 import com.epm.auth.domain.port.in.result.RegisterAccountResult;
@@ -64,6 +67,9 @@ class AuthControllerTest {
 
     @MockitoBean
     private LogoutAccountUseCase logoutAccountUseCase;
+
+    @MockitoBean
+    private DisableOwnAccountUseCase disableOwnAccountUseCase;
 
     // Required: provides a mock JwtDecoder so the SecurityConfig (OAuth2 resource server)
     // can initialize without trying to fetch Keycloak's JWKS from the network.
@@ -210,5 +216,41 @@ class AuthControllerTest {
     void logoutWithoutJwtReturns401() throws Exception {
         mockMvc.perform(post("/api/v1/auth/logout"))
                 .andExpect(status().isUnauthorized());
+    }
+
+    // ── DELETE /account with valid JWT → 204 ────────────────────────────────
+
+    @Test
+    void deleteOwnAccountWithValidJwtReturns204() throws Exception {
+        UUID userId = UUID.randomUUID();
+
+        mockMvc.perform(delete("/api/v1/auth/account")
+                        .with(jwt().jwt(jwt -> jwt.subject(userId.toString()))))
+                .andExpect(status().isNoContent());
+    }
+
+    // ── DELETE /account without JWT → 401 ───────────────────────────────────
+
+    @Test
+    void deleteOwnAccountWithoutJwtReturns401() throws Exception {
+        mockMvc.perform(delete("/api/v1/auth/account"))
+                .andExpect(status().isUnauthorized());
+    }
+
+    // ── DELETE /account when Keycloak fails → 503 ───────────────────────────
+
+    @Test
+    void deleteOwnAccountWhenKeycloakUnavailableReturns503() throws Exception {
+        UUID userId = UUID.randomUUID();
+        doThrow(new IdentityProviderException("Keycloak unavailable", 30))
+                .when(disableOwnAccountUseCase).execute(any());
+
+        mockMvc.perform(delete("/api/v1/auth/account")
+                        .with(jwt().jwt(jwt -> jwt.subject(userId.toString()))))
+                .andExpect(status().isServiceUnavailable())
+                .andExpect(result ->
+                    org.assertj.core.api.Assertions.assertThat(
+                        result.getResponse().getHeader("Retry-After")
+                    ).isEqualTo("30"));
     }
 }

@@ -1,7 +1,9 @@
 package com.epm.auth.infrastructure.config;
 
+import com.epm.auth.application.usecase.DisableOwnAccountUseCaseImpl;
 import com.epm.auth.application.usecase.LogoutAccountUseCaseImpl;
 import com.epm.auth.application.usecase.RegisterAccountUseCaseImpl;
+import com.epm.auth.domain.port.in.DisableOwnAccountUseCase;
 import com.epm.auth.domain.port.in.LogoutAccountUseCase;
 import com.epm.auth.domain.port.in.RegisterAccountUseCase;
 import com.epm.auth.domain.port.out.AccountRegistrationTransaction;
@@ -36,5 +38,10 @@ class UseCaseConfig {
             SecurityEventRepository securityEventRepository,
             AccountRepository accountRepository) {
         return new LogoutAccountUseCaseImpl(identityProvider, securityEventRepository, accountRepository);
+    }
+
+    @Bean
+    DisableOwnAccountUseCase disableOwnAccountUseCase(IdentityProviderPort identityProvider) {
+        return new DisableOwnAccountUseCaseImpl(identityProvider);
     }
 }

@@ -2,6 +2,7 @@ package com.epm.auth.infrastructure.adapter.in.rest;
 
 import java.util.UUID;
 
+import com.epm.auth.domain.port.in.DisableOwnAccountUseCase;
 import com.epm.auth.domain.port.in.LogoutAccountUseCase;
 import com.epm.auth.domain.port.in.RegisterAccountUseCase;
 import com.epm.auth.domain.port.in.command.RegisterAccountCommand;
@@ -10,6 +11,7 @@ import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.oauth2.jwt.Jwt;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestHeader;
@@ -29,10 +31,13 @@ public class AuthController {
 
     private final RegisterAccountUseCase registerUseCase;
     private final LogoutAccountUseCase logoutUseCase;
+    private final DisableOwnAccountUseCase disableOwnAccountUseCase;
 
-    public AuthController(RegisterAccountUseCase registerUseCase, LogoutAccountUseCase logoutUseCase) {
+    public AuthController(RegisterAccountUseCase registerUseCase, LogoutAccountUseCase logoutUseCase,
+            DisableOwnAccountUseCase disableOwnAccountUseCase) {
         this.registerUseCase = registerUseCase;
         this.logoutUseCase = logoutUseCase;
+        this.disableOwnAccountUseCase = disableOwnAccountUseCase;
     }
 
     /**
@@ -70,5 +75,20 @@ public class AuthController {
         String tenantIdStr = jwt.getClaimAsString("tenant_id");
         UUID tenantId = tenantIdStr != null ? UUID.fromString(tenantIdStr) : null;
         logoutUseCase.logout(accountId, tenantId, forwardedFor, userAgent);
+    }
+
+    /**
+     * Disables (soft-deletes) the authenticated user's Keycloak account.
+     *
+     * <p>Step 1 of the frontend-orchestrated account deletion flow.
+     * On success returns 204. On Keycloak failure returns 503 with {@code Retry-After: 30}.
+     *
+     * @param jwt the authenticated JWT principal
+     */
+    @DeleteMapping("/account")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    public void deleteOwnAccount(@AuthenticationPrincipal Jwt jwt) {
+        UUID keycloakUserId = UUID.fromString(jwt.getSubject());
+        disableOwnAccountUseCase.execute(keycloakUserId);
     }
 }
