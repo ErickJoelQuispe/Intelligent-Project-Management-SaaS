@@ -93,6 +93,47 @@ class UserProfileTest {
         assertThat(secondPull).isEmpty();
     }
 
+    // ── getPreferences(): defaults when null ──────────────────────────────────
+
+    @Test
+    void getPreferencesReturnsDefaultsForNewProfile() {
+        UserProfile profile = buildProfile();
+        UserPreferences prefs = profile.getPreferences();
+        assertThat(prefs.language()).isEqualTo("en");
+        assertThat(prefs.timezone()).isEqualTo("UTC");
+        assertThat(prefs.dateFormat()).isEqualTo("ISO");
+        assertThat(prefs.startOfWeek()).isEqualTo("MONDAY");
+    }
+
+    @Test
+    void updateWithPreferencesSetsPreferencesOnProfile() {
+        UserProfile profile = buildProfile();
+        UserPreferences prefs = new UserPreferences("es", "America/New_York", "DD/MM/YYYY", "SUNDAY");
+        profile.update("Alice", "Smith", null, null, 0, prefs);
+        assertThat(profile.getPreferences().language()).isEqualTo("es");
+        assertThat(profile.getPreferences().timezone()).isEqualTo("America/New_York");
+    }
+
+    @Test
+    void updateWithNullPreferencesKeepsExistingPreferences() {
+        UserProfile profile = buildProfile();
+        UserPreferences initial = new UserPreferences("pt", "UTC", "MM/DD/YYYY", "SATURDAY");
+        profile.update("Alice", "Smith", null, null, 0, initial);
+        // second update with null preferences should not clear them
+        profile.update("Alice", "Smith", null, null, 1, null);
+        assertThat(profile.getPreferences().language()).isEqualTo("pt");
+    }
+
+    // ── softDelete() ──────────────────────────────────────────────────────────
+
+    @Test
+    void softDeleteSetsDeletedAt() {
+        UserProfile profile = buildProfile();
+        assertThat(profile.getDeletedAt()).isNull();
+        profile.softDelete();
+        assertThat(profile.getDeletedAt()).isNotNull();
+    }
+
     // ── helpers ──────────────────────────────────────────────────────────────
 
     private UserProfile buildProfile() {

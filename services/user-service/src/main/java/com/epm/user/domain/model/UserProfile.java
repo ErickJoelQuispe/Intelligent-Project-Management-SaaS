@@ -31,6 +31,7 @@ public class UserProfile {
     private final Instant createdAt;
     private Instant updatedAt;
     private Instant deletedAt;
+    private UserPreferences preferences;
     private final List<Object> domainEvents = new ArrayList<>();
 
     // ── Factory ──────────────────────────────────────────────────────────────
@@ -50,7 +51,7 @@ public class UserProfile {
         Email emailVo = new Email(email);
         Instant now = Instant.now();
         return new UserProfile(accountId, tenantId, emailVo.value(), firstName, lastName,
-                null, null, 0L, now, now, null);
+                null, null, 0L, now, now, null, null);
     }
 
     /**
@@ -60,14 +61,26 @@ public class UserProfile {
             String firstName, String lastName, String bio, String avatarUrl,
             long version, Instant createdAt, Instant updatedAt, Instant deletedAt) {
         return new UserProfile(id, tenantId, email, firstName, lastName, bio, avatarUrl,
-                version, createdAt, updatedAt, deletedAt);
+                version, createdAt, updatedAt, deletedAt, null);
+    }
+
+    /**
+     * Reconstitutes a UserProfile from persistence with preferences (no events raised).
+     */
+    public static UserProfile reconstitute(UUID id, UUID tenantId, String email,
+            String firstName, String lastName, String bio, String avatarUrl,
+            long version, Instant createdAt, Instant updatedAt, Instant deletedAt,
+            UserPreferences preferences) {
+        return new UserProfile(id, tenantId, email, firstName, lastName, bio, avatarUrl,
+                version, createdAt, updatedAt, deletedAt, preferences);
     }
 
     // ── Constructor ──────────────────────────────────────────────────────────
 
     private UserProfile(UUID id, UUID tenantId, String email,
             String firstName, String lastName, String bio, String avatarUrl,
-            long version, Instant createdAt, Instant updatedAt, Instant deletedAt) {
+            long version, Instant createdAt, Instant updatedAt, Instant deletedAt,
+            UserPreferences preferences) {
         this.id = id;
         this.tenantId = tenantId;
         this.email = email;
@@ -79,12 +92,13 @@ public class UserProfile {
         this.createdAt = createdAt;
         this.updatedAt = updatedAt;
         this.deletedAt = deletedAt;
+        this.preferences = preferences;
     }
 
     // ── Business methods ─────────────────────────────────────────────────────
 
     /**
-     * Updates mutable profile fields.
+     * Updates mutable profile fields (without preferences).
      *
      * @param firstName       new first name (null = no change)
      * @param lastName        new last name (null = no change)
@@ -94,6 +108,22 @@ public class UserProfile {
      * @throws OptimisticLockException if version mismatch detected
      */
     public void update(String firstName, String lastName, String bio, String avatarUrl, long expectedVersion) {
+        update(firstName, lastName, bio, avatarUrl, expectedVersion, null);
+    }
+
+    /**
+     * Updates mutable profile fields including optional workspace preferences.
+     *
+     * @param firstName       new first name (null = no change)
+     * @param lastName        new last name (null = no change)
+     * @param bio             new bio (null = clear)
+     * @param avatarUrl       new avatar URL (null = clear)
+     * @param expectedVersion must match current version (optimistic locking)
+     * @param preferences     new preferences (null = no change)
+     * @throws OptimisticLockException if version mismatch detected
+     */
+    public void update(String firstName, String lastName, String bio, String avatarUrl,
+            long expectedVersion, UserPreferences preferences) {
         if (this.version != expectedVersion) {
             throw new OptimisticLockException("version mismatch: expected " + expectedVersion
                     + " but was " + this.version);
@@ -106,6 +136,9 @@ public class UserProfile {
         }
         this.bio = bio;
         this.avatarUrl = avatarUrl;
+        if (preferences != null) {
+            this.preferences = preferences;
+        }
         this.version++;
         this.updatedAt = Instant.now();
 
@@ -119,6 +152,13 @@ public class UserProfile {
                 this.bio,
                 this.avatarUrl,
                 Instant.now()));
+    }
+
+    /**
+     * Soft-deletes this profile by setting the deletion timestamp.
+     */
+    public void softDelete() {
+        this.deletedAt = Instant.now();
     }
 
     /**
@@ -153,4 +193,8 @@ public class UserProfile {
     public Instant getUpdatedAt() { return updatedAt; }
 
     public Instant getDeletedAt() { return deletedAt; }
+
+    public UserPreferences getPreferences() {
+        return preferences != null ? preferences : UserPreferences.defaults();
+    }
 }
