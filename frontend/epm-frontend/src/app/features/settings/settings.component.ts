@@ -6,6 +6,7 @@ import {
   signal,
   effect,
 } from '@angular/core';
+import { DatePipe } from '@angular/common';
 import { firstValueFrom } from 'rxjs';
 import { AppPreferencesService } from '../../core/services/app-preferences.service';
 import { AuthApiService } from '../../core/services/auth-api.service';
@@ -17,6 +18,7 @@ import { AuthService } from '../../core/auth/auth.service';
 import { ThemeService, Theme } from '../../core/theme/theme.service';
 import { NotificationPreferencesStore } from '../notifications/store/notification-preferences.store';
 import { ProfileStore } from './store/profile.store';
+import { SessionsStore } from './store/sessions.store';
 import { UserService } from './services/user.service';
 import { ConfirmDeleteAccountDialogComponent } from './components/confirm-delete-account-dialog/confirm-delete-account-dialog.component';
 import { DEFAULT_PREFERENCES, UpdateProfileRequest, UserPreferences } from '../../core/models/user-profile.model';
@@ -62,6 +64,7 @@ interface AccentSwatch {
   changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [
     ReactiveFormsModule,
+    DatePipe,
     MatSlideToggleModule,
     PageHeaderComponent,
     CardComponent,
@@ -85,7 +88,7 @@ interface AccentSwatch {
 
         @for (section of sections; track section.id) {
           <button
-            (click)="activeSection.set(section.id)"
+            (click)="onSectionChange(section.id)"
             [class.settings-nav-item--active]="activeSection() === section.id"
             class="settings-nav-item flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm
                    font-medium text-left w-full transition-all duration-150 cursor-pointer"
@@ -686,32 +689,44 @@ interface AccentSwatch {
               <div class="flex flex-col gap-4">
                 <h3 class="text-text-primary text-sm font-semibold">Active sessions</h3>
 
-                <!-- Session row 1 — current -->
-                <div class="flex items-center gap-4 py-3"
-                     style="border-bottom: 1px solid color-mix(in oklch, var(--color-border) 50%, transparent);">
-                  <span class="material-symbols-rounded text-xl shrink-0" style="color: var(--color-text-muted);">computer</span>
-                  <div class="flex flex-col gap-0.5 flex-1 min-w-0">
-                    <span class="text-text-primary text-sm font-medium">Chrome on macOS</span>
-                    <span class="text-text-muted text-xs">Buenos Aires, AR</span>
-                  </div>
-                  <div class="flex items-center gap-2 shrink-0">
-                    <span class="settings-session-current-badge">Current session</span>
-                    <span class="material-symbols-rounded text-base" style="color: var(--color-success);">lock</span>
-                  </div>
-                </div>
+                @if (sessionsStore.isLoading()) {
+                  <app-spinner size="md" [full]="true" />
+                } @else if (sessionsStore.sessions().length === 0) {
+                  <p class="text-text-muted text-sm">No active sessions</p>
+                } @else {
+                  @for (session of sessionsStore.sessions(); track session.sessionId) {
+                    <div class="flex items-center gap-4 py-3"
+                         style="border-bottom: 1px solid color-mix(in oklch, var(--color-border) 50%, transparent);">
+                      <div class="flex flex-col gap-0.5 flex-1 min-w-0">
+                        <span class="text-text-primary text-sm font-medium">{{ session.ipAddress }}</span>
+                        <span class="text-text-muted text-xs">
+                          Started: {{ session.started | date:'medium' }}
+                        </span>
+                        <span class="text-text-muted text-xs">
+                          Last seen: {{ session.lastAccess | date:'medium' }}
+                        </span>
+                      </div>
+                      <div class="flex items-center gap-2 shrink-0">
+                        @if (session.sessionId === sessionsStore.currentSessionId()) {
+                          <span class="settings-session-current-badge">Current session</span>
+                        }
+                        <button
+                          class="settings-revoke-btn px-3 py-1.5 rounded-lg text-xs font-medium cursor-pointer transition-all duration-150"
+                          [disabled]="sessionsStore.revokingSessionId() === session.sessionId"
+                          (click)="revokeSession(session.sessionId)"
+                        >
+                          Revoke
+                        </button>
+                      </div>
+                    </div>
+                  }
+                }
 
-                <!-- Session row 2 — remote -->
-                <div class="flex items-center gap-4 py-1">
-                  <span class="material-symbols-rounded text-xl shrink-0" style="color: var(--color-text-muted);">smartphone</span>
-                  <div class="flex flex-col gap-0.5 flex-1 min-w-0">
-                    <span class="text-text-primary text-sm font-medium">Firefox on Windows</span>
-                    <span class="text-text-muted text-xs">2 days ago</span>
-                  </div>
-                  <button class="settings-revoke-btn px-3 py-1.5 rounded-lg text-xs font-medium cursor-pointer transition-all duration-150 shrink-0">
-                    Revoke
-                  </button>
-                </div>
-
+                @if (sessionsStore.error()) {
+                  <p class="error text-xs" style="color: var(--color-danger);">
+                    {{ sessionsStore.error() }}
+                  </p>
+                }
               </div>
             </app-card>
 
@@ -1041,6 +1056,7 @@ export class SettingsComponent implements OnInit {
   readonly themeService             = inject(ThemeService);
   readonly prefStore                = inject(NotificationPreferencesStore);
   readonly profileStore             = inject(ProfileStore);
+  readonly sessionsStore            = inject(SessionsStore);
   readonly appPreferencesService    = inject(AppPreferencesService);
 
   activeSection = signal<SettingsSection>('profile');
@@ -1134,6 +1150,15 @@ export class SettingsComponent implements OnInit {
     this.profileStore.loadProfile();
   }
 
+  // ─── Navigation ───────────────────────────────────────────────────────────
+
+  onSectionChange(section: SettingsSection): void {
+    this.activeSection.set(section);
+    if (section === 'security') {
+      this.sessionsStore.loadSessions();
+    }
+  }
+
   displayName(): string {
     const p = this.profileStore.profile();
     if (!p) return this.getClaimValue('preferred_username') ?? this.getClaimValue('email') ?? 'User';
@@ -1212,6 +1237,11 @@ export class SettingsComponent implements OnInit {
   }
 
   // ─── Security methods ──────────────────────────────────────────────────────
+
+  revokeSession(sessionId: string): void {
+    const isCurrent = sessionId === this.sessionsStore.currentSessionId();
+    void this.sessionsStore.revokeSession(sessionId, isCurrent);
+  }
 
   async confirmDeleteAccount(): Promise<void> {
     const dialogRef = this.dialog.open(ConfirmDeleteAccountDialogComponent);

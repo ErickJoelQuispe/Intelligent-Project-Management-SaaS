@@ -4,6 +4,7 @@ import { AppPreferencesService } from '../../core/services/app-preferences.servi
 import { ThemeService } from '../../core/theme/theme.service';
 import { NotificationPreferencesStore } from '../notifications/store/notification-preferences.store';
 import { ProfileStore } from './store/profile.store';
+import { SessionsStore } from './store/sessions.store';
 import { OAuthService } from 'angular-oauth2-oidc';
 import { AuthService } from '../../core/auth/auth.service';
 import { AuthApiService } from '../../core/services/auth-api.service';
@@ -14,6 +15,7 @@ import { provideHttpClientTesting } from '@angular/common/http/testing';
 import { signal } from '@angular/core';
 import { of, throwError } from 'rxjs';
 import { UserProfile, UserPreferences } from '../../core/models/user-profile.model';
+import { UserSession } from '../../core/models/user-session.model';
 
 /**
  * Angular Material 21 renders mat-slide-toggle with the aria-label and
@@ -24,6 +26,21 @@ function findToggleButton(compiled: HTMLElement, ariaLabel: string): HTMLButtonE
   return Array.from(compiled.querySelectorAll<HTMLButtonElement>('button[role="switch"]'))
     .find(btn => btn.getAttribute('aria-label') === ariaLabel);
 }
+
+const MOCK_SESSIONS: UserSession[] = [
+  {
+    sessionId: 'sid-1',
+    ipAddress: '192.168.1.1',
+    started: '2024-11-14T20:00:00.000Z',
+    lastAccess: '2024-11-14T20:16:40.000Z',
+  },
+  {
+    sessionId: 'sid-2',
+    ipAddress: '10.0.0.2',
+    started: '2024-11-14T20:33:20.000Z',
+    lastAccess: '2024-11-14T20:50:00.000Z',
+  },
+];
 
 describe('SettingsComponent — appearance wiring', () => {
   let fixture: ComponentFixture<SettingsComponent>;
@@ -52,6 +69,7 @@ describe('SettingsComponent — appearance wiring', () => {
         { provide: ThemeService, useValue: { theme: signal('midnight'), setTheme: vi.fn(), isDark: signal(true) } },
         { provide: NotificationPreferencesStore, useValue: { loading: signal(false), preferences: signal([]), loadPreferences: vi.fn() } },
         { provide: ProfileStore, useValue: { loading: signal(false), saving: signal(false), saveSuccess: signal(false), error: signal(null), profile: signal(null), loadProfile: vi.fn(), saveProfile: vi.fn() } },
+        { provide: SessionsStore, useValue: { sessions: signal([]), isLoading: signal(false), revokingSessionId: signal(null), error: signal(null), loadSessions: vi.fn(), revokeSession: vi.fn(), currentSessionId: vi.fn().mockReturnValue(null) } },
         { provide: OAuthService, useValue: { getIdentityClaims: vi.fn().mockReturnValue({}), getAccessTokenExpiration: vi.fn().mockReturnValue(Date.now() + 3600000) } },
         { provide: AuthService, useValue: { logout: vi.fn() } },
       ],
@@ -192,6 +210,7 @@ describe('SettingsComponent — workspace preferences wiring', () => {
           useValue: { loading: signal(false), preferences: signal([]), loadPreferences: vi.fn() }
         },
         { provide: ProfileStore, useValue: profileStoreMock },
+        { provide: SessionsStore, useValue: { sessions: signal([]), isLoading: signal(false), revokingSessionId: signal(null), error: signal(null), loadSessions: vi.fn(), revokeSession: vi.fn(), currentSessionId: vi.fn().mockReturnValue(null) } },
         { provide: OAuthService,
           useValue: { getIdentityClaims: vi.fn().mockReturnValue({}), getAccessTokenExpiration: vi.fn().mockReturnValue(Date.now() + 3600000) }
         },
@@ -279,7 +298,7 @@ describe('SettingsComponent — workspace preferences wiring', () => {
 describe('SettingsComponent — delete account flow', () => {
   let fixture: ComponentFixture<SettingsComponent>;
   let compiled: HTMLElement;
-  let authApiServiceMock: { disableAccount: ReturnType<typeof vi.fn> };
+  let authApiServiceMock: { disableAccount: ReturnType<typeof vi.fn>; getSessions: ReturnType<typeof vi.fn>; revokeSession: ReturnType<typeof vi.fn> };
   let userServiceMock: { deleteOwnProfile: ReturnType<typeof vi.fn> };
   let authServiceMock: { logout: ReturnType<typeof vi.fn> };
   let dialogMock: { open: ReturnType<typeof vi.fn> };
@@ -294,7 +313,11 @@ describe('SettingsComponent — delete account flow', () => {
   };
 
   function setup(dialogResult: boolean | undefined = true) {
-    authApiServiceMock = { disableAccount: vi.fn().mockReturnValue(of(undefined)) };
+    authApiServiceMock = {
+      disableAccount: vi.fn().mockReturnValue(of(undefined)),
+      getSessions: vi.fn().mockReturnValue(of([])),
+      revokeSession: vi.fn().mockReturnValue(of(undefined)),
+    };
     userServiceMock = { deleteOwnProfile: vi.fn().mockReturnValue(of(undefined)) };
     authServiceMock = { logout: vi.fn() };
     dialogMock = {
@@ -319,6 +342,7 @@ describe('SettingsComponent — delete account flow', () => {
         { provide: ThemeService, useValue: { theme: signal('midnight'), setTheme: vi.fn(), isDark: signal(true) } },
         { provide: NotificationPreferencesStore, useValue: { loading: signal(false), preferences: signal([]), loadPreferences: vi.fn() } },
         { provide: ProfileStore, useValue: profileStoreMock },
+        { provide: SessionsStore, useValue: { sessions: signal([]), isLoading: signal(false), revokingSessionId: signal(null), error: signal(null), loadSessions: vi.fn(), revokeSession: vi.fn(), currentSessionId: vi.fn().mockReturnValue(null) } },
         { provide: OAuthService, useValue: { getIdentityClaims: vi.fn().mockReturnValue({}), getAccessTokenExpiration: vi.fn().mockReturnValue(Date.now() + 3600000) } },
         { provide: AuthService, useValue: authServiceMock },
         { provide: AuthApiService, useValue: authApiServiceMock },
@@ -380,5 +404,97 @@ describe('SettingsComponent — delete account flow', () => {
     expect(authApiServiceMock.disableAccount).toHaveBeenCalledOnce();
     expect(userServiceMock.deleteOwnProfile).toHaveBeenCalledOnce();
     expect(authServiceMock.logout).toHaveBeenCalledOnce();
+  });
+});
+
+// ── Sessions UI wiring ────────────────────────────────────────────────────────
+
+describe('SettingsComponent — sessions UI wiring', () => {
+  let fixture: ComponentFixture<SettingsComponent>;
+  let compiled: HTMLElement;
+  let sessionsStoreMock: {
+    sessions: ReturnType<typeof signal<UserSession[]>>;
+    isLoading: ReturnType<typeof signal<boolean>>;
+    revokingSessionId: ReturnType<typeof signal<string | null>>;
+    error: ReturnType<typeof signal<string | null>>;
+    loadSessions: ReturnType<typeof vi.fn>;
+    revokeSession: ReturnType<typeof vi.fn>;
+    currentSessionId: ReturnType<typeof vi.fn>;
+  };
+
+  function setup(sessionsOverrides: Partial<typeof sessionsStoreMock> = {}) {
+    sessionsStoreMock = {
+      sessions:          signal<UserSession[]>([]),
+      isLoading:         signal(false),
+      revokingSessionId: signal<string | null>(null),
+      error:             signal<string | null>(null),
+      loadSessions:      vi.fn(),
+      revokeSession:     vi.fn(),
+      currentSessionId:  vi.fn().mockReturnValue(null),
+      ...sessionsOverrides,
+    };
+
+    TestBed.configureTestingModule({
+      imports: [SettingsComponent],
+      providers: [
+        provideHttpClient(),
+        provideHttpClientTesting(),
+        { provide: AppPreferencesService, useValue: { compactMode: signal(false), reduceAnimations: signal(false), setCompactMode: vi.fn(), setReduceAnimations: vi.fn() } },
+        { provide: ThemeService, useValue: { theme: signal('midnight'), setTheme: vi.fn(), isDark: signal(true) } },
+        { provide: NotificationPreferencesStore, useValue: { loading: signal(false), preferences: signal([]), loadPreferences: vi.fn() } },
+        { provide: ProfileStore, useValue: { loading: signal(false), saving: signal(false), saveSuccess: signal(false), error: signal(null), profile: signal(null), loadProfile: vi.fn(), saveProfile: vi.fn() } },
+        { provide: SessionsStore, useValue: sessionsStoreMock },
+        { provide: OAuthService, useValue: { getIdentityClaims: vi.fn().mockReturnValue({}), getAccessTokenExpiration: vi.fn().mockReturnValue(Date.now() + 3600000) } },
+        { provide: AuthService, useValue: { logout: vi.fn() } },
+      ],
+    });
+
+    fixture = TestBed.createComponent(SettingsComponent);
+    compiled = fixture.nativeElement as HTMLElement;
+    fixture.detectChanges();
+  }
+
+  afterEach(() => vi.restoreAllMocks());
+
+  function goToSecurity() {
+    const buttons = Array.from(compiled.querySelectorAll('button.settings-nav-item'));
+    const btn = buttons.find(b => b.textContent?.includes('Security')) as HTMLButtonElement;
+    btn?.click();
+    fixture.detectChanges();
+  }
+
+  // ── "No active sessions" when store returns empty ─────────────────────────
+
+  it('shows "No active sessions" message when sessionsStore returns empty list', () => {
+    setup({ sessions: signal<UserSession[]>([]) });
+    goToSecurity();
+
+    expect(compiled.textContent).toContain('No active sessions');
+  });
+
+  // ── TRIANGULATE: renders session rows with IP and dates ───────────────────
+
+  it('renders session rows with IP address and timestamps when sessions are loaded', () => {
+    setup({ sessions: signal<UserSession[]>(MOCK_SESSIONS) });
+    goToSecurity();
+
+    expect(compiled.textContent).toContain('192.168.1.1');
+    expect(compiled.textContent).toContain('10.0.0.2');
+  });
+
+  // ── Revoke button calls sessionsStore.revokeSession ───────────────────────
+
+  it('Revoke button calls sessionsStore.revokeSession with the session ID', () => {
+    setup({ sessions: signal<UserSession[]>(MOCK_SESSIONS) });
+    goToSecurity();
+
+    const revokeButtons = Array.from(compiled.querySelectorAll<HTMLButtonElement>('button'))
+      .filter(b => b.textContent?.trim() === 'Revoke');
+
+    expect(revokeButtons.length).toBeGreaterThan(0);
+    revokeButtons[0].click();
+    fixture.detectChanges();
+
+    expect(sessionsStoreMock.revokeSession).toHaveBeenCalled();
   });
 });

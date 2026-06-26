@@ -2,6 +2,7 @@ import { Injectable, inject } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Observable } from 'rxjs';
 import { environment } from '../../../environments/environment';
+import { UserSession } from '../models/user-session.model';
 
 /**
  * Handles auth-service API calls that require a backend round-trip.
@@ -23,5 +24,24 @@ export class AuthApiService {
    */
   disableAccount(): Observable<void> {
     return this.http.delete<void>(`${this.baseUrl}/account`);
+  }
+
+  /**
+   * Retrieves all active Keycloak sessions for the authenticated user.
+   *
+   * GET /api/v1/auth/sessions
+   */
+  getSessions(): Observable<UserSession[]> {
+    return this.http.get<UserSession[]>(`${this.baseUrl}/sessions`);
+  }
+
+  /**
+   * Revokes a specific Keycloak session.
+   *
+   * DELETE /api/v1/auth/sessions/{sessionId}
+   * Returns 204 No Content on success.
+   */
+  revokeSession(sessionId: string): Observable<void> {
+    return this.http.delete<void>(`${this.baseUrl}/sessions/${sessionId}`);
   }
 }
