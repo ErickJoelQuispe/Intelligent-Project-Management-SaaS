@@ -48,4 +48,14 @@ public interface IdentityProviderPort {
      * @param keycloakUserId the Keycloak user UUID to delete
      */
     void deleteUser(UUID keycloakUserId);
+
+    /**
+     * Disables a user in the identity provider (soft-disable — account remains but cannot log in).
+     *
+     * <p>Used as the first step of the account deletion flow.
+     * On failure, {@link com.epm.auth.domain.exception.IdentityProviderException} is thrown.
+     *
+     * @param keycloakUserId the Keycloak user UUID to disable
+     */
+    void disableUser(UUID keycloakUserId);
 }

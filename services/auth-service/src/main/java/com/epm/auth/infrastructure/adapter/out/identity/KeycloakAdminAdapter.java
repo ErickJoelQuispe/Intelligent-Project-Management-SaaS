@@ -10,6 +10,7 @@ import io.github.resilience4j.circuitbreaker.annotation.CircuitBreaker;
 import jakarta.ws.rs.core.Response;
 import org.keycloak.admin.client.Keycloak;
 import org.keycloak.admin.client.KeycloakBuilder;
+import org.keycloak.admin.client.resource.UserResource;
 import org.keycloak.representations.idm.CredentialRepresentation;
 import org.keycloak.representations.idm.RoleRepresentation;
 import org.keycloak.representations.idm.UserRepresentation;
@@ -128,7 +129,39 @@ public class KeycloakAdminAdapter implements IdentityProviderPort {
                 + "Manual cleanup may be required. Cause: {}", keycloakUserId, ex.getMessage());
     }
 
+    /**
+     * {@inheritDoc}
+     *
+     * <p>Sets {@code enabled=false} on the Keycloak user representation.
+     * This is the first step of the account deletion flow — it prevents the user from
+     * logging in while the user-service soft-delete is being processed.
+     */
+    @Override
+    @CircuitBreaker(name = "keycloak", fallbackMethod = "disableUserFallback")
+    public void disableUser(UUID keycloakUserId) {
+        UserResource userResource = getUserResource(keycloakUserId);
+        UserRepresentation representation = new UserRepresentation();
+        representation.setEnabled(false);
+        userResource.update(representation);
+    }
+
+    /** Fallback for disableUser — called when circuit breaker opens. */
+    public void disableUserFallback(UUID keycloakUserId, Exception ex) {
+        throw new IdentityProviderException("Keycloak unavailable: " + ex.getMessage(), 30);
+    }
+
     // ── Helpers ──────────────────────────────────────────────────────────────
+
+    /**
+     * Returns a {@link UserResource} for the given Keycloak user ID.
+     *
+     * <p>Protected to allow unit tests to override without a real Keycloak connection.
+     */
+    protected UserResource getUserResource(UUID keycloakUserId) {
+        try (Keycloak keycloak = buildAdminClient()) {
+            return keycloak.realm(props.realm()).users().get(keycloakUserId.toString());
+        }
+    }
 
     private Keycloak buildAdminClient() {
         return KeycloakBuilder.builder()
