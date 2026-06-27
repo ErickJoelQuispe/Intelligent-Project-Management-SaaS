@@ -17,113 +17,131 @@
   }
 </app-page-header>
 
-<div class="p-6 flex flex-col gap-8 max-w-3xl">
-
-  @if (loading()) {
+@if (loading()) {
+  <div class="p-6">
     <app-spinner size="lg" [full]="true" label="Loading team..." />
-  } @else if (error()) {
+  </div>
+} @else if (error()) {
+  <div class="p-6">
     <app-error-banner [message]="error()!" />
-  } @else if (team(); as t) {
+  </div>
+} @else if (team(); as t) {
 
-    <!-- Team meta — inline, no card -->
-    <div class="flex flex-col gap-1 animate-fade-up">
-      @if (t.description) {
-        <p class="td-description text-sm leading-relaxed">{{ t.description }}</p>
+  <!-- 2-column layout -->
+  <div class="td-layout">
+
+    <!-- ══ LEFT PANEL ══════════════════════════════════ -->
+    <aside class="td-left" aria-label="Team info">
+
+      <!-- Inline-save error -->
+      @if (inlineSaveError()) {
+        <p class="td-inline-error" role="alert">
+          <span class="material-symbols-rounded" aria-hidden="true" style="font-size:14px;">error</span>
+          {{ inlineSaveError() }}
+        </p>
       }
-      <p class="td-meta text-xs">
-        {{ t.members.length }} {{ t.members.length === 1 ? 'member' : 'members' }}
-      </p>
-    </div>
 
-    <!-- Members section -->
-    <section class="flex flex-col gap-4 animate-fade-up" style="animation-delay: 60ms">
-
-      <div class="flex items-center justify-between">
-        <h2 class="td-section-heading text-sm font-semibold uppercase tracking-wider">
-          Members
-        </h2>
+      <!-- Team name — inline-edit -->
+      <div class="td-name-wrap">
+        @if (isOwner() && editingName()) {
+          <input
+            class="td-name-input"
+            [(ngModel)]="editNameValue"
+            (keydown.enter)="commitName()"
+            (keydown.escape)="cancelName()"
+            (blur)="commitName()"
+            aria-label="Edit team name"
+            autofocus
+          />
+        } @else {
+          <h1
+            class="td-team-name"
+            [style.cursor]="isOwner() ? 'pointer' : 'default'"
+            (click)="isOwner() && startEditName()"
+            [attr.title]="isOwner() ? 'Click to edit name' : null"
+            [attr.tabindex]="isOwner() ? '0' : null"
+            (keydown.enter)="isOwner() && startEditName()"
+            (keydown.space)="isOwner() && startEditName()"
+            [attr.role]="isOwner() ? 'button' : null"
+            [attr.aria-label]="isOwner() ? 'Team name — click to edit' : null"
+          >
+            {{ t.name }}
+            @if (isOwner()) {
+              <span class="material-symbols-rounded td-edit-hint" aria-hidden="true">edit</span>
+            }
+          </h1>
+        }
       </div>
 
-      <!-- Error -->
-      @if (memberError()) {
-        <app-error-banner [message]="memberError()!" variant="inline" />
-      }
+      <!-- Team description — inline-edit -->
+      <div class="td-desc-wrap">
+        @if (isOwner() && editingDesc()) {
+          <textarea
+            class="td-desc-textarea"
+            [(ngModel)]="editDescValue"
+            (keydown.escape)="cancelDesc()"
+            (blur)="commitDesc()"
+            rows="3"
+            placeholder="Add a description…"
+            aria-label="Edit team description"
+          ></textarea>
+        } @else {
+          <p
+            class="td-description"
+            [class.td-description--empty]="!t.description"
+            [style.cursor]="isOwner() ? 'pointer' : 'default'"
+            (click)="isOwner() && startEditDesc()"
+            [attr.title]="isOwner() ? 'Click to edit description' : null"
+            [attr.tabindex]="isOwner() ? '0' : null"
+            (keydown.enter)="isOwner() && startEditDesc()"
+            (keydown.space)="isOwner() && startEditDesc()"
+            [attr.role]="isOwner() ? 'button' : null"
+            [attr.aria-label]="isOwner() ? 'Team description — click to edit' : null"
+          >
+            {{ t.description || 'Add a description…' }}
+            @if (isOwner()) {
+              <span class="material-symbols-rounded td-edit-hint td-edit-hint--sm" aria-hidden="true">edit</span>
+            }
+          </p>
+        }
+      </div>
 
-      <!-- Member list -->
-      @if (t.members.length === 0) {
-        <p class="td-meta text-sm py-2">No members yet.</p>
-      } @else {
-        <div class="td-table flex flex-col">
-          @for (member of t.members; track member.userId; let last = $last) {
-            <div class="flex items-center justify-between gap-4 py-3"
-                 [class.border-b]="!last"
-                 style="border-color: var(--color-border);">
+      <!-- Team meta -->
+      <p class="td-meta">
+        <span class="material-symbols-rounded" style="font-size:14px;" aria-hidden="true">group</span>
+        {{ t.members.length }} {{ t.members.length === 1 ? 'member' : 'members' }}
+      </p>
 
-              <!-- Avatar + info -->
-              <div class="flex items-center gap-3 min-w-0">
-                <div class="td-avatar size-7 rounded-full shrink-0 flex items-center justify-center">
-                  <span class="td-avatar-initial text-[0.65rem] font-bold">
-                    {{ memberInitial(member) }}
-                  </span>
-                </div>
-                <div class="flex flex-col gap-0.5 min-w-0">
-                  <span class="text-sm font-medium truncate" style="color: var(--color-text-primary);">
-                    {{ memberDisplayName(member) }}
-                  </span>
-                  <span class="text-xs" style="color: var(--color-text-muted);">
-                    Joined {{ member.joinedAt | slice:0:10 }}
-                  </span>
-                </div>
-              </div>
+      <div class="td-divider" aria-hidden="true"></div>
 
-              <!-- Role + remove -->
-              <div class="flex items-center gap-3 shrink-0">
-                <app-team-role-badge [role]="member.role" />
-                @if (isOwner()) {
-                  <button
-                    (click)="onRemoveMember(member.userId)"
-                    [disabled]="removingMember() === member.userId"
-                    class="td-remove-btn"
-                    aria-label="Remove member"
-                    title="Remove member"
-                  >
-                    @if (removingMember() === member.userId) {
-                      <span class="td-remove-spinner" aria-hidden="true"></span>
-                    } @else {
-                      <span class="material-symbols-rounded" aria-hidden="true">person_remove</span>
-                    }
-                  </button>
-                }
-              </div>
-            </div>
-          }
-        </div>
-      }
-
-      <!-- Add member — only for owners -->
+      <!-- Add member form — only for owners -->
       @if (isOwner()) {
-        <div class="td-add-section flex flex-col gap-3 pt-4 border-t" style="border-color: var(--color-border);">
-          <h3 class="td-section-heading text-xs font-semibold uppercase tracking-wider">Add member</h3>
-          <form [formGroup]="addMemberForm" (ngSubmit)="onAddMember()" novalidate
-                class="flex flex-col gap-3 sm:flex-row sm:items-end">
+        <div class="td-add-section">
+          <h3 class="td-section-heading">Add member</h3>
 
-            <div class="flex flex-col gap-1.5 flex-1 min-w-0">
+          @if (memberError()) {
+            <app-error-banner [message]="memberError()!" variant="inline" />
+          }
+
+          <form [formGroup]="addMemberForm" (ngSubmit)="onAddMember()" novalidate
+                class="flex flex-col gap-3">
+
+            <div class="flex flex-col gap-1.5">
               <label class="text-xs" style="color: var(--color-text-secondary);">Email</label>
               <input
                 type="email" formControlName="email"
                 placeholder="user@example.com"
                 data-testid="email-input"
-                class="td-field w-full px-3 py-2 rounded-lg text-sm transition-all duration-200 focus:outline-none"
+                class="td-field px-3 py-2 rounded-lg text-sm"
               />
             </div>
 
-            <div class="flex flex-col gap-1.5 w-32 shrink-0">
+            <div class="flex flex-col gap-1.5">
               <label class="text-xs" style="color: var(--color-text-secondary);">Role</label>
               <select
                 formControlName="role"
                 data-testid="role-select"
-                class="td-field w-full px-3 py-2 rounded-lg text-sm transition-all duration-200
-                       focus:outline-none appearance-none cursor-pointer"
+                class="td-field px-3 py-2 rounded-lg text-sm appearance-none cursor-pointer"
               >
                 @for (r of roleOptions; track r) {
                   <option [value]="r"
@@ -142,6 +160,7 @@
             </app-button>
 
           </form>
+
           @if (addMemberForm.controls.email.hasError('required') && addMemberForm.controls.email.touched) {
             <span class="text-xs" style="color: var(--color-danger);">Email is required.</span>
           } @else if (addMemberForm.controls.email.hasError('email') && addMemberForm.controls.email.touched) {
@@ -150,43 +169,234 @@
         </div>
       }
 
-    </section>
+    </aside>
 
-  }
+    <!-- ══ RIGHT PANEL ═════════════════════════════════ -->
+    <main class="td-right" aria-label="Members">
 
-</div>
+      <div class="td-right-header">
+        <h2 class="td-section-heading" style="margin: 0;">Members</h2>
+      </div>
+
+      @if (t.members.length === 0) {
+        <p class="td-meta" style="padding: 1rem 0;">No members yet.</p>
+      } @else {
+        <div class="td-member-list">
+          @for (member of t.members; track member.userId; let last = $last) {
+            <div class="td-member-row"
+                 [class.td-member-row--last]="last">
+
+              <!-- Avatar + info -->
+              <div class="td-member-identity">
+                <app-avatar [name]="memberDisplayName(member)" size="sm" />
+                <div class="td-member-info">
+                  <span class="td-member-name">{{ memberDisplayName(member) }}</span>
+                  @if (member.email) {
+                    <span class="td-member-email">{{ member.email }}</span>
+                  }
+                </div>
+              </div>
+
+              <!-- Role + actions -->
+              <div class="td-member-actions">
+                <!-- Role selector for owner (non-owner members only) -->
+                @if (isOwner() && member.role !== 'OWNER') {
+                  <select
+                    class="td-role-select"
+                    [value]="member.role"
+                    [disabled]="changingRoleFor() === member.userId"
+                    (change)="onRoleChange(member, $any($event.target).value)"
+                    [attr.aria-label]="'Change role for ' + memberDisplayName(member)"
+                  >
+                    <option value="MEMBER">Member</option>
+                    <option value="VIEWER">Viewer</option>
+                  </select>
+                } @else {
+                  <app-team-role-badge [role]="member.role" />
+                }
+
+                <!-- Remove button — owner only, not self -->
+                @if (isOwner() && member.userId !== currentUserId()) {
+                  <button
+                    class="td-remove-btn"
+                    (click)="onRemoveMember(member.userId)"
+                    [disabled]="removingMember() === member.userId"
+                    aria-label="Remove member"
+                    title="Remove member"
+                  >
+                    @if (removingMember() === member.userId) {
+                      <span class="td-remove-spinner" aria-hidden="true"></span>
+                    } @else {
+                      <span class="material-symbols-rounded" aria-hidden="true">person_remove</span>
+                    }
+                  </button>
+                }
+              </div>
+
+            </div>
+          }
+        </div>
+      }
+
+    </main>
+
+  </div>
+
+}
 
 <style>
+  /* ── Layout ─────────────────────────────────────────────────────────── */
+  .td-layout {
+    display: flex;
+    gap: 2rem;
+    padding: 1.5rem;
+    align-items: flex-start;
+    min-height: 0;
+  }
+
+  .td-left {
+    flex: 0 0 40%;
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+  }
+
+  .td-right {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+  }
+
+  /* ── Left panel ─────────────────────────────────────────────────────── */
+  .td-inline-error {
+    display: flex;
+    align-items: center;
+    gap: 0.375rem;
+    font-size: 0.75rem;
+    color: var(--color-danger);
+    margin: 0;
+    padding: 0.375rem 0.625rem;
+    border-radius: 0.375rem;
+    background: color-mix(in oklch, var(--color-danger) 8%, transparent);
+    border: 1px solid color-mix(in oklch, var(--color-danger) 20%, transparent);
+  }
+
+  .td-name-wrap {
+    margin-bottom: 0.25rem;
+  }
+
+  .td-team-name {
+    font-family: 'Outfit', sans-serif;
+    font-size: 1.375rem;
+    font-weight: 700;
+    color: var(--color-text-primary);
+    margin: 0;
+    letter-spacing: -0.02em;
+    display: flex;
+    align-items: center;
+    gap: 0.375rem;
+    line-height: 1.2;
+  }
+
+  .td-name-input {
+    font-family: 'Outfit', sans-serif;
+    font-size: 1.375rem;
+    font-weight: 700;
+    color: var(--color-text-primary);
+    background: var(--color-bg-surface);
+    border: 1.5px solid var(--color-accent);
+    border-radius: 0.5rem;
+    padding: 0.25rem 0.625rem;
+    width: 100%;
+    letter-spacing: -0.02em;
+    outline: none;
+    box-shadow: 0 0 0 3px color-mix(in oklch, var(--color-accent) 15%, transparent);
+  }
+
+  .td-edit-hint {
+    font-size: 1rem;
+    opacity: 0.45;
+    flex-shrink: 0;
+    color: var(--color-text-muted);
+  }
+
+  .td-edit-hint--sm {
+    font-size: 0.875rem;
+  }
+
+  .td-desc-wrap {
+    margin-bottom: 0.25rem;
+  }
+
   .td-description {
+    font-size: 0.875rem;
     color: var(--color-text-secondary);
+    margin: 0;
+    line-height: 1.6;
+    display: flex;
+    align-items: flex-start;
+    gap: 0.375rem;
+  }
+
+  .td-description--empty {
+    color: var(--color-text-muted);
+    font-style: italic;
+  }
+
+  .td-desc-textarea {
+    width: 100%;
+    background: var(--color-bg-surface);
+    border: 1.5px solid var(--color-accent);
+    border-radius: 0.5rem;
+    padding: 0.5rem 0.625rem;
+    font-size: 0.875rem;
+    color: var(--color-text-primary);
+    outline: none;
+    resize: vertical;
+    line-height: 1.6;
+    font-family: inherit;
+    box-shadow: 0 0 0 3px color-mix(in oklch, var(--color-accent) 15%, transparent);
   }
 
   .td-meta {
+    display: flex;
+    align-items: center;
+    gap: 0.375rem;
+    font-size: 0.75rem;
     color: var(--color-text-muted);
+    margin: 0;
+  }
+
+  .td-divider {
+    height: 1px;
+    background: var(--color-border);
+    margin: 0.5rem 0;
+  }
+
+  .td-add-section {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
   }
 
   .td-section-heading {
-    color: var(--color-text-muted);
-    letter-spacing: 0.06em;
-  }
-
-  .td-avatar {
-    background: color-mix(in oklch, var(--color-accent) 12%, transparent);
-    border: 1px solid color-mix(in oklch, var(--color-accent) 20%, transparent);
-  }
-
-  .td-avatar-initial {
-    color: var(--color-accent);
     font-family: 'Outfit', sans-serif;
-    line-height: 1;
+    font-size: 0.6875rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.07em;
+    color: var(--color-text-muted);
+    margin: 0;
   }
-
-
 
   .td-field {
     background: var(--color-bg-surface);
     border: 1px solid var(--color-border);
     color: var(--color-text-primary);
+    width: 100%;
+    transition: border-color 0.15s ease, box-shadow 0.15s ease;
   }
 
   .td-field::placeholder {
@@ -194,9 +404,105 @@
   }
 
   .td-field:focus {
-    border-color: var(--color-accent) !important;
-    box-shadow: 0 0 0 2px color-mix(in oklch, var(--color-accent) 15%, transparent) !important;
+    outline: none;
+    border-color: var(--color-accent);
+    box-shadow: 0 0 0 2px color-mix(in oklch, var(--color-accent) 15%, transparent);
   }
+
+  /* ── Right panel ─────────────────────────────────────────────────────── */
+  .td-right-header {
+    padding: 0 0 0.875rem;
+    border-bottom: 1px solid var(--color-border);
+    margin-bottom: 0;
+  }
+
+  .td-member-list {
+    display: flex;
+    flex-direction: column;
+  }
+
+  .td-member-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    padding: 0.875rem 0;
+    border-bottom: 1px solid var(--color-border);
+  }
+
+  .td-member-row--last {
+    border-bottom: none;
+  }
+
+  .td-member-identity {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    min-width: 0;
+    flex: 1;
+  }
+
+  .td-member-info {
+    display: flex;
+    flex-direction: column;
+    gap: 0.15rem;
+    min-width: 0;
+  }
+
+  .td-member-name {
+    font-size: 0.875rem;
+    font-weight: 500;
+    color: var(--color-text-primary);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .td-member-email {
+    font-size: 0.75rem;
+    color: var(--color-text-muted);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .td-member-actions {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    flex-shrink: 0;
+  }
+
+  .td-role-select {
+    padding: 0.3125rem 0.625rem;
+    border-radius: 0.5rem;
+    border: 1px solid var(--color-border);
+    background: var(--color-bg-elevated);
+    color: var(--color-text-primary);
+    font-size: 0.75rem;
+    font-family: 'Outfit', sans-serif;
+    cursor: pointer;
+    outline: none;
+    appearance: none;
+    transition: border-color 0.15s ease;
+  }
+
+  .td-role-select:focus {
+    border-color: var(--color-accent);
+    box-shadow: 0 0 0 2px color-mix(in oklch, var(--color-accent) 15%, transparent);
+  }
+
+  .td-role-select:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+
+  .td-role-select option {
+    background: var(--color-bg-elevated);
+    color: var(--color-text-primary);
+  }
+
+  /* ── Remove button ───────────────────────────────────────────────────── */
   .td-remove-btn {
     display: flex;
     align-items: center;
@@ -227,6 +533,7 @@
     cursor: not-allowed;
   }
 
+  /* ── Spinner ─────────────────────────────────────────────────────────── */
   .td-remove-spinner {
     display: block;
     width: 0.875rem;
