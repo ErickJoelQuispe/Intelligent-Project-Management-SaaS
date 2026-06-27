@@ -54,6 +54,7 @@ export interface UpdateTaskRequest {
 
 export interface CreateSubtaskRequest {
   parentTaskId: string;
+  projectId: string;
   title: string;
   description?: string;
   priority: TaskPriority;

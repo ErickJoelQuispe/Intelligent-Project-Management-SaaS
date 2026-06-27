@@ -44,6 +44,7 @@ import { ErrorBannerComponent } from '../../../../shared/components/error-banner
           @for (col of store.kanbanColumns(); track col.status) {
             <app-kanban-column
               [status]="col.status"
+              [projectId]="projectId()"
               [tasks]="col.tasks"
               [users]="users()"
               (taskDropped)="onTaskDropped($event)"

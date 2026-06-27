@@ -75,6 +75,8 @@ create_user_if_not_exists() {
   local USERNAME="$1"
   local PASSWORD="$2"
   local ROLE="$3"
+  local FIRST_NAME="${4:-}"
+  local LAST_NAME="${5:-}"
 
   # Check if user already exists
   EXISTING_USER=$($KCADM get users -r "$REALM" \
@@ -89,6 +91,8 @@ create_user_if_not_exists() {
     $KCADM create users -r "$REALM" \
       -s username="$USERNAME" \
       -s email="$USERNAME" \
+      -s firstName="$FIRST_NAME" \
+      -s lastName="$LAST_NAME" \
       -s enabled=true \
       -s emailVerified=true
     echo "User '$USERNAME' created OK"
@@ -154,7 +158,13 @@ $KCADM add-roles -r "$REALM" \
 # 5. Test user creation (idempotent)
 # ---------------------------------------------------------------------------
 
-create_user_if_not_exists "admin@epm.com" "Admin1234!" "ROLE_ADMIN"
-create_user_if_not_exists "user@epm.com" "User1234!" "ROLE_USER"
+create_user_if_not_exists "admin@epm.com"   "Admin1234!" "ROLE_ADMIN" "Admin"    "Admin"
+create_user_if_not_exists "user@epm.com"    "User1234!"  "ROLE_USER"  "Regular"  "User"
+create_user_if_not_exists "sofia@epm.com"   "Test1234!"  "ROLE_USER"  "Sofia"    "Ramirez"
+create_user_if_not_exists "carlos@epm.com"  "Test1234!"  "ROLE_USER"  "Carlos"   "Mendez"
+create_user_if_not_exists "lucia@epm.com"   "Test1234!"  "ROLE_USER"  "Lucia"    "Torres"
+create_user_if_not_exists "martin@epm.com"  "Test1234!"  "ROLE_USER"  "Martin"   "Guzman"
+create_user_if_not_exists "ana@epm.com"     "Test1234!"  "ROLE_USER"  "Ana"      "Perez"
+create_user_if_not_exists "diego@epm.com"   "Test1234!"  "ROLE_USER"  "Diego"    "Fernandez"
 
 echo "Realm configuration complete."

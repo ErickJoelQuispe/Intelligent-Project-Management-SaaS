@@ -41,6 +41,7 @@
         <div role="listitem" [class]="'stagger-' + ((i % 6) + 1)">
           <app-task-card
             [task]="task"
+            [projectId]="projectId()"
             [users]="users()"
             (deleteTask)="taskDeleted.emit($event)"
           />

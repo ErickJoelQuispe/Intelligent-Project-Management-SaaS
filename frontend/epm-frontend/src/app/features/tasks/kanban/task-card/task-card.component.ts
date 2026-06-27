@@ -26,6 +26,7 @@ import { TaskService } from '../../task.service';
 })
 export class TaskCardComponent {
   task       = input.required<TaskSummary>();
+  projectId  = input.required<string>();
   users      = input<TenantUser[]>([]);
   deleteTask = output<string>();
 
@@ -82,6 +83,7 @@ export class TaskCardComponent {
     this.addingSubtask.set(true);
     this.taskService.createSubtask({
       parentTaskId: this.task().taskId,
+      projectId: this.projectId(),
       title,
       priority: 'MEDIUM',
     }).subscribe({

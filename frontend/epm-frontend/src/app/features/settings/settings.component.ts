@@ -73,7 +73,6 @@ interface AccentSwatch {
     AvatarComponent,
     ButtonComponent,
     ErrorBannerComponent,
-    ConfirmDeleteAccountDialogComponent,
   ],
   template: `
     <app-page-header
@@ -1208,10 +1207,10 @@ export class SettingsComponent implements OnInit {
     if (!profile) return;
 
     const preferences: UserPreferences = {
-      language:    this.selectedLanguage(),
-      timezone:    this.selectedTimezone(),
-      dateFormat:  this.selectedDateFormat(),
-      startOfWeek: this.selectedStartOfWeek(),
+      language:    this.selectedLanguage()    || DEFAULT_PREFERENCES.language,
+      timezone:    this.selectedTimezone()    || DEFAULT_PREFERENCES.timezone,
+      dateFormat:  this.selectedDateFormat()  || DEFAULT_PREFERENCES.dateFormat,
+      startOfWeek: this.selectedStartOfWeek() || DEFAULT_PREFERENCES.startOfWeek,
     };
 
     const req: UpdateProfileRequest = {

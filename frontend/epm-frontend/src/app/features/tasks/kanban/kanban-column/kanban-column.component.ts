@@ -21,9 +21,10 @@ import { DragStateService } from '../drag/drag-state.service';
   styleUrl: './kanban-column.component.scss',
 })
 export class KanbanColumnComponent {
-  status = input.required<TaskStatus>();
-  tasks  = input<TaskSummary[]>([]);
-  users  = input<TenantUser[]>([]);
+  status    = input.required<TaskStatus>();
+  projectId = input.required<string>();
+  tasks     = input<TaskSummary[]>([]);
+  users     = input<TenantUser[]>([]);
 
   /** Emits taskId when a card is dropped onto this column */
   taskDropped  = output<{ taskId: string; newStatus: TaskStatus }>();

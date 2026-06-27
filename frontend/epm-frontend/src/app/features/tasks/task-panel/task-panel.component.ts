@@ -910,6 +910,7 @@ export class TaskPanelComponent implements OnInit {
 
     this.taskService.createSubtask({
       parentTaskId,
+      projectId: this.projectId(),
       title,
       priority,
     }).subscribe({
