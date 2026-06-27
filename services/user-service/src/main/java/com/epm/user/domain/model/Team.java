@@ -10,6 +10,7 @@ import com.epm.user.domain.event.TeamCreated;
 import com.epm.user.domain.event.TeamDeleted;
 import com.epm.user.domain.event.TeamMemberJoined;
 import com.epm.user.domain.event.TeamMemberLeft;
+import com.epm.user.domain.event.TeamUpdated;
 import com.epm.user.domain.exception.DuplicateMemberException;
 import com.epm.user.domain.exception.LastOwnerException;
 import com.github.f4b6a3.uuid.UuidCreator;
@@ -128,6 +129,35 @@ public class Team {
         this.updatedAt = Instant.now();
         domainEvents.add(new TeamMemberLeft(
                 UuidCreator.getTimeOrderedEpoch(), id, tenantId, userId, this.name, Instant.now()));
+    }
+
+    /**
+     * Updates the team's name and/or description.
+     *
+     * <p>At least one non-null, non-blank field must be provided.
+     * A null value for {@code name} or {@code description} means "keep existing".
+     *
+     * @param name        new name (trimmed); null keeps the existing name
+     * @param description new description; null keeps the existing description
+     * @throws IllegalArgumentException if both are null, or if name is blank
+     */
+    public void update(String name, String description) {
+        if (name == null && description == null) {
+            throw new IllegalArgumentException("At least one of name or description must be provided");
+        }
+        if (name != null) {
+            String trimmed = name.trim();
+            if (trimmed.isEmpty()) {
+                throw new IllegalArgumentException("Team name must not be blank");
+            }
+            this.name = trimmed;
+        }
+        if (description != null) {
+            this.description = description;
+        }
+        this.updatedAt = Instant.now();
+        domainEvents.add(new TeamUpdated(
+                UuidCreator.getTimeOrderedEpoch(), id, tenantId, this.name, Instant.now()));
     }
 
     /**

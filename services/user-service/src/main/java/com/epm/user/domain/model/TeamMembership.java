@@ -18,7 +18,7 @@ public class TeamMembership {
     private final UUID id;
     private final UUID teamId;
     private final UUID userId;
-    private final TeamRole role;
+    private TeamRole role;
     private final Instant joinedAt;
     private Instant removedAt;
 
@@ -61,6 +61,19 @@ public class TeamMembership {
     }
 
     // ── Business methods ─────────────────────────────────────────────────────
+
+    /**
+     * Changes the role of this membership.
+     *
+     * @param newRole the new role — MUST NOT be {@link TeamRole#OWNER}
+     * @throws IllegalArgumentException if newRole is OWNER
+     */
+    public void changeRole(TeamRole newRole) {
+        if (newRole == TeamRole.OWNER) {
+            throw new IllegalArgumentException("Cannot assign OWNER role via changeRole");
+        }
+        this.role = newRole;
+    }
 
     /**
      * Soft-removes this membership.
