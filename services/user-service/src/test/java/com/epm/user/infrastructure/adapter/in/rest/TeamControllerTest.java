@@ -6,6 +6,7 @@ import static org.mockito.Mockito.when;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.jwt;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -16,6 +17,7 @@ import java.util.UUID;
 
 import com.epm.user.domain.exception.DuplicateMemberException;
 import com.epm.user.domain.exception.LastOwnerException;
+import com.epm.user.domain.exception.SelfRoleChangeException;
 import com.epm.user.domain.exception.TeamNotFoundException;
 import com.epm.user.domain.exception.UnauthorizedException;
 import com.epm.user.domain.model.TeamRole;
@@ -25,6 +27,8 @@ import com.epm.user.domain.port.in.DeleteTeamUseCase;
 import com.epm.user.domain.port.in.GetTeamUseCase;
 import com.epm.user.domain.port.in.ListTeamsUseCase;
 import com.epm.user.domain.port.in.RemoveTeamMemberUseCase;
+import com.epm.user.domain.port.in.UpdateTeamMemberRoleUseCase;
+import com.epm.user.domain.port.in.UpdateTeamUseCase;
 import com.epm.user.domain.port.in.result.MemberResult;
 import com.epm.user.domain.port.in.result.TeamResult;
 import com.epm.user.infrastructure.config.SecurityConfig;
@@ -72,6 +76,12 @@ class TeamControllerTest {
 
     @MockitoBean
     private DeleteTeamUseCase deleteTeamUseCase;
+
+    @MockitoBean
+    private UpdateTeamUseCase updateTeamUseCase;
+
+    @MockitoBean
+    private UpdateTeamMemberRoleUseCase updateTeamMemberRoleUseCase;
 
     @MockitoBean
     private JwtDecoder jwtDecoder;
@@ -266,5 +276,192 @@ class TeamControllerTest {
                                 .subject(ownerId.toString())
                                 .claim("tenant_id", tenantId.toString()))))
                 .andExpect(status().isForbidden());
+    }
+
+    // ── PATCH /teams/{id} → 200 ───────────────────────────────────────────────
+
+    @Test
+    void patchTeamReturns200() throws Exception {
+        UUID teamId = UUID.randomUUID();
+        MemberResult member = new MemberResult(ownerId, TeamRole.OWNER, Instant.now(), null, null, null);
+        TeamResult result = new TeamResult(teamId, tenantId, ownerId, "New Name", "desc", List.of(member));
+        when(updateTeamUseCase.execute(any())).thenReturn(result);
+
+        mockMvc.perform(patch("/api/v1/teams/{teamId}", teamId)
+                        .with(jwt().jwt(j -> j
+                                .subject(ownerId.toString())
+                                .claim("tenant_id", tenantId.toString())))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                { "name": "New Name" }
+                                """))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.name").value("New Name"));
+    }
+
+    // ── PATCH /teams/{id} blank name → 400 ───────────────────────────────────
+
+    @Test
+    void patchTeamBlankNameReturns400() throws Exception {
+        UUID teamId = UUID.randomUUID();
+
+        mockMvc.perform(patch("/api/v1/teams/{teamId}", teamId)
+                        .with(jwt().jwt(j -> j
+                                .subject(ownerId.toString())
+                                .claim("tenant_id", tenantId.toString())))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                { "name": "" }
+                                """))
+                .andExpect(status().isBadRequest());
+    }
+
+    // ── PATCH /teams/{id} no fields → 400 ────────────────────────────────────
+
+    @Test
+    void patchTeamNoFieldsReturns400() throws Exception {
+        UUID teamId = UUID.randomUUID();
+
+        mockMvc.perform(patch("/api/v1/teams/{teamId}", teamId)
+                        .with(jwt().jwt(j -> j
+                                .subject(ownerId.toString())
+                                .claim("tenant_id", tenantId.toString())))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{}"))
+                .andExpect(status().isBadRequest());
+    }
+
+    // ── PATCH /teams/{id} non-owner → 403 ────────────────────────────────────
+
+    @Test
+    void patchTeamForbiddenReturns403() throws Exception {
+        UUID teamId = UUID.randomUUID();
+        when(updateTeamUseCase.execute(any()))
+                .thenThrow(new UnauthorizedException("Only team owners can update the team"));
+
+        mockMvc.perform(patch("/api/v1/teams/{teamId}", teamId)
+                        .with(jwt().jwt(j -> j
+                                .subject(ownerId.toString())
+                                .claim("tenant_id", tenantId.toString())))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                { "name": "New Name" }
+                                """))
+                .andExpect(status().isForbidden());
+    }
+
+    // ── PATCH /teams/{id} not found → 404 ────────────────────────────────────
+
+    @Test
+    void patchTeamNotFoundReturns404() throws Exception {
+        UUID teamId = UUID.randomUUID();
+        when(updateTeamUseCase.execute(any()))
+                .thenThrow(new TeamNotFoundException(teamId));
+
+        mockMvc.perform(patch("/api/v1/teams/{teamId}", teamId)
+                        .with(jwt().jwt(j -> j
+                                .subject(ownerId.toString())
+                                .claim("tenant_id", tenantId.toString())))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                { "name": "New Name" }
+                                """))
+                .andExpect(status().isNotFound());
+    }
+
+    // ── PATCH /teams/{id}/members/{uid} → 200 ────────────────────────────────
+
+    @Test
+    void patchMemberRoleReturns200() throws Exception {
+        UUID teamId = UUID.randomUUID();
+        UUID memberId = UUID.randomUUID();
+        MemberResult member = new MemberResult(ownerId, TeamRole.OWNER, Instant.now(), null, null, null);
+        TeamResult result = new TeamResult(teamId, tenantId, ownerId, "Alpha", null, List.of(member));
+        when(updateTeamMemberRoleUseCase.execute(any())).thenReturn(result);
+
+        mockMvc.perform(patch("/api/v1/teams/{teamId}/members/{userId}", teamId, memberId)
+                        .with(jwt().jwt(j -> j
+                                .subject(ownerId.toString())
+                                .claim("tenant_id", tenantId.toString())))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                { "role": "VIEWER" }
+                                """))
+                .andExpect(status().isOk());
+    }
+
+    // ── PATCH /teams/{id}/members/{uid} missing role → 400 ───────────────────
+
+    @Test
+    void patchMemberRoleMissingRoleReturns400() throws Exception {
+        UUID teamId = UUID.randomUUID();
+        UUID memberId = UUID.randomUUID();
+
+        mockMvc.perform(patch("/api/v1/teams/{teamId}/members/{userId}", teamId, memberId)
+                        .with(jwt().jwt(j -> j
+                                .subject(ownerId.toString())
+                                .claim("tenant_id", tenantId.toString())))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{}"))
+                .andExpect(status().isBadRequest());
+    }
+
+    // ── PATCH /teams/{id}/members/{uid} non-owner → 403 ─────────────────────
+
+    @Test
+    void patchMemberRoleForbiddenReturns403() throws Exception {
+        UUID teamId = UUID.randomUUID();
+        UUID memberId = UUID.randomUUID();
+        when(updateTeamMemberRoleUseCase.execute(any()))
+                .thenThrow(new UnauthorizedException("Only team owners can change member roles"));
+
+        mockMvc.perform(patch("/api/v1/teams/{teamId}/members/{userId}", teamId, memberId)
+                        .with(jwt().jwt(j -> j
+                                .subject(ownerId.toString())
+                                .claim("tenant_id", tenantId.toString())))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                { "role": "VIEWER" }
+                                """))
+                .andExpect(status().isForbidden());
+    }
+
+    // ── PATCH /teams/{id}/members/{uid} not found → 404 ─────────────────────
+
+    @Test
+    void patchMemberRoleNotFoundReturns404() throws Exception {
+        UUID teamId = UUID.randomUUID();
+        UUID memberId = UUID.randomUUID();
+        when(updateTeamMemberRoleUseCase.execute(any()))
+                .thenThrow(new TeamNotFoundException(teamId));
+
+        mockMvc.perform(patch("/api/v1/teams/{teamId}/members/{userId}", teamId, memberId)
+                        .with(jwt().jwt(j -> j
+                                .subject(ownerId.toString())
+                                .claim("tenant_id", tenantId.toString())))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                { "role": "VIEWER" }
+                                """))
+                .andExpect(status().isNotFound());
+    }
+
+    // ── PATCH /teams/{id}/members/{uid} self-role-change → 409 ──────────────
+
+    @Test
+    void patchMemberRoleSelfChangeReturns409() throws Exception {
+        UUID teamId = UUID.randomUUID();
+        when(updateTeamMemberRoleUseCase.execute(any()))
+                .thenThrow(new SelfRoleChangeException());
+
+        mockMvc.perform(patch("/api/v1/teams/{teamId}/members/{userId}", teamId, ownerId)
+                        .with(jwt().jwt(j -> j
+                                .subject(ownerId.toString())
+                                .claim("tenant_id", tenantId.toString())))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                { "role": "MEMBER" }
+                                """))
+                .andExpect(status().isConflict());
     }
 }
