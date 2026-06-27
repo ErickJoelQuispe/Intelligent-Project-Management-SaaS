@@ -10,6 +10,11 @@ export enum ProjectVisibility {
   PUBLIC = 'PUBLIC',
 }
 
+export interface ProjectTeamAssignment {
+  teamId: string;
+  teamName?: string;
+}
+
 export interface Project {
   id: string;
   name: string;
@@ -18,6 +23,7 @@ export interface Project {
   visibility: ProjectVisibility;
   ownerProfileId: string;
   tenantId: string;
+  teams?: ProjectTeamAssignment[];
   createdAt: string;
   updatedAt: string;
 }

@@ -12,7 +12,7 @@ import { ProjectService } from '../project.service';
 import { AiService, TaskDraft } from '../../ai/ai.service';
 import { TaskService } from '../../tasks/task.service';
 import { TeamService } from '../../teams/team.service';
-import { Project, ProjectStatus } from '../../../core/models/project.model';
+import { Project, ProjectStatus, ProjectTeamAssignment } from '../../../core/models/project.model';
 import { Team } from '../../../core/models/team.model';
 import { ButtonComponent } from '../../../shared/components/button/button.component';
 import { SpinnerComponent } from '../../../shared/components/spinner/spinner.component';
@@ -195,180 +195,67 @@ function nameToHue(name: string): number {
           <div class="pdp-divider" aria-hidden="true"></div>
 
           <!-- ── Team assignment ─────────────────── -->
-          <section class="pdp-section" aria-label="Team assignment">
-            <div class="pdp-section-header">
-              <div class="pdp-section-icon pdp-section-icon--teams" aria-hidden="true">
-                <span class="material-symbols-rounded">group</span>
-              </div>
-              <div class="pdp-section-meta">
-                <h2 class="pdp-section-title">Team</h2>
-                <p class="pdp-section-desc">Assign a team to give members access.</p>
-              </div>
-            </div>
-            <div class="pdp-section-body">
+          <div class="pdp-team-row" aria-label="Team assignment">
 
-              @if (assignTeamSuccess()) {
-                <div class="pdp-success-banner" role="status">
-                  <span class="material-symbols-rounded" aria-hidden="true">check_circle</span>
-                  Team assigned successfully.
-                </div>
-              }
+            <span class="material-symbols-rounded pdp-team-row-icon" aria-hidden="true">group</span>
 
-              @if (assignTeamError()) {
-                <app-error-banner [message]="assignTeamError()!" />
-              }
+            @if (assignedTeam() && !selectingTeam()) {
+              <!-- Team assigned — show name + edit on hover -->
+              <span class="pdp-team-row-name">{{ assignedTeam()!.teamName ?? 'Assigned team' }}</span>
+              <button class="pdp-team-change-btn" (click)="selectingTeam.set(true)"
+                      title="Change team" aria-label="Change assigned team">
+                <span class="material-symbols-rounded" aria-hidden="true">edit</span>
+              </button>
+
+            } @else if (selectingTeam() || !assignedTeam()) {
 
               @if (teams().length === 0) {
-                <p class="pdp-empty-text">
-                  No teams yet.
-                  <a routerLink="/teams/new" class="pdp-link">Create a team</a> first.
-                </p>
+                <!-- No teams at all -->
+                <span class="pdp-team-row-empty">
+                  No teams yet — <a routerLink="/teams/new" class="pdp-link">create one</a>
+                </span>
+
+              } @else if (!selectingTeam()) {
+                <!-- No team assigned, not yet clicked — invite to click -->
+                <button class="pdp-team-unassigned" (click)="selectingTeam.set(true)">
+                  No team assigned
+                </button>
+
               } @else {
-                <div class="pdp-team-row">
-                  <select
-                    class="pdp-select"
-                    [ngModel]="selectedTeamId()"
-                    (ngModelChange)="selectedTeamId.set($event)"
-                    aria-label="Select a team to assign"
-                  >
-                    <option value="">Select a team…</option>
-                    @for (team of teams(); track team.id) {
-                      <option [value]="team.id">{{ team.name }}</option>
-                    }
-                  </select>
-                  <app-button
-                    variant="primary"
-                    size="sm"
-                    [loading]="assigningTeam()"
-                    [disabled]="!selectedTeamId()"
-                    (click)="assignTeam()"
-                  >
-                    <span class="material-symbols-rounded" aria-hidden="true">add</span>
-                    Assign
-                  </app-button>
-                </div>
+                <!-- Selecting mode — auto-assign on change -->
+                <select class="pdp-team-select"
+                        [ngModel]="selectedTeamId()"
+                        (ngModelChange)="onTeamSelectChange($event)"
+                        aria-label="Select a team"
+                        [disabled]="assigningTeam()">
+                  <option value="">Select a team…</option>
+                  @for (t of teams(); track t.id) {
+                    <option [value]="t.id">{{ t.name }}</option>
+                  }
+                </select>
+                @if (assigningTeam()) {
+                  <span class="pdp-team-spinner" aria-hidden="true"></span>
+                } @else {
+                  <button class="pdp-team-cancel-btn" (click)="selectingTeam.set(false)" aria-label="Cancel">
+                    <span class="material-symbols-rounded" aria-hidden="true">close</span>
+                  </button>
+                }
               }
 
-            </div>
-          </section>
-
-          <!-- ── AI Assistant (collapsible) ─────── -->
-          <section class="pdp-ai-section" aria-label="AI Assistant">
-            <button
-              class="pdp-ai-toggle"
-              (click)="toggleAi()"
-              [attr.aria-expanded]="aiExpanded()"
-              aria-controls="pdp-ai-body"
-            >
-              <div class="pdp-section-icon pdp-section-icon--ai" aria-hidden="true">
-                <span class="material-symbols-rounded">auto_awesome</span>
-              </div>
-              <div class="pdp-ai-toggle-meta">
-                <span class="pdp-section-title">AI Assistant</span>
-                <span class="pdp-section-desc">Generate tasks, summarize, chat</span>
-              </div>
-              <span class="material-symbols-rounded pdp-ai-chevron" aria-hidden="true">
-                {{ aiExpanded() ? 'expand_less' : 'expand_more' }}
-              </span>
-            </button>
-
-            @if (aiExpanded()) {
-              <div class="pdp-ai-body" id="pdp-ai-body">
-
-                @if (aiError()) {
-                  <app-error-banner [message]="aiError()!" />
-                }
-
-                <!-- Generate tasks -->
-                <div class="pdp-ai-block">
-                  <div class="pdp-ai-block-header">
-                    <span class="material-symbols-rounded pdp-ai-block-icon" aria-hidden="true">task_alt</span>
-                    <div>
-                      <h3 class="pdp-ai-block-title">Generate tasks</h3>
-                      <p class="pdp-ai-block-desc">AI suggests tasks based on this project's description.</p>
-                    </div>
-                  </div>
-
-                  <app-button variant="secondary" size="sm"
-                              [loading]="generating()"
-                              (click)="generateTasks()">
-                    <span class="material-symbols-rounded" aria-hidden="true">auto_awesome</span>
-                    {{ generating() ? 'Generating…' : 'Generate tasks' }}
-                  </app-button>
-
-                  @if (draftTasks().length > 0) {
-                    <div class="pdp-drafts">
-                      <div class="pdp-drafts-header">
-                        <span class="pdp-drafts-label">
-                          <span class="material-symbols-rounded" aria-hidden="true">auto_awesome</span>
-                          {{ draftTasks().length }} suggested tasks
-                        </span>
-                        <app-button variant="primary" size="sm"
-                                    [loading]="savingTasks()"
-                                    (click)="saveAllTasks()">
-                          <span class="material-symbols-rounded" aria-hidden="true">save</span>
-                          {{ savingTasks() ? 'Saving…' : 'Save all' }}
-                        </app-button>
-                      </div>
-                      @if (saveSuccess()) {
-                        <div class="pdp-success-banner" role="status">
-                          <span class="material-symbols-rounded" aria-hidden="true">check_circle</span>
-                          {{ draftTasks().length }} tasks saved successfully.
-                        </div>
-                      }
-                      <div class="pdp-drafts-list">
-                        @for (task of draftTasks(); track task.title) {
-                          <app-ai-draft-task-item [task]="task" />
-                        }
-                      </div>
-                    </div>
-                  }
-                </div>
-
-                <div class="pdp-ai-divider" aria-hidden="true"></div>
-
-                <!-- Summarize -->
-                <div class="pdp-ai-block">
-                  <div class="pdp-ai-block-header">
-                    <span class="material-symbols-rounded pdp-ai-block-icon" aria-hidden="true">summarize</span>
-                    <div>
-                      <h3 class="pdp-ai-block-title">Project summary</h3>
-                      <p class="pdp-ai-block-desc">Generate a concise summary of the project's current state.</p>
-                    </div>
-                  </div>
-
-                  <app-button variant="secondary" size="sm"
-                              [loading]="summarizing()"
-                              (click)="summarizeProject()">
-                    <span class="material-symbols-rounded" aria-hidden="true">summarize</span>
-                    {{ summarizing() ? 'Summarizing…' : 'Summarize project' }}
-                  </app-button>
-
-                  @if (summary()) {
-                    <div class="pdp-summary-result" role="region" aria-label="Project summary">
-                      <span class="material-symbols-rounded pdp-summary-icon" aria-hidden="true">article</span>
-                      <p class="pdp-summary-text">{{ summary() }}</p>
-                    </div>
-                  }
-                </div>
-
-                <div class="pdp-ai-divider" aria-hidden="true"></div>
-
-                <!-- AI Chat -->
-                <div class="pdp-ai-block">
-                  <div class="pdp-ai-block-header">
-                    <span class="material-symbols-rounded pdp-ai-block-icon" aria-hidden="true">chat</span>
-                    <div>
-                      <h3 class="pdp-ai-block-title">AI Chat</h3>
-                      <p class="pdp-ai-block-desc">Ask the AI anything about this project in real time.</p>
-                    </div>
-                  </div>
-                  <app-ai-chat [projectId]="p.id" />
-                </div>
-
-              </div>
             }
-          </section>
+
+            @if (assignTeamSuccess()) {
+              <span class="pdp-team-ok" role="status">
+                <span class="material-symbols-rounded" aria-hidden="true">check_circle</span>
+              </span>
+            }
+            @if (assignTeamError()) {
+              <span class="pdp-team-err" role="alert">{{ assignTeamError() }}</span>
+            }
+
+          </div>
+
+
 
         </aside>
 
@@ -377,35 +264,138 @@ function nameToHue(name: string): number {
 
           <div class="pdp-right-header">
             <h2 class="pdp-tasks-title">Tasks</h2>
-
-            <!-- Spacer -->
             <div class="pdp-right-header-spacer" aria-hidden="true"></div>
-
-            <!-- Board button -->
-            <app-button
-              variant="ghost"
-              size="sm"
-              [routerLink]="['/projects', p.id, 'board']"
-              aria-label="Open board view"
-            >
+            <app-button variant="ghost" size="sm"
+                        [routerLink]="['/projects', p.id, 'board']"
+                        aria-label="Open board view">
               <span class="material-symbols-rounded" aria-hidden="true">view_kanban</span>
               Board
             </app-button>
-
-            <!-- New task button -->
-            <app-button
-              variant="primary"
-              size="sm"
-              (click)="taskPanel()?.openTaskDrawer('TODO')"
-              aria-label="Create new task"
-            >
+            <app-button variant="primary" size="sm"
+                        (click)="taskPanel()?.openTaskDrawer('TODO')"
+                        aria-label="Create new task">
               <span class="material-symbols-rounded" aria-hidden="true">add</span>
               New task
             </app-button>
           </div>
 
+          <!-- Task list + AI drawer wrapper -->
           <div class="pdp-right-body">
+
+            <!-- AI drawer -->
+            @if (aiDrawerOpen()) {
+              <div class="pdp-ai-drawer" role="complementary" aria-label="AI Assistant">
+
+                <!-- Drawer header -->
+                <div class="pdp-ai-drawer-header">
+                  <span class="material-symbols-rounded pdp-ai-drawer-star" aria-hidden="true">auto_awesome</span>
+                  <span class="pdp-ai-drawer-title">
+                    {{ aiMode() === 'generate' ? 'Generate tasks' : aiMode() === 'summarize' ? 'Summarize' : 'AI Chat' }}
+                  </span>
+                  <button class="pdp-ai-drawer-close" (click)="closeAiDrawer()" aria-label="Close AI panel">
+                    <span class="material-symbols-rounded" aria-hidden="true">close</span>
+                  </button>
+                </div>
+
+                <!-- Drawer body -->
+                <div class="pdp-ai-drawer-body">
+
+                  @if (aiError()) {
+                    <app-error-banner [message]="aiError()!" />
+                  }
+
+                  @if (aiMode() === 'generate') {
+                    <app-button variant="secondary" size="sm"
+                                [loading]="generating()"
+                                (click)="generateTasks()">
+                      <span class="material-symbols-rounded" aria-hidden="true">auto_awesome</span>
+                      {{ generating() ? 'Generating…' : 'Generate tasks' }}
+                    </app-button>
+
+                    @if (draftTasks().length > 0) {
+                      <div class="pdp-drafts">
+                        <div class="pdp-drafts-header">
+                          <span class="pdp-drafts-label">
+                            <span class="material-symbols-rounded" aria-hidden="true">auto_awesome</span>
+                            {{ draftTasks().length }} suggested tasks
+                          </span>
+                          <app-button variant="primary" size="sm"
+                                      [loading]="savingTasks()"
+                                      (click)="saveAllTasks()">
+                            <span class="material-symbols-rounded" aria-hidden="true">save</span>
+                            {{ savingTasks() ? 'Saving…' : 'Save all' }}
+                          </app-button>
+                        </div>
+                        @if (saveSuccess()) {
+                          <div class="pdp-success-banner" role="status">
+                            <span class="material-symbols-rounded" aria-hidden="true">check_circle</span>
+                            {{ draftTasks().length }} tasks saved.
+                          </div>
+                        }
+                        <div class="pdp-drafts-list">
+                          @for (task of draftTasks(); track task.title) {
+                            <app-ai-draft-task-item [task]="task" />
+                          }
+                        </div>
+                      </div>
+                    }
+                  }
+
+                  @if (aiMode() === 'summarize') {
+                    <app-button variant="secondary" size="sm"
+                                [loading]="summarizing()"
+                                (click)="summarizeProject()">
+                      <span class="material-symbols-rounded" aria-hidden="true">summarize</span>
+                      {{ summarizing() ? 'Summarizing…' : 'Summarize project' }}
+                    </app-button>
+                    @if (summary()) {
+                      <div class="pdp-summary-result">
+                        <p class="pdp-summary-text">{{ summary() }}</p>
+                      </div>
+                    }
+                  }
+
+                  @if (aiMode() === 'chat') {
+                    <app-ai-chat [projectId]="p.id" />
+                  }
+
+                </div>
+              </div>
+            }
+
             <app-task-panel [projectId]="p.id" />
+          </div>
+
+          <!-- AI FAB -->
+          <div class="pdp-fab-wrap">
+            @if (fabMenuOpen()) {
+              <!-- backdrop -->
+              <div class="pdp-fab-backdrop" (click)="fabMenuOpen.set(false)" aria-hidden="true"></div>
+              <!-- mini menu -->
+              <div class="pdp-fab-menu" role="menu">
+                <button class="pdp-fab-item" role="menuitem" (click)="openAiDrawer('generate')">
+                  <span class="material-symbols-rounded" aria-hidden="true">task_alt</span>
+                  Generate tasks
+                </button>
+                <button class="pdp-fab-item" role="menuitem" (click)="openAiDrawer('summarize')">
+                  <span class="material-symbols-rounded" aria-hidden="true">summarize</span>
+                  Summarize
+                </button>
+                <button class="pdp-fab-item" role="menuitem" (click)="openAiDrawer('chat')">
+                  <span class="material-symbols-rounded" aria-hidden="true">chat</span>
+                  Chat
+                </button>
+              </div>
+            }
+            <button
+              class="pdp-fab"
+              [class.pdp-fab--active]="fabMenuOpen() || aiDrawerOpen()"
+              (click)="toggleFabMenu()"
+              aria-label="AI Assistant"
+              [attr.aria-expanded]="fabMenuOpen()"
+            >
+              <span class="material-symbols-rounded" aria-hidden="true">auto_awesome</span>
+            </button>
           </div>
 
         </main>
@@ -774,18 +764,106 @@ function nameToHue(name: string): number {
         gap: 0.75rem;
       }
 
-      /* ── Team section specifics ──────────────────── */
+      /* ── Team row (inline, no card) ─────────────── */
       .pdp-team-row {
         display: flex;
-        gap: 0.5rem;
         align-items: center;
+        gap: 0.5rem;
+        min-width: 0;
       }
 
-      .pdp-select {
+      .pdp-team-row-icon {
+        font-size: 0.9375rem;
+        color: var(--color-text-muted);
+        flex-shrink: 0;
+      }
+
+      .pdp-team-row-name {
+        font-size: 0.875rem;
+        font-weight: 500;
+        color: var(--color-text-primary);
         flex: 1;
         min-width: 0;
-        padding: 0.4375rem 0.75rem;
-        border-radius: 0.5rem;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+
+      .pdp-team-row-empty {
+        font-size: 0.8125rem;
+        color: var(--color-text-muted);
+        font-style: italic;
+      }
+
+      .pdp-team-unassigned {
+        font-size: 0.8125rem;
+        color: var(--color-text-muted);
+        font-style: italic;
+        background: none;
+        border: none;
+        padding: 0;
+        cursor: pointer;
+        font-family: inherit;
+        text-align: left;
+        transition: color 0.15s;
+      }
+      .pdp-team-unassigned:hover { color: var(--color-accent); }
+
+      .pdp-team-spinner {
+        display: block;
+        width: 0.875rem;
+        height: 0.875rem;
+        border-radius: 9999px;
+        flex-shrink: 0;
+        animation: pdp-spin 0.65s linear infinite;
+        background: conic-gradient(from 0deg, var(--color-text-muted) 0%, transparent 70%);
+        mask: radial-gradient(farthest-side, transparent 55%, black 56%);
+        -webkit-mask: radial-gradient(farthest-side, transparent 55%, black 56%);
+      }
+
+      .pdp-team-change-btn {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        width: 1.375rem;
+        height: 1.375rem;
+        border-radius: 0.3rem;
+        border: none;
+        background: transparent;
+        color: var(--color-text-muted);
+        cursor: pointer;
+        flex-shrink: 0;
+        padding: 0;
+        opacity: 0;
+        transition: opacity 0.15s, color 0.15s;
+      }
+      .pdp-team-row:hover .pdp-team-change-btn { opacity: 1; }
+      .pdp-team-change-btn .material-symbols-rounded { font-size: 0.875rem; }
+      .pdp-team-change-btn:hover { color: var(--color-accent); }
+
+      .pdp-team-cancel-btn {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        width: 1.375rem;
+        height: 1.375rem;
+        border-radius: 0.3rem;
+        border: none;
+        background: transparent;
+        color: var(--color-text-muted);
+        cursor: pointer;
+        flex-shrink: 0;
+        padding: 0;
+        transition: color 0.15s;
+      }
+      .pdp-team-cancel-btn .material-symbols-rounded { font-size: 0.875rem; }
+      .pdp-team-cancel-btn:hover { color: var(--color-danger); }
+
+      .pdp-team-select {
+        flex: 1;
+        min-width: 0;
+        padding: 0.3125rem 0.625rem;
+        border-radius: 0.4rem;
         border: 1px solid var(--color-border);
         background: var(--color-bg-elevated);
         color: var(--color-text-primary);
@@ -794,15 +872,29 @@ function nameToHue(name: string): number {
         cursor: pointer;
         outline: none;
         appearance: none;
-        transition: border-color 0.15s ease;
+        transition: border-color 0.15s;
       }
-      .pdp-select:focus {
+      .pdp-team-select:focus {
         border-color: var(--color-accent);
         box-shadow: 0 0 0 2px var(--color-accent-subtle);
       }
-      .pdp-select option {
+      .pdp-team-select option {
         background: var(--color-bg-elevated);
         color: var(--color-text-primary);
+      }
+
+      .pdp-team-ok {
+        display: flex;
+        align-items: center;
+        color: var(--color-success);
+        font-size: 0.875rem;
+        flex-shrink: 0;
+      }
+      .pdp-team-ok .material-symbols-rounded { font-size: 1rem; }
+
+      .pdp-team-err {
+        font-size: 0.75rem;
+        color: var(--color-danger);
       }
 
       .pdp-empty-text {
@@ -851,89 +943,156 @@ function nameToHue(name: string): number {
         white-space: nowrap;
       }
 
-      /* ── AI section ──────────────────────────────── */
-      .pdp-ai-section {
-        border-radius: 0.875rem;
-        border: 1px solid color-mix(in oklch, var(--color-accent) 18%, var(--color-border));
-        background: color-mix(in oklch, var(--color-bg-surface) 80%, transparent);
-        overflow: hidden;
+      /* ── AI drawer ───────────────────────────────── */
+      .pdp-ai-drawer {
+        position: absolute;
+        top: 0;
+        right: 0;
+        bottom: 0;
+        width: min(380px, 100%);
+        background: var(--color-bg-surface);
+        border-left: 1px solid var(--color-border);
+        display: flex;
+        flex-direction: column;
+        z-index: 10;
+        box-shadow: -4px 0 24px oklch(0 0 0 / 0.08);
       }
 
-      .pdp-ai-toggle {
+      .pdp-ai-drawer-header {
         display: flex;
         align-items: center;
-        gap: 0.75rem;
-        width: 100%;
-        padding: 0.875rem 1rem;
-        background: none;
-        border: none;
-        cursor: pointer;
-        text-align: left;
-        transition: background 0.15s ease;
-      }
-      .pdp-ai-toggle:hover {
-        background: color-mix(in oklch, var(--color-accent) 4%, transparent);
-      }
-
-      .pdp-ai-toggle-meta {
-        flex: 1;
-        display: flex;
-        flex-direction: column;
-        gap: 0.1rem;
-        min-width: 0;
-      }
-
-      .pdp-ai-chevron {
-        font-size: 1.25rem;
-        color: var(--color-text-muted);
+        gap: 0.5rem;
+        padding: 1rem 1.25rem;
+        border-bottom: 1px solid var(--color-border);
         flex-shrink: 0;
-        transition: transform 0.2s ease;
       }
 
-      .pdp-ai-body {
-        border-top: 1px solid color-mix(in oklch, var(--color-accent) 15%, var(--color-border));
-      }
-
-      .pdp-ai-block {
-        display: flex;
-        flex-direction: column;
-        gap: 0.75rem;
-        padding: 0.875rem 1rem;
-      }
-
-      .pdp-ai-divider {
-        height: 1px;
-        background: color-mix(in oklch, var(--color-border) 50%, transparent);
-      }
-
-      .pdp-ai-block-header {
-        display: flex;
-        align-items: flex-start;
-        gap: 0.625rem;
-      }
-
-      .pdp-ai-block-icon {
-        font-size: 1.125rem;
+      .pdp-ai-drawer-star {
+        font-size: 1rem;
         color: var(--color-accent);
-        opacity: 0.7;
-        margin-top: 0.125rem;
-        flex-shrink: 0;
       }
 
-      .pdp-ai-block-title {
+      .pdp-ai-drawer-title {
+        flex: 1;
         font-family: 'Outfit', sans-serif;
         font-size: 0.875rem;
         font-weight: 650;
         color: var(--color-text-primary);
-        margin: 0 0 0.15rem;
-        letter-spacing: -0.005em;
+        letter-spacing: -0.01em;
       }
 
-      .pdp-ai-block-desc {
-        font-size: 0.75rem;
+      .pdp-ai-drawer-close {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        width: 1.5rem;
+        height: 1.5rem;
+        border-radius: 0.3rem;
+        border: none;
+        background: transparent;
         color: var(--color-text-muted);
-        margin: 0;
-        line-height: 1.5;
+        cursor: pointer;
+        padding: 0;
+        transition: color 0.15s, background 0.15s;
+      }
+      .pdp-ai-drawer-close .material-symbols-rounded { font-size: 1rem; }
+      .pdp-ai-drawer-close:hover {
+        background: color-mix(in oklch, var(--color-border) 60%, transparent);
+        color: var(--color-text-primary);
+      }
+
+      .pdp-ai-drawer-body {
+        flex: 1;
+        overflow-y: auto;
+        padding: 1rem 1.25rem;
+        display: flex;
+        flex-direction: column;
+        gap: 0.875rem;
+        scrollbar-width: thin;
+        scrollbar-color: var(--color-border) transparent;
+      }
+
+      /* ── FAB ─────────────────────────────────────── */
+      .pdp-fab-wrap {
+        position: absolute;
+        bottom: 1.5rem;
+        right: 1.5rem;
+        display: flex;
+        flex-direction: column;
+        align-items: flex-end;
+        gap: 0.5rem;
+        z-index: 20;
+      }
+
+      .pdp-fab-backdrop {
+        position: fixed;
+        inset: 0;
+        z-index: 19;
+      }
+
+      .pdp-fab {
+        width: 2.75rem;
+        height: 2.75rem;
+        border-radius: 9999px;
+        border: none;
+        background: var(--color-accent);
+        color: #fff;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        box-shadow: 0 4px 16px oklch(from var(--color-accent) l c h / 0.4);
+        transition: transform 0.2s ease, box-shadow 0.2s ease, background 0.15s;
+        position: relative;
+        z-index: 21;
+      }
+      .pdp-fab .material-symbols-rounded { font-size: 1.25rem; }
+      .pdp-fab:hover {
+        transform: scale(1.06);
+        box-shadow: 0 6px 20px oklch(from var(--color-accent) l c h / 0.5);
+      }
+      .pdp-fab--active {
+        background: var(--color-accent);
+        transform: rotate(20deg) scale(1.06);
+      }
+
+      .pdp-fab-menu {
+        background: var(--color-bg-elevated);
+        border: 1px solid var(--color-border);
+        border-radius: 0.75rem;
+        padding: 0.375rem;
+        display: flex;
+        flex-direction: column;
+        gap: 0.125rem;
+        box-shadow: 0 8px 24px oklch(0 0 0 / 0.12);
+        position: relative;
+        z-index: 21;
+        min-width: 160px;
+      }
+
+      .pdp-fab-item {
+        display: flex;
+        align-items: center;
+        gap: 0.625rem;
+        padding: 0.5rem 0.75rem;
+        border-radius: 0.5rem;
+        border: none;
+        background: transparent;
+        color: var(--color-text-primary);
+        font-size: 0.8125rem;
+        font-family: 'Outfit', sans-serif;
+        cursor: pointer;
+        text-align: left;
+        transition: background 0.12s;
+        white-space: nowrap;
+      }
+      .pdp-fab-item .material-symbols-rounded {
+        font-size: 1rem;
+        color: var(--color-accent);
+        flex-shrink: 0;
+      }
+      .pdp-fab-item:hover {
+        background: color-mix(in oklch, var(--color-accent) 8%, transparent);
       }
 
       /* ── Draft tasks ─────────────────────────────── */
@@ -1033,6 +1192,7 @@ function nameToHue(name: string): number {
         flex: 1;
         overflow: auto;
         min-height: 0;
+        position: relative;
       }
     </style>
   `,
@@ -1051,13 +1211,26 @@ export class ProjectDetailPageComponent {
   readonly loading          = signal(true);
   readonly error            = signal<string | null>(null);
   readonly aiExpanded       = signal(false);
+  readonly fabMenuOpen      = signal(false);
+  readonly aiDrawerOpen     = signal(false);
+  readonly aiMode           = signal<'generate' | 'summarize' | 'chat'>('generate');
 
   // Team assignment
-  readonly teams            = signal<Team[]>([]);
-  readonly selectedTeamId   = signal<string>('');
-  readonly assigningTeam    = signal(false);
+  readonly teams             = signal<Team[]>([]);
+  readonly selectedTeamId    = signal<string>('');
+  readonly assigningTeam     = signal(false);
   readonly assignTeamSuccess = signal(false);
-  readonly assignTeamError  = signal<string | null>(null);
+  readonly assignTeamError   = signal<string | null>(null);
+  readonly selectingTeam     = signal(false);
+
+  readonly assignedTeam = computed<ProjectTeamAssignment | null>(() => {
+    const projectTeams = this.project()?.teams;
+    if (!projectTeams || projectTeams.length === 0) return null;
+    const first = projectTeams[0];
+    // Enrich with teamName from the loaded teams list
+    const match = this.teams().find(t => t.id === first.teamId);
+    return { teamId: first.teamId, teamName: match?.name ?? first.teamName };
+  });
 
   // AI assistant
   readonly generating       = signal(false);
@@ -1245,6 +1418,30 @@ export class ProjectDetailPageComponent {
     this.aiExpanded.update(v => !v);
   }
 
+  toggleFabMenu(): void {
+    if (this.aiDrawerOpen()) {
+      this.closeAiDrawer();
+    } else {
+      this.fabMenuOpen.update(v => !v);
+    }
+  }
+
+  openAiDrawer(mode: 'generate' | 'summarize' | 'chat'): void {
+    this.aiMode.set(mode);
+    this.aiDrawerOpen.set(true);
+    this.fabMenuOpen.set(false);
+  }
+
+  closeAiDrawer(): void {
+    this.aiDrawerOpen.set(false);
+    this.fabMenuOpen.set(false);
+  }
+
+  onTeamSelectChange(teamId: string): void {
+    this.selectedTeamId.set(teamId);
+    if (teamId) this.assignTeam();
+  }
+
   assignTeam(): void {
     const teamId    = this.selectedTeamId();
     const projectId = this.project()?.id;
@@ -1259,6 +1456,8 @@ export class ProjectDetailPageComponent {
         this.assigningTeam.set(false);
         this.assignTeamSuccess.set(true);
         this.selectedTeamId.set('');
+        this.selectingTeam.set(false);
+        this.loadProject(projectId);
         setTimeout(() => this.assignTeamSuccess.set(false), 3000);
       },
       error: () => {
