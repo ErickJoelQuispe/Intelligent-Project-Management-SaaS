@@ -43,12 +43,18 @@ public class TeamPersistenceAdapter implements TeamRepository {
     @Override
     @Transactional
     public Team save(Team team) {
-        TeamJpaEntity teamEntity = toTeamEntity(team);
+        TeamJpaEntity teamEntity = teamJpaRepository.findById(team.getId())
+                .orElseGet(TeamJpaEntity::new);
+        applyTeamFields(teamEntity, team);
         teamJpaRepository.save(teamEntity);
 
-        // Save/update all memberships — runs within the same transaction as the team row
+        // Save/update all memberships — load existing managed entity first to avoid
+        // OptimisticLockException from @Version mismatch on detached entities.
         for (TeamMembership membership : team.getMemberships()) {
-            TeamMembershipJpaEntity membershipEntity = toMembershipEntity(membership, team.getTenantId());
+            TeamMembershipJpaEntity membershipEntity = membershipJpaRepository
+                    .findById(membership.getId())
+                    .orElseGet(TeamMembershipJpaEntity::new);
+            applyMembershipFields(membershipEntity, membership, team.getTenantId());
             membershipJpaRepository.save(membershipEntity);
         }
 
@@ -128,8 +134,7 @@ public class TeamPersistenceAdapter implements TeamRepository {
                 entity.getRemovedAt());
     }
 
-    private TeamJpaEntity toTeamEntity(Team team) {
-        TeamJpaEntity entity = new TeamJpaEntity();
+    private void applyTeamFields(TeamJpaEntity entity, Team team) {
         entity.setId(team.getId());
         entity.setTenantId(team.getTenantId());
         entity.setOwnerId(team.getOwnerId());
@@ -140,11 +145,10 @@ public class TeamPersistenceAdapter implements TeamRepository {
         entity.setCreatedBy("system");
         entity.setUpdatedBy("system");
         entity.setDeletedAt(team.getDeletedAt());
-        return entity;
     }
 
-    private TeamMembershipJpaEntity toMembershipEntity(TeamMembership membership, UUID tenantId) {
-        TeamMembershipJpaEntity entity = new TeamMembershipJpaEntity();
+    private void applyMembershipFields(TeamMembershipJpaEntity entity,
+            TeamMembership membership, UUID tenantId) {
         entity.setId(membership.getId());
         entity.setTeamId(membership.getTeamId());
         entity.setUserId(membership.getUserId());
@@ -153,9 +157,8 @@ public class TeamPersistenceAdapter implements TeamRepository {
         entity.setRemovedAt(membership.getRemovedAt());
         entity.setTenantId(tenantId);
         entity.setCreatedAt(membership.getJoinedAt());
-        entity.setUpdatedAt(membership.getRemovedAt() != null ? membership.getRemovedAt() : membership.getJoinedAt());
+        entity.setUpdatedAt(Instant.now());
         entity.setCreatedBy("system");
         entity.setUpdatedBy("system");
-        return entity;
     }
 }

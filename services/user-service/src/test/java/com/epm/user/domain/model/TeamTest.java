@@ -57,7 +57,7 @@ class TeamTest {
         UUID memberId = UUID.randomUUID();
         Team team = Team.create(UUID.randomUUID(), ownerId, "Alpha Team", null);
         team.pullDomainEvents(); // clear creation events
-        team.addMember(memberId, TeamRole.MEMBER);
+        team.addMember(memberId, TeamRole.MEMBER, "test@example.com");
         List<TeamMembership> active = team.getMemberships().stream()
                 .filter(m -> m.getUserId().equals(memberId) && m.isActive())
                 .toList();
@@ -70,9 +70,9 @@ class TeamTest {
         UUID ownerId = UUID.randomUUID();
         UUID memberId = UUID.randomUUID();
         Team team = Team.create(UUID.randomUUID(), ownerId, "Alpha Team", null);
-        team.addMember(memberId, TeamRole.MEMBER);
+        team.addMember(memberId, TeamRole.MEMBER, "test@example.com");
         // Add the same member again — should throw
-        assertThatThrownBy(() -> team.addMember(memberId, TeamRole.VIEWER))
+        assertThatThrownBy(() -> team.addMember(memberId, TeamRole.VIEWER, "test@example.com"))
                 .isInstanceOf(DuplicateMemberException.class);
     }
 
@@ -81,7 +81,7 @@ class TeamTest {
         UUID ownerId = UUID.randomUUID();
         UUID memberId = UUID.randomUUID();
         Team team = Team.create(UUID.randomUUID(), ownerId, "Alpha Team", null);
-        team.addMember(memberId, TeamRole.MEMBER);
+        team.addMember(memberId, TeamRole.MEMBER, "test@example.com");
         team.removeMember(memberId);
         boolean isStillActive = team.getMemberships().stream()
                 .filter(m -> m.getUserId().equals(memberId))
@@ -103,7 +103,7 @@ class TeamTest {
         UUID ownerId = UUID.randomUUID();
         UUID memberId = UUID.randomUUID();
         Team team = Team.create(UUID.randomUUID(), ownerId, "Alpha Team", null);
-        team.addMember(memberId, TeamRole.MEMBER);
+        team.addMember(memberId, TeamRole.MEMBER, "test@example.com");
         team.pullDomainEvents(); // clear creation/join events
         team.removeMember(memberId);
         List<Object> events = team.pullDomainEvents();
@@ -147,7 +147,7 @@ class TeamTest {
         Team team = Team.create(UUID.randomUUID(), ownerId, "Engineering", null);
         team.pullDomainEvents(); // clear creation events
 
-        team.addMember(memberId, TeamRole.MEMBER);
+        team.addMember(memberId, TeamRole.MEMBER, "test@example.com");
 
         List<Object> events = team.pullDomainEvents();
         assertThat(events).hasSize(1);
@@ -160,7 +160,7 @@ class TeamTest {
         UUID ownerId = UUID.randomUUID();
         UUID memberId = UUID.randomUUID();
         Team team = Team.create(UUID.randomUUID(), ownerId, "Design Guild", null);
-        team.addMember(memberId, TeamRole.MEMBER);
+        team.addMember(memberId, TeamRole.MEMBER, "test@example.com");
         team.pullDomainEvents(); // clear prior events
 
         team.removeMember(memberId);

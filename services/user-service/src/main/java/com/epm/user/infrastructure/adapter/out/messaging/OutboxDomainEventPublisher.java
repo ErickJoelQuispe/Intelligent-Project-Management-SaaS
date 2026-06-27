@@ -159,6 +159,7 @@ public class OutboxDomainEventPublisher implements DomainEventPublisher {
             payload.put("userId", event.userId().toString());
             payload.put("role", event.role().name());
             payload.put("teamName", event.teamName());
+            if (event.email() != null) payload.put("email", event.email());
             envelope.set("payload", payload);
             return objectMapper.writeValueAsString(envelope);
         } catch (JsonProcessingException e) {

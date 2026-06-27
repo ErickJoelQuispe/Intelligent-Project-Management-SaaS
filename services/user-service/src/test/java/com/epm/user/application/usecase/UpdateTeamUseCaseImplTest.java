@@ -69,7 +69,7 @@ class UpdateTeamUseCaseImplTest {
         UUID nonOwnerId = UUID.randomUUID();
         UUID tenantId = UUID.randomUUID();
         Team team = Team.create(tenantId, ownerId, "Old Name", null);
-        team.addMember(nonOwnerId, TeamRole.MEMBER);
+        team.addMember(nonOwnerId, TeamRole.MEMBER, "test@example.com");
         when(teamRepository.findByIdAndTenantId(team.getId(), tenantId)).thenReturn(Optional.of(team));
 
         UpdateTeamCommand command = new UpdateTeamCommand(

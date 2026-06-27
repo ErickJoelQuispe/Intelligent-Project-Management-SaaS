@@ -46,12 +46,12 @@ public class AddTeamMemberUseCaseImpl implements AddTeamMemberUseCase {
             throw new UnauthorizedException("Only team owners can add members");
         }
 
-        // Verify target user exists
-        if (!profileRepository.existsByIdAndTenantId(command.userId(), tenantId)) {
-            throw new UserNotFoundException(command.userId());
-        }
+        // Verify target user exists and get their email for the domain event
+        String memberEmail = profileRepository.findByIdAndTenantId(command.userId(), tenantId)
+                .map(p -> p.getEmail())
+                .orElseThrow(() -> new UserNotFoundException(command.userId()));
 
-        team.addMember(command.userId(), command.role());
+        team.addMember(command.userId(), command.role(), memberEmail);
         outboxWriter.saveTeamAndPublish(team);
     }
 }

@@ -52,7 +52,7 @@ class UpdateTeamMemberRoleUseCaseImplTest {
         UUID memberId = UUID.randomUUID();
         UUID tenantId = UUID.randomUUID();
         Team team = Team.create(tenantId, ownerId, "Alpha", null);
-        team.addMember(memberId, TeamRole.MEMBER);
+        team.addMember(memberId, TeamRole.MEMBER, "test@example.com");
         when(teamRepository.findByIdAndTenantId(team.getId(), tenantId)).thenReturn(Optional.of(team));
         when(outboxWriter.saveTeamAndPublish(any())).thenAnswer(inv -> inv.getArgument(0));
 
@@ -71,8 +71,8 @@ class UpdateTeamMemberRoleUseCaseImplTest {
         UUID memberId = UUID.randomUUID();
         UUID tenantId = UUID.randomUUID();
         Team team = Team.create(tenantId, ownerId, "Alpha", null);
-        team.addMember(nonOwnerId, TeamRole.MEMBER);
-        team.addMember(memberId, TeamRole.VIEWER);
+        team.addMember(nonOwnerId, TeamRole.MEMBER, "test@example.com");
+        team.addMember(memberId, TeamRole.VIEWER, "test@example.com");
         when(teamRepository.findByIdAndTenantId(team.getId(), tenantId)).thenReturn(Optional.of(team));
 
         UpdateTeamMemberRoleCommand command = new UpdateTeamMemberRoleCommand(

@@ -3,6 +3,7 @@ package com.epm.user.infrastructure.adapter.in.rest;
 import java.net.URI;
 
 import com.epm.user.domain.exception.DuplicateMemberException;
+import com.epm.user.domain.exception.InvalidPreferencesException;
 import com.epm.user.domain.exception.InvalidTeamNameException;
 import com.epm.user.domain.exception.LastOwnerException;
 import com.epm.user.domain.exception.OptimisticLockException;
@@ -59,6 +60,16 @@ public class GlobalExceptionHandler {
         ProblemDetail problem = ProblemDetail.forStatus(HttpStatus.NOT_FOUND);
         problem.setType(URI.create("https://api.epm.com/errors/user-not-found"));
         problem.setTitle("User Not Found");
+        problem.setDetail(ex.getMessage());
+        return problem;
+    }
+
+    /** 400 Bad Request — invalid workspace preference value (e.g. unknown timezone). */
+    @ExceptionHandler(InvalidPreferencesException.class)
+    public ProblemDetail handleInvalidPreferences(InvalidPreferencesException ex) {
+        ProblemDetail problem = ProblemDetail.forStatus(HttpStatus.BAD_REQUEST);
+        problem.setType(URI.create("https://api.epm.com/errors/invalid-preferences"));
+        problem.setTitle("Invalid Preferences");
         problem.setDetail(ex.getMessage());
         return problem;
     }

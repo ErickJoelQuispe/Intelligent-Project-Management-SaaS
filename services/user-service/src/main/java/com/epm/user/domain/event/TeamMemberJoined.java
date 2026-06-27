@@ -15,5 +15,6 @@ public record TeamMemberJoined(
         UUID userId,
         TeamRole role,
         String teamName,
+        String email,
         Instant occurredAt) {
 }

@@ -64,7 +64,10 @@ public class UserProfilePersistenceAdapter implements UserProfileRepository {
 
     @Override
     public UserProfile save(UserProfile profile) {
-        UserProfileJpaEntity entity = toEntity(profile);
+        UserProfileJpaEntity entity = jpaRepository
+                .findByIdAndDeletedAtIsNull(profile.getId())
+                .orElseGet(UserProfileJpaEntity::new);
+        applyFields(entity, profile);
         UserProfileJpaEntity saved = jpaRepository.save(entity);
         return toDomain(saved);
     }
@@ -83,7 +86,10 @@ public class UserProfilePersistenceAdapter implements UserProfileRepository {
      * @return the persisted profile mapped back to the domain model
      */
     public UserProfile saveAndFlush(UserProfile profile) {
-        UserProfileJpaEntity entity = toEntity(profile);
+        UserProfileJpaEntity entity = jpaRepository
+                .findByIdAndDeletedAtIsNull(profile.getId())
+                .orElseGet(UserProfileJpaEntity::new);
+        applyFields(entity, profile);
         UserProfileJpaEntity saved = jpaRepository.saveAndFlush(entity);
         return toDomain(saved);
     }
@@ -95,8 +101,7 @@ public class UserProfilePersistenceAdapter implements UserProfileRepository {
 
     // ── Mapping ──────────────────────────────────────────────────────────────
 
-    private UserProfileJpaEntity toEntity(UserProfile profile) {
-        UserProfileJpaEntity entity = new UserProfileJpaEntity();
+    private void applyFields(UserProfileJpaEntity entity, UserProfile profile) {
         entity.setId(profile.getId());
         entity.setTenantId(profile.getTenantId());
         entity.setEmail(profile.getEmail());
@@ -111,6 +116,13 @@ public class UserProfilePersistenceAdapter implements UserProfileRepository {
         entity.setVersion(profile.getVersion());
         entity.setDeletedAt(profile.getDeletedAt());
         entity.setPreferencesJson(serializePreferences(profile.getPreferences()));
+    }
+
+    /** @deprecated use {@link #applyFields} on a loaded entity instead */
+    @SuppressWarnings("unused")
+    private UserProfileJpaEntity toEntity(UserProfile profile) {
+        UserProfileJpaEntity entity = new UserProfileJpaEntity();
+        applyFields(entity, profile);
         return entity;
     }
 

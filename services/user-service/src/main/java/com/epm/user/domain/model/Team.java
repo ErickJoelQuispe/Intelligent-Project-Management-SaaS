@@ -92,7 +92,7 @@ public class Team {
      * @param role   the membership role (MEMBER or VIEWER)
      * @throws DuplicateMemberException if the user is already an active member
      */
-    public void addMember(UUID userId, TeamRole role) {
+    public void addMember(UUID userId, TeamRole role, String email) {
         boolean alreadyActive = memberships.stream()
                 .anyMatch(m -> m.getUserId().equals(userId) && m.isActive());
         if (alreadyActive) {
@@ -101,7 +101,7 @@ public class Team {
         TeamMembership membership = TeamMembership.create(id, userId, role);
         memberships.add(membership);
         domainEvents.add(new TeamMemberJoined(
-                UuidCreator.getTimeOrderedEpoch(), id, tenantId, userId, role, this.name, Instant.now()));
+                UuidCreator.getTimeOrderedEpoch(), id, tenantId, userId, role, this.name, email, Instant.now()));
     }
 
     /**
