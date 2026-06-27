@@ -2,7 +2,13 @@ import { Injectable, inject } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Observable } from 'rxjs';
 import { environment } from '../../../environments/environment';
-import { Team, CreateTeamRequest, AddMemberRequest } from '../../core/models/team.model';
+import {
+  Team,
+  CreateTeamRequest,
+  AddMemberRequest,
+  UpdateTeamRequest,
+  UpdateMemberRoleRequest,
+} from '../../core/models/team.model';
 
 @Injectable({ providedIn: 'root' })
 export class TeamService {
@@ -31,5 +37,13 @@ export class TeamService {
 
   removeMember(teamId: string, userId: string): Observable<void> {
     return this.http.delete<void>(`${this.baseUrl}/${teamId}/members/${userId}`);
+  }
+
+  update(teamId: string, req: UpdateTeamRequest): Observable<Team> {
+    return this.http.patch<Team>(`${this.baseUrl}/${teamId}`, req);
+  }
+
+  updateMemberRole(teamId: string, userId: string, req: UpdateMemberRoleRequest): Observable<Team> {
+    return this.http.patch<Team>(`${this.baseUrl}/${teamId}/members/${userId}`, req);
   }
 }
