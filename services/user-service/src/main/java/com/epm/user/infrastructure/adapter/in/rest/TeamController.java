@@ -9,8 +9,12 @@ import com.epm.user.domain.port.in.DeleteTeamUseCase;
 import com.epm.user.domain.port.in.GetTeamUseCase;
 import com.epm.user.domain.port.in.ListTeamsUseCase;
 import com.epm.user.domain.port.in.RemoveTeamMemberUseCase;
+import com.epm.user.domain.port.in.UpdateTeamMemberRoleUseCase;
+import com.epm.user.domain.port.in.UpdateTeamUseCase;
 import com.epm.user.domain.port.in.command.AddMemberCommand;
 import com.epm.user.domain.port.in.command.CreateTeamCommand;
+import com.epm.user.domain.port.in.command.UpdateTeamCommand;
+import com.epm.user.domain.port.in.command.UpdateTeamMemberRoleCommand;
 import com.epm.user.domain.port.in.result.TeamResult;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
@@ -18,6 +22,7 @@ import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -38,6 +43,8 @@ public class TeamController {
     private final AddTeamMemberUseCase addTeamMemberUseCase;
     private final RemoveTeamMemberUseCase removeTeamMemberUseCase;
     private final DeleteTeamUseCase deleteTeamUseCase;
+    private final UpdateTeamUseCase updateTeamUseCase;
+    private final UpdateTeamMemberRoleUseCase updateTeamMemberRoleUseCase;
     private final JwtClaimsExtractor jwtClaimsExtractor;
 
     public TeamController(CreateTeamUseCase createTeamUseCase,
@@ -46,6 +53,8 @@ public class TeamController {
             AddTeamMemberUseCase addTeamMemberUseCase,
             RemoveTeamMemberUseCase removeTeamMemberUseCase,
             DeleteTeamUseCase deleteTeamUseCase,
+            UpdateTeamUseCase updateTeamUseCase,
+            UpdateTeamMemberRoleUseCase updateTeamMemberRoleUseCase,
             JwtClaimsExtractor jwtClaimsExtractor) {
         this.createTeamUseCase = createTeamUseCase;
         this.listTeamsUseCase = listTeamsUseCase;
@@ -53,6 +62,8 @@ public class TeamController {
         this.addTeamMemberUseCase = addTeamMemberUseCase;
         this.removeTeamMemberUseCase = removeTeamMemberUseCase;
         this.deleteTeamUseCase = deleteTeamUseCase;
+        this.updateTeamUseCase = updateTeamUseCase;
+        this.updateTeamMemberRoleUseCase = updateTeamMemberRoleUseCase;
         this.jwtClaimsExtractor = jwtClaimsExtractor;
     }
 
@@ -123,6 +134,33 @@ public class TeamController {
         UUID callerId = jwtClaimsExtractor.getUserId(jwt);
         UUID tenantId = jwtClaimsExtractor.getTenantId(jwt);
         deleteTeamUseCase.deleteTeam(teamId, callerId, tenantId);
+    }
+
+    /** PATCH /api/v1/teams/{teamId} → 200 */
+    @PatchMapping("/{teamId}")
+    public TeamResponse updateTeam(
+            @AuthenticationPrincipal Jwt jwt,
+            @PathVariable UUID teamId,
+            @Valid @RequestBody UpdateTeamRequest request) {
+        UUID callerId = jwtClaimsExtractor.getUserId(jwt);
+        UUID tenantId = jwtClaimsExtractor.getTenantId(jwt);
+        TeamResult result = updateTeamUseCase.execute(
+                new UpdateTeamCommand(teamId, callerId, tenantId, request.name(), request.description()));
+        return toResponse(result);
+    }
+
+    /** PATCH /api/v1/teams/{teamId}/members/{userId} → 200 */
+    @PatchMapping("/{teamId}/members/{userId}")
+    public TeamResponse updateMemberRole(
+            @AuthenticationPrincipal Jwt jwt,
+            @PathVariable UUID teamId,
+            @PathVariable UUID userId,
+            @Valid @RequestBody UpdateMemberRoleRequest request) {
+        UUID callerId = jwtClaimsExtractor.getUserId(jwt);
+        UUID tenantId = jwtClaimsExtractor.getTenantId(jwt);
+        TeamResult result = updateTeamMemberRoleUseCase.execute(
+                new UpdateTeamMemberRoleCommand(teamId, userId, callerId, tenantId, request.role()));
+        return toResponse(result);
     }
 
     // ── Helpers ──────────────────────────────────────────────────────────────

@@ -7,6 +7,7 @@ import com.epm.user.domain.exception.InvalidTeamNameException;
 import com.epm.user.domain.exception.LastOwnerException;
 import com.epm.user.domain.exception.OptimisticLockException;
 import com.epm.user.domain.exception.ProfileNotFoundException;
+import com.epm.user.domain.exception.SelfRoleChangeException;
 import com.epm.user.domain.exception.TeamNotFoundException;
 import com.epm.user.domain.exception.UnauthorizedException;
 import com.epm.user.domain.exception.UserNotFoundException;
@@ -114,6 +115,16 @@ public class GlobalExceptionHandler {
         ProblemDetail problem = ProblemDetail.forStatus(HttpStatus.FORBIDDEN);
         problem.setType(URI.create("https://api.epm.com/errors/forbidden"));
         problem.setTitle("Forbidden");
+        problem.setDetail(ex.getMessage());
+        return problem;
+    }
+
+    /** 409 Conflict — owner attempts to change their own role. */
+    @ExceptionHandler(SelfRoleChangeException.class)
+    public ProblemDetail handleSelfRoleChange(SelfRoleChangeException ex) {
+        ProblemDetail problem = ProblemDetail.forStatus(HttpStatus.CONFLICT);
+        problem.setType(URI.create("https://api.epm.com/errors/self-role-change"));
+        problem.setTitle("Self Role Change");
         problem.setDetail(ex.getMessage());
         return problem;
     }

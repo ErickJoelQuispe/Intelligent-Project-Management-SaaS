@@ -10,7 +10,11 @@ import com.epm.user.application.usecase.ListTeamsUseCaseImpl;
 import com.epm.user.application.usecase.ListTenantUsersUseCaseImpl;
 import com.epm.user.application.usecase.RemoveTeamMemberUseCaseImpl;
 import com.epm.user.application.usecase.UpdateOwnProfileUseCaseImpl;
+import com.epm.user.application.usecase.UpdateTeamMemberRoleUseCaseImpl;
+import com.epm.user.application.usecase.UpdateTeamUseCaseImpl;
 import com.epm.user.domain.port.in.DeleteOwnProfileUseCase;
+import com.epm.user.domain.port.in.UpdateTeamMemberRoleUseCase;
+import com.epm.user.domain.port.in.UpdateTeamUseCase;
 import com.epm.user.domain.port.out.TeamRepository;
 import com.epm.user.domain.port.out.TransactionalOutboxWriter;
 import com.epm.user.domain.port.out.UserProfileRepository;
@@ -81,5 +85,19 @@ public class UseCaseConfig {
     DeleteTeamUseCaseImpl deleteTeamUseCase(TeamRepository teamRepository,
             TransactionalOutboxWriter outboxWriter) {
         return new DeleteTeamUseCaseImpl(teamRepository, outboxWriter);
+    }
+
+    @Bean
+    UpdateTeamUseCase updateTeamUseCase(TeamRepository teamRepository,
+            UserProfileRepository profileRepository,
+            TransactionalOutboxWriter outboxWriter) {
+        return new UpdateTeamUseCaseImpl(teamRepository, profileRepository, outboxWriter);
+    }
+
+    @Bean
+    UpdateTeamMemberRoleUseCase updateTeamMemberRoleUseCase(TeamRepository teamRepository,
+            UserProfileRepository profileRepository,
+            TransactionalOutboxWriter outboxWriter) {
+        return new UpdateTeamMemberRoleUseCaseImpl(teamRepository, profileRepository, outboxWriter);
     }
 }
