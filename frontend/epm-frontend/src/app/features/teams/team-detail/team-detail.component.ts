@@ -5,33 +5,40 @@ import {
   signal,
   computed,
 } from '@angular/core';
-import { SlicePipe } from '@angular/common';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
-import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
+import { FormBuilder, ReactiveFormsModule, FormsModule, Validators } from '@angular/forms';
 import { OAuthService } from 'angular-oauth2-oidc';
 import { TeamService } from '../team.service';
 import { UserService } from '../../settings/services/user.service';
-import { Team, TeamMember, TeamRole } from '../../../core/models/team.model';
+import {
+  Team,
+  TeamMember,
+  TeamRole,
+  UpdateTeamRequest,
+  UpdateMemberRoleRequest,
+} from '../../../core/models/team.model';
 import { TenantUser } from '../../../core/models/user-profile.model';
 import { PageHeaderComponent } from '../../../shared/components/page-header/page-header.component';
 import { ButtonComponent } from '../../../shared/components/button/button.component';
 import { SpinnerComponent } from '../../../shared/components/spinner/spinner.component';
 import { ErrorBannerComponent } from '../../../shared/components/error-banner/error-banner.component';
 import { TeamRoleBadgeComponent } from '../../../shared/components/team-role-badge/team-role-badge.component';
+import { AvatarComponent } from '../../../shared/components/avatar/avatar.component';
 
 @Component({
   selector: 'app-team-detail',
   standalone: true,
   changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [
-    SlicePipe,
     RouterLink,
     ReactiveFormsModule,
+    FormsModule,
     PageHeaderComponent,
     ButtonComponent,
     SpinnerComponent,
     ErrorBannerComponent,
     TeamRoleBadgeComponent,
+    AvatarComponent,
   ],
   templateUrl: './team-detail.component.html',
 })
@@ -43,6 +50,7 @@ export class TeamDetailComponent {
   private readonly oauth       = inject(OAuthService);
   private readonly fb          = inject(FormBuilder);
 
+  // ── Core state ──────────────────────────────────────────────────────────
   readonly team           = signal<Team | null>(null);
   readonly tenantUsers    = signal<TenantUser[]>([]);
   readonly loading        = signal(true);
@@ -52,6 +60,20 @@ export class TeamDetailComponent {
   readonly deleting       = signal(false);
   readonly memberError    = signal<string | null>(null);
 
+  // ── Inline edit state ───────────────────────────────────────────────────
+  readonly editingName     = signal(false);
+  readonly editingDesc     = signal(false);
+  readonly savingInline    = signal(false);
+  readonly inlineSaveError = signal<string | null>(null);
+  readonly changingRoleFor = signal<string | null>(null);
+
+  editNameValue = '';
+  editDescValue = '';
+
+  private pendingPatch: Partial<UpdateTeamRequest> | null = null;
+  private isSaving = false;
+
+  // ── Form ─────────────────────────────────────────────────────────────────
   readonly roleOptions: TeamRole[] = ['OWNER', 'MEMBER', 'VIEWER'];
 
   readonly addMemberForm = this.fb.nonNullable.group({
@@ -59,12 +81,18 @@ export class TeamDetailComponent {
     role:  ['MEMBER' as TeamRole, Validators.required],
   });
 
+  // ── Computed ─────────────────────────────────────────────────────────────
   readonly isOwner = computed(() => {
     const t = this.team();
     if (!t) return false;
     const claims = this.oauth.getIdentityClaims() as Record<string, string> | null;
     const sub = claims?.['sub'] ?? '';
     return t.ownerId === sub;
+  });
+
+  readonly currentUserId = computed<string>(() => {
+    const claims = this.oauth.getIdentityClaims() as Record<string, string> | null;
+    return claims?.['sub'] ?? '';
   });
 
   /** Tenant user map for email→userId resolution (add member form) */
@@ -109,6 +137,100 @@ export class TeamDetailComponent {
     return this.team()?.id ?? this.route.snapshot.paramMap.get('teamId') ?? '';
   }
 
+  // ── Inline edit — name ────────────────────────────────────────────────────
+  startEditName(): void {
+    this.editNameValue = this.team()?.name ?? '';
+    this.editingName.set(true);
+    this.inlineSaveError.set(null);
+  }
+
+  cancelName(): void {
+    this.editingName.set(false);
+  }
+
+  commitName(): void {
+    const name = this.editNameValue.trim();
+    this.editingName.set(false);
+    if (!name || name === this.team()?.name) return;
+    this.saveInline({ name });
+  }
+
+  // ── Inline edit — description ─────────────────────────────────────────────
+  startEditDesc(): void {
+    this.editDescValue = this.team()?.description ?? '';
+    this.editingDesc.set(true);
+    this.inlineSaveError.set(null);
+  }
+
+  cancelDesc(): void {
+    this.editingDesc.set(false);
+  }
+
+  commitDesc(): void {
+    const description = this.editDescValue.trim();
+    this.editingDesc.set(false);
+    if (description === (this.team()?.description ?? '')) return;
+    this.saveInline({ description });
+  }
+
+  // ── Save queue ────────────────────────────────────────────────────────────
+  saveInline(patch: Partial<UpdateTeamRequest>): void {
+    this.pendingPatch = { ...this.pendingPatch, ...patch };
+    this.savingInline.set(true);
+    if (!this.isSaving) {
+      this.flushPending();
+    }
+  }
+
+  flushPending(): void {
+    if (!this.pendingPatch) {
+      this.savingInline.set(false);
+      return;
+    }
+
+    const t = this.team();
+    if (!t) {
+      this.pendingPatch = null;
+      this.savingInline.set(false);
+      return;
+    }
+
+    const patch = this.pendingPatch;
+    this.pendingPatch = null;
+    this.inlineSaveError.set(null);
+    this.isSaving = true;
+
+    this.teamService.update(this.teamId, patch).subscribe({
+      next: updated => {
+        this.team.set(updated);
+        this.isSaving = false;
+        this.flushPending();
+      },
+      error: () => {
+        this.inlineSaveError.set('Could not save. Please try again.');
+        this.isSaving = false;
+        this.savingInline.set(false);
+      },
+    });
+  }
+
+  // ── Role change ───────────────────────────────────────────────────────────
+  onRoleChange(member: TeamMember, newRole: TeamRole): void {
+    this.changingRoleFor.set(member.userId);
+    const req: UpdateMemberRoleRequest = { role: newRole };
+    this.teamService.updateMemberRole(this.teamId, member.userId, req).subscribe({
+      next: () => {
+        this.changingRoleFor.set(null);
+        this.loadTeam(this.teamId);
+      },
+      error: () => {
+        this.changingRoleFor.set(null);
+        this.memberError.set('Failed to change role. Please try again.');
+      },
+    });
+  }
+
+  // ── Member management ─────────────────────────────────────────────────────
   /** Display name from the enriched member fields the backend now returns */
   memberDisplayName(m: TeamMember): string {
     const name = [m.firstName, m.lastName].filter(Boolean).join(' ');
