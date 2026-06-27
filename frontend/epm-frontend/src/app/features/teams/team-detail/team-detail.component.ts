@@ -18,7 +18,6 @@ import {
   UpdateMemberRoleRequest,
 } from '../../../core/models/team.model';
 import { TenantUser } from '../../../core/models/user-profile.model';
-import { PageHeaderComponent } from '../../../shared/components/page-header/page-header.component';
 import { ButtonComponent } from '../../../shared/components/button/button.component';
 import { SpinnerComponent } from '../../../shared/components/spinner/spinner.component';
 import { ErrorBannerComponent } from '../../../shared/components/error-banner/error-banner.component';
@@ -33,7 +32,6 @@ import { AvatarComponent } from '../../../shared/components/avatar/avatar.compon
     RouterLink,
     ReactiveFormsModule,
     FormsModule,
-    PageHeaderComponent,
     ButtonComponent,
     SpinnerComponent,
     ErrorBannerComponent,
@@ -102,13 +100,21 @@ export class TeamDetailComponent {
     return map;
   });
 
-  /** Resolve email typed in the form to a userId from the tenant user list */
-  readonly resolvedUserId = computed<string | null>(() => {
+  /** Tenant users not yet in this team — shown as quick-add suggestions */
+  readonly suggestions = computed<TenantUser[]>(() => {
+    const t = this.team();
+    if (!t) return [];
+    const memberIds = new Set(t.members.map(m => m.userId));
+    return this.tenantUsers().filter(u => !memberIds.has(u.id)).slice(0, 8);
+  });
+
+  /** Resolve email typed in the form to a userId — called at submit time, not as computed */
+  private resolveUserIdFromEmail(): string | null {
     const email = this.addMemberForm.controls.email.value?.trim().toLowerCase();
     if (!email) return null;
     const found = this.tenantUsers().find(u => u.email.toLowerCase() === email);
     return found?.id ?? null;
-  });
+  }
 
   constructor() {
     const teamId = this.route.snapshot.paramMap.get('teamId');
@@ -124,8 +130,8 @@ export class TeamDetailComponent {
     });
   }
 
-  private loadTeam(id: string): void {
-    this.loading.set(true);
+  private loadTeam(id: string, silent = false): void {
+    if (!silent) this.loading.set(true);
     this.error.set(null);
     this.teamService.getById(id).subscribe({
       next:  t  => { this.team.set(t); this.loading.set(false); },
@@ -214,14 +220,54 @@ export class TeamDetailComponent {
     });
   }
 
+  /** Display name for a TenantUser suggestion chip */
+  suggestionLabel(u: TenantUser): string {
+    const name = [u.firstName, u.lastName].filter(Boolean).join(' ');
+    return name || u.email;
+  }
+
+  onQuickAdd(u: TenantUser): void {
+    this.addingMember.set(true);
+    this.memberError.set(null);
+    this.teamService.addMember(this.teamId, { userId: u.id, role: 'MEMBER' }).subscribe({
+      next: () => {
+        this.addingMember.set(false);
+        const current = this.team();
+        if (current) {
+          const newMember: import('../../../core/models/team.model').TeamMember = {
+            userId: u.id,
+            role: 'MEMBER',
+            joinedAt: new Date().toISOString(),
+            firstName: u.firstName,
+            lastName:  u.lastName,
+            email:     u.email,
+          };
+          this.team.set({ ...current, members: [...current.members, newMember] });
+        }
+        this.loadTeam(this.teamId, true);
+      },
+      error: (err: { status?: number }) => {
+        if (err?.status === 409) {
+          this.memberError.set('This user is already a member of the team.');
+        } else {
+          this.memberError.set('Failed to add member. Please try again.');
+        }
+        this.addingMember.set(false);
+      },
+    });
+  }
+
   // ── Role change ───────────────────────────────────────────────────────────
   onRoleChange(member: TeamMember, newRole: TeamRole): void {
+    // Guard: ignore if same role or already saving this member
+    if (newRole === member.role || this.changingRoleFor() === member.userId) return;
+
     this.changingRoleFor.set(member.userId);
     const req: UpdateMemberRoleRequest = { role: newRole };
     this.teamService.updateMemberRole(this.teamId, member.userId, req).subscribe({
       next: () => {
         this.changingRoleFor.set(null);
-        this.loadTeam(this.teamId);
+        this.loadTeam(this.teamId, true);
       },
       error: () => {
         this.changingRoleFor.set(null);
@@ -246,7 +292,7 @@ export class TeamDetailComponent {
   onAddMember(): void {
     if (this.addMemberForm.invalid) { this.addMemberForm.markAllAsTouched(); return; }
 
-    const userId = this.resolvedUserId();
+    const userId = this.resolveUserIdFromEmail();
     if (!userId) {
       this.memberError.set('No user found with that email address.');
       return;
@@ -256,14 +302,37 @@ export class TeamDetailComponent {
     this.memberError.set(null);
     const { role } = this.addMemberForm.getRawValue();
 
+    const emailVal = this.addMemberForm.controls.email.value?.trim() ?? '';
     this.teamService.addMember(this.teamId, { userId, role }).subscribe({
       next: () => {
         this.addingMember.set(false);
         this.addMemberForm.reset({ email: '', role: 'MEMBER' });
-        this.loadTeam(this.teamId);
+        // Optimistic update: add the new member to the signal immediately
+        // so the list updates before the background GET completes.
+        const current = this.team();
+        if (current) {
+          const resolved = this.tenantUsers().find(u => u.id === userId);
+          const newMember: TeamMember = {
+            userId,
+            role,
+            joinedAt: new Date().toISOString(),
+            firstName: resolved?.firstName ?? null,
+            lastName:  resolved?.lastName  ?? null,
+            email:     resolved?.email     ?? emailVal,
+          };
+          this.team.set({ ...current, members: [...current.members, newMember] });
+        }
+        // Background refresh to get server-confirmed state
+        this.loadTeam(this.teamId, true);
       },
-      error: () => {
-        this.memberError.set('Failed to add member. Please try again.');
+      error: (err: { status?: number }) => {
+        if (err?.status === 409) {
+          this.memberError.set('This user is already a member of the team.');
+        } else if (err?.status === 403) {
+          this.memberError.set('You do not have permission to add members.');
+        } else {
+          this.memberError.set('Failed to add member. Please try again.');
+        }
         this.addingMember.set(false);
       },
     });
@@ -277,7 +346,7 @@ export class TeamDetailComponent {
     this.teamService.removeMember(this.teamId, userId).subscribe({
       next: () => {
         this.removingMember.set(null);
-        this.loadTeam(this.teamId);
+        this.loadTeam(this.teamId, true);
       },
       error: () => {
         this.memberError.set('Failed to remove member. Please try again.');
