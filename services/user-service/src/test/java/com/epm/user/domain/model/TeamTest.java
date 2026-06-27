@@ -10,6 +10,7 @@ import com.epm.user.domain.event.TeamCreated;
 import com.epm.user.domain.event.TeamDeleted;
 import com.epm.user.domain.event.TeamMemberJoined;
 import com.epm.user.domain.event.TeamMemberLeft;
+import com.epm.user.domain.event.TeamUpdated;
 import com.epm.user.domain.exception.DuplicateMemberException;
 import com.epm.user.domain.exception.LastOwnerException;
 import org.junit.jupiter.api.Test;
@@ -168,5 +169,83 @@ class TeamTest {
         assertThat(events).hasSize(1);
         TeamMemberLeft event = (TeamMemberLeft) events.get(0);
         assertThat(event.teamName()).isEqualTo("Design Guild");
+    }
+
+    // ── update() tests (Phase 1 — TDD RED) ───────────────────────────────────
+
+    @Test
+    void update_withBothFields_mutatesNameAndDescription() {
+        UUID ownerId = UUID.randomUUID();
+        Team team = Team.create(UUID.randomUUID(), ownerId, "Old Name", "Old Desc");
+        team.pullDomainEvents();
+
+        team.update("New Name", "New Desc");
+
+        assertThat(team.getName()).isEqualTo("New Name");
+        assertThat(team.getDescription()).isEqualTo("New Desc");
+    }
+
+    @Test
+    void update_withNewNameOnly_keepsPreviousDescription() {
+        UUID ownerId = UUID.randomUUID();
+        Team team = Team.create(UUID.randomUUID(), ownerId, "Old Name", "Kept Desc");
+        team.pullDomainEvents();
+
+        team.update("New Name", null);
+
+        assertThat(team.getName()).isEqualTo("New Name");
+        assertThat(team.getDescription()).isEqualTo("Kept Desc");
+    }
+
+    @Test
+    void update_withNewDescOnly_keepsPreviousName() {
+        UUID ownerId = UUID.randomUUID();
+        Team team = Team.create(UUID.randomUUID(), ownerId, "Kept Name", "Old Desc");
+        team.pullDomainEvents();
+
+        team.update(null, "New Desc");
+
+        assertThat(team.getName()).isEqualTo("Kept Name");
+        assertThat(team.getDescription()).isEqualTo("New Desc");
+    }
+
+    @Test
+    void update_withBlankName_throwsIllegalArgumentException() {
+        UUID ownerId = UUID.randomUUID();
+        Team team = Team.create(UUID.randomUUID(), ownerId, "Old Name", null);
+        team.pullDomainEvents();
+
+        assertThatThrownBy(() -> team.update("  ", null))
+                .isInstanceOf(IllegalArgumentException.class);
+    }
+
+    @Test
+    void update_withBothNull_throwsIllegalArgumentException() {
+        UUID ownerId = UUID.randomUUID();
+        Team team = Team.create(UUID.randomUUID(), ownerId, "Old Name", null);
+        team.pullDomainEvents();
+
+        assertThatThrownBy(() -> team.update(null, null))
+                .isInstanceOf(IllegalArgumentException.class);
+    }
+
+    @Test
+    void update_emitsTeamUpdatedEvent() {
+        UUID ownerId = UUID.randomUUID();
+        UUID tenantId = UUID.randomUUID();
+        Team team = Team.create(tenantId, ownerId, "Old Name", null);
+        team.pullDomainEvents();
+
+        team.update("New Name", "New Desc");
+
+        List<Object> events = team.pullDomainEvents();
+        assertThat(events).hasSize(1);
+        assertThat(events.get(0)).isInstanceOf(TeamUpdated.class);
+        TeamUpdated event = (TeamUpdated) events.get(0);
+        assertThat(event.teamId()).isEqualTo(team.getId());
+        assertThat(event.tenantId()).isEqualTo(tenantId);
+        assertThat(event.name()).isEqualTo("New Name");
+        assertThat(event.eventId()).isNotNull();
+        assertThat(event.occurredAt()).isNotNull();
     }
 }
