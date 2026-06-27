@@ -464,4 +464,68 @@ class TeamControllerTest {
                                 """))
                 .andExpect(status().isConflict());
     }
+
+    // ── PATCH /teams/{id}/members/{uid} OWNER role → 400 ─────────────────────
+
+    @Test
+    void patchMemberRoleOwnerRoleReturns400() throws Exception {
+        UUID teamId = UUID.randomUUID();
+        UUID memberId = UUID.randomUUID();
+        when(updateTeamMemberRoleUseCase.execute(any()))
+                .thenThrow(new IllegalArgumentException("Cannot assign OWNER role via changeRole"));
+
+        mockMvc.perform(patch("/api/v1/teams/{teamId}/members/{userId}", teamId, memberId)
+                        .with(jwt().jwt(j -> j
+                                .subject(ownerId.toString())
+                                .claim("tenant_id", tenantId.toString())))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                { "role": "OWNER" }
+                                """))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.title").value("Invalid Request"));
+    }
+
+    // ── PATCH /teams/{id} description-only → 200 ─────────────────────────────
+
+    @Test
+    void patchTeamDescOnlyReturns200() throws Exception {
+        UUID teamId = UUID.randomUUID();
+        MemberResult member = new MemberResult(ownerId, TeamRole.OWNER, Instant.now(), null, null, null);
+        TeamResult result = new TeamResult(teamId, tenantId, ownerId, "Alpha", "new desc", List.of(member));
+        when(updateTeamUseCase.execute(any())).thenReturn(result);
+
+        mockMvc.perform(patch("/api/v1/teams/{teamId}", teamId)
+                        .with(jwt().jwt(j -> j
+                                .subject(ownerId.toString())
+                                .claim("tenant_id", tenantId.toString())))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                { "description": "new desc" }
+                                """))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.description").value("new desc"));
+    }
+
+    // ── PATCH /teams/{id} name + description → 200 ───────────────────────────
+
+    @Test
+    void patchTeamBothFieldsReturns200() throws Exception {
+        UUID teamId = UUID.randomUUID();
+        MemberResult member = new MemberResult(ownerId, TeamRole.OWNER, Instant.now(), null, null, null);
+        TeamResult result = new TeamResult(teamId, tenantId, ownerId, "new", "desc", List.of(member));
+        when(updateTeamUseCase.execute(any())).thenReturn(result);
+
+        mockMvc.perform(patch("/api/v1/teams/{teamId}", teamId)
+                        .with(jwt().jwt(j -> j
+                                .subject(ownerId.toString())
+                                .claim("tenant_id", tenantId.toString())))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                { "name": "new", "description": "desc" }
+                                """))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.name").value("new"))
+                .andExpect(jsonPath("$.description").value("desc"));
+    }
 }
