@@ -27,3 +27,12 @@ export interface AddMemberRequest {
   userId: string;
   role: TeamRole;
 }
+
+export interface UpdateTeamRequest {
+  name?: string;
+  description?: string;
+}
+
+export interface UpdateMemberRoleRequest {
+  role: TeamRole;
+}
