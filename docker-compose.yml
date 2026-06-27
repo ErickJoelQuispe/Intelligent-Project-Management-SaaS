@@ -247,7 +247,10 @@ services:
   # Requires: discovery-service, config-service, keycloak, postgres, kafka
   # ─────────────────────────────────────────────────────────────────
   user-service:
-    image: ghcr.io/erickjoelquispe/epm-user:${TAG:-latest}
+    build:
+      context: ./services/user-service
+      dockerfile: Dockerfile.local
+    image: epm-user-local
     container_name: epm-user
     ports:
       - "8082:8082"
@@ -371,7 +374,10 @@ services:
   # Requires: discovery-service, config-service, keycloak, postgres, kafka
   # ─────────────────────────────────────────────────────────────────
   notification-service:
-    image: ghcr.io/erickjoelquispe/epm-notification:${TAG:-latest}
+    image: epm-notification-local
+    build:
+      context: ./services/notification-service
+      dockerfile: Dockerfile.local
     container_name: epm-notification-service
     ports:
       - "8085:8085"

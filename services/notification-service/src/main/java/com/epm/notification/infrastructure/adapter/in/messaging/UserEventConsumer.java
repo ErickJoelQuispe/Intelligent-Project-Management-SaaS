@@ -138,6 +138,11 @@ public class UserEventConsumer {
         switch (eventType) {
             case "TeamMemberJoined" -> {
                 String teamName = textOrDefault(payload, "teamName", "a team");
+                // Eagerly populate email cache if the event carries the member's email
+                String memberEmail = textOrNull(payload, "email");
+                if (memberEmail != null) {
+                    cacheUserEmailUseCase.cacheUserEmail(userId, tenantId, memberEmail);
+                }
                 notificationService.create(tenantId, userId,
                         NotificationType.MEMBER_JOINED_TEAM, userId,
                         "You joined " + teamName);
