@@ -23,12 +23,14 @@ public interface TaskJpaRepository extends JpaRepository<TaskJpaEntity, UUID> {
     Optional<TaskJpaEntity> findByIdAndTenantId(@Param("id") UUID id,
                                                  @Param("tenantId") UUID tenantId);
 
-    @Query("SELECT t FROM TaskJpaEntity t WHERE t.projectId = :projectId AND t.tenantId = :tenantId")
+    @Query("SELECT t FROM TaskJpaEntity t"
+            + " WHERE t.projectId = :projectId AND t.tenantId = :tenantId AND t.parentTask IS NULL")
     Page<TaskJpaEntity> findAllByProjectIdAndTenantId(@Param("projectId") UUID projectId,
                                                        @Param("tenantId") UUID tenantId,
                                                        Pageable pageable);
 
-    @Query("SELECT t FROM TaskJpaEntity t WHERE t.projectId = :projectId AND t.tenantId = :tenantId")
+    @Query("SELECT t FROM TaskJpaEntity t"
+            + " WHERE t.projectId = :projectId AND t.tenantId = :tenantId AND t.parentTask IS NULL")
     List<TaskJpaEntity> findAllByProjectIdAndTenantId(@Param("projectId") UUID projectId,
                                                        @Param("tenantId") UUID tenantId);
 

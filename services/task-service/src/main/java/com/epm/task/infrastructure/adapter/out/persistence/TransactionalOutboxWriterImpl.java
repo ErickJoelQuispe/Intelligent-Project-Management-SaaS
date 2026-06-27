@@ -98,11 +98,15 @@ public class TransactionalOutboxWriterImpl implements TransactionalOutboxWriter 
         // Pull events first — must happen before deletion so event data is available.
         List<Object> events = root.pullDomainEvents();
 
-        // Bulk-delete all children in one DELETE (no N+1).
+        // Delete activity logs for subtasks first (FK: activity_log.task_id → tasks.id).
+        // bulkDeleteSubtasks handles this internally via deleteByParentTaskId.
         taskRepository.bulkDeleteSubtasks(root.getId(), root.getTenantId());
 
         // Publish TaskDeleted (and any other events) to the outbox within this transaction.
         eventPublisher.publish(events);
+
+        // Delete activity logs for the root task before deleting the root row.
+        taskRepository.deleteActivityLogsByTaskId(root.getId());
 
         // Finally, delete the root task row.
         taskRepository.deleteByIdAndTenantId(root.getId(), root.getTenantId());

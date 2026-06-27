@@ -40,4 +40,10 @@ public interface TaskRepository {
      * root {@code TaskDeleted} event; no per-child events are emitted.
      */
     void bulkDeleteSubtasks(UUID parentTaskId, UUID tenantId);
+
+    /**
+     * Deletes all activity log entries for the given task.
+     * Must be called before deleting the task row to avoid FK violations.
+     */
+    void deleteActivityLogsByTaskId(UUID taskId);
 }

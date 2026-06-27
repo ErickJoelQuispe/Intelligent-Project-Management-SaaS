@@ -105,7 +105,15 @@ public class TaskPersistenceAdapter implements TaskRepository, ActivityLogReposi
     @Override
     @Transactional
     public void bulkDeleteSubtasks(UUID parentTaskId, UUID tenantId) {
+        // Delete activity logs for all subtasks first to avoid FK violation.
+        activityLogJpaRepo.deleteByParentTaskId(parentTaskId, tenantId);
         taskJpaRepo.bulkDeleteSubtasks(parentTaskId, tenantId);
+    }
+
+    @Override
+    @Transactional
+    public void deleteActivityLogsByTaskId(UUID taskId) {
+        activityLogJpaRepo.deleteByTaskId(taskId);
     }
 
     // ── ActivityLogRepository ─────────────────────────────────────────────────
