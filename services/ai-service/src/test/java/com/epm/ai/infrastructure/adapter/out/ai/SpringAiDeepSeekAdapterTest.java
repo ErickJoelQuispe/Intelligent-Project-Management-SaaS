@@ -138,14 +138,16 @@ class SpringAiDeepSeekAdapterTest {
 
     @Test
     void chat_returnsValidAiResponse() {
+        // chat() calls .prompt().system(...).user(...).call() — same chain as generate()
         ChatClient.ChatClientRequestSpec requestSpec = mock(ChatClient.ChatClientRequestSpec.class);
-        ChatClient.ChatClientRequestSpec sysSpec = mock(ChatClient.ChatClientRequestSpec.class);
+        ChatClient.ChatClientRequestSpec afterSystemSpec = mock(ChatClient.ChatClientRequestSpec.class);
         ChatClient.CallResponseSpec callSpec = mock(ChatClient.CallResponseSpec.class);
         ChatResponse chatResponse = buildChatResponse("The project is on track.", 60, 30);
 
         when(chatClient.prompt()).thenReturn(requestSpec);
-        when(requestSpec.user(anyString())).thenReturn(sysSpec);
-        when(sysSpec.call()).thenReturn(callSpec);
+        when(requestSpec.system(anyString())).thenReturn(afterSystemSpec);
+        when(afterSystemSpec.user(anyString())).thenReturn(afterSystemSpec);
+        when(afterSystemSpec.call()).thenReturn(callSpec);
         when(callSpec.chatResponse()).thenReturn(chatResponse);
 
         AiRequest request = new AiRequest("How is the project?", "proj-1", "user-1", "tenant-1");
