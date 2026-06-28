@@ -35,14 +35,19 @@
   } @else {
 
     <!-- Stats bar -->
-    <div class="flex items-center gap-2 px-1 animate-fade-up">
-      <span class="text-2xl font-bold gradient-text"
-            style="font-family: 'Outfit', sans-serif;">
-        {{ teams().length }}
-      </span>
-      <span class="text-sm" style="color: var(--color-text-secondary);">
-        {{ teams().length === 1 ? 'team' : 'teams' }}
-      </span>
+    <div class="stats-bar animate-fade-up" role="status" aria-live="polite">
+
+      <div class="stat-pill">
+        <span class="stat-pill__value">{{ teams().length }}</span>
+        <span class="stat-pill__label">{{ teams().length === 1 ? 'team' : 'teams' }}</span>
+      </div>
+
+      <div class="stat-pill">
+        <span class="material-symbols-rounded stat-pill__icon" aria-hidden="true">person</span>
+        <span class="stat-pill__value">{{ totalMembers() }}</span>
+        <span class="stat-pill__label">{{ totalMembers() === 1 ? 'member' : 'members' }}</span>
+      </div>
+
     </div>
 
     <!-- Grid de cards -->

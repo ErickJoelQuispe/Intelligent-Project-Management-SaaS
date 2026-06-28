@@ -16,6 +16,7 @@ import { ErrorBannerComponent } from '../../../shared/components/error-banner/er
 import { EmptyStateComponent } from '../../../shared/components/empty-state/empty-state.component';
 import { TaskStatusBadgeComponent } from '../../../shared/components/task-status-badge/task-status-badge.component';
 import { TaskPriorityBadgeComponent } from '../../../shared/components/task-priority-badge/task-priority-badge.component';
+import { ConfirmDialogService } from '../../../shared/components/confirm-dialog/confirm-dialog.service';
 
 @Component({
   selector: 'app-task-list',
@@ -36,8 +37,9 @@ import { TaskPriorityBadgeComponent } from '../../../shared/components/task-prio
   styleUrl: './task-list.component.scss',
 })
 export class TaskListComponent implements OnInit {
-  private readonly taskService = inject(TaskService);
-  private readonly route = inject(ActivatedRoute);
+  private readonly taskService   = inject(TaskService);
+  private readonly route         = inject(ActivatedRoute);
+  private readonly confirmDialog = inject(ConfirmDialogService);
 
   readonly tableHeaders = ['Title', 'Status', 'Priority', 'Deadline', ''];
 
@@ -64,10 +66,16 @@ export class TaskListComponent implements OnInit {
   }
 
   deleteTask(taskId: string, title: string): void {
-    if (!confirm(`Delete "${title}"? This cannot be undone.`)) return;
-    this.taskService.delete(taskId).subscribe({
-      next:  () => this.loadTasks(),
-      error: () => this.error.set('Failed to delete task.'),
+    this.confirmDialog.open({
+      title: `Delete "${title}"?`,
+      message: 'This action cannot be undone.',
+      confirmLabel: 'Delete',
+    }).subscribe(confirmed => {
+      if (!confirmed) return;
+      this.taskService.delete(taskId).subscribe({
+        next:  () => this.loadTasks(),
+        error: () => this.error.set('Failed to delete task.'),
+      });
     });
   }
 

@@ -22,6 +22,7 @@ import { ButtonComponent } from '../../../shared/components/button/button.compon
 import { SpinnerComponent } from '../../../shared/components/spinner/spinner.component';
 import { ErrorBannerComponent } from '../../../shared/components/error-banner/error-banner.component';
 import { EmptyStateComponent } from '../../../shared/components/empty-state/empty-state.component';
+import { ConfirmDialogService } from '../../../shared/components/confirm-dialog/confirm-dialog.service';
 import { TaskStatusBadgeComponent } from '../../../shared/components/task-status-badge/task-status-badge.component';
 import { TaskPriorityBadgeComponent } from '../../../shared/components/task-priority-badge/task-priority-badge.component';
 import { TaskDrawerComponent } from '../task-drawer/task-drawer.component';
@@ -740,8 +741,9 @@ interface StatusGroup {
   `],
 })
 export class TaskPanelComponent implements OnInit {
-  private readonly taskService = inject(TaskService);
-  private readonly fb          = inject(FormBuilder);
+  private readonly taskService   = inject(TaskService);
+  private readonly fb            = inject(FormBuilder);
+  private readonly confirmDialog = inject(ConfirmDialogService);
 
   projectId = input.required<string>();
 
@@ -858,10 +860,16 @@ export class TaskPanelComponent implements OnInit {
 
   deleteTask(event: Event, taskId: string, title: string): void {
     event.stopPropagation();
-    if (!confirm(`Delete "${title}"? This cannot be undone.`)) return;
-    this.taskService.delete(taskId).subscribe({
-      next:  () => this.loadTasks(),
-      error: () => this.error.set('Failed to delete task.'),
+    this.confirmDialog.open({
+      title: `Delete "${title}"?`,
+      message: 'This action cannot be undone.',
+      confirmLabel: 'Delete',
+    }).subscribe(confirmed => {
+      if (!confirmed) return;
+      this.taskService.delete(taskId).subscribe({
+        next:  () => this.loadTasks(),
+        error: () => this.error.set('Failed to delete task.'),
+      });
     });
   }
 

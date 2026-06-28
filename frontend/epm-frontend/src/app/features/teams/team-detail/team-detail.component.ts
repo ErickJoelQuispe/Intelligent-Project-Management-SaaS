@@ -23,6 +23,7 @@ import { SpinnerComponent } from '../../../shared/components/spinner/spinner.com
 import { ErrorBannerComponent } from '../../../shared/components/error-banner/error-banner.component';
 import { TeamRoleBadgeComponent } from '../../../shared/components/team-role-badge/team-role-badge.component';
 import { AvatarComponent } from '../../../shared/components/avatar/avatar.component';
+import { ConfirmDialogService } from '../../../shared/components/confirm-dialog/confirm-dialog.service';
 
 @Component({
   selector: 'app-team-detail',
@@ -43,10 +44,11 @@ import { AvatarComponent } from '../../../shared/components/avatar/avatar.compon
 export class TeamDetailComponent {
   private readonly route       = inject(ActivatedRoute);
   private readonly router      = inject(Router);
-  private readonly teamService = inject(TeamService);
-  private readonly userService = inject(UserService);
-  private readonly oauth       = inject(OAuthService);
-  private readonly fb          = inject(FormBuilder);
+  private readonly teamService   = inject(TeamService);
+  private readonly userService   = inject(UserService);
+  private readonly oauth         = inject(OAuthService);
+  private readonly fb            = inject(FormBuilder);
+  private readonly confirmDialog = inject(ConfirmDialogService);
 
   // ── Core state ──────────────────────────────────────────────────────────
   readonly team           = signal<Team | null>(null);
@@ -339,29 +341,39 @@ export class TeamDetailComponent {
   }
 
   onRemoveMember(userId: string): void {
-    if (!confirm('Remove this member from the team?')) return;
-    this.removingMember.set(userId);
-    this.memberError.set(null);
-
-    this.teamService.removeMember(this.teamId, userId).subscribe({
-      next: () => {
-        this.removingMember.set(null);
-        this.loadTeam(this.teamId, true);
-      },
-      error: () => {
-        this.memberError.set('Failed to remove member. Please try again.');
-        this.removingMember.set(null);
-      },
+    this.confirmDialog.open({
+      title: 'Remove member?',
+      message: 'This person will lose access to the team and its projects.',
+      confirmLabel: 'Remove',
+    }).subscribe(confirmed => {
+      if (!confirmed) return;
+      this.removingMember.set(userId);
+      this.memberError.set(null);
+      this.teamService.removeMember(this.teamId, userId).subscribe({
+        next: () => {
+          this.removingMember.set(null);
+          this.loadTeam(this.teamId, true);
+        },
+        error: () => {
+          this.memberError.set('Failed to remove member. Please try again.');
+          this.removingMember.set(null);
+        },
+      });
     });
   }
 
   onDeleteTeam(): void {
-    if (!confirm('Delete this team? This action cannot be undone.')) return;
-    this.deleting.set(true);
-
-    this.teamService.delete(this.teamId).subscribe({
-      next:  () => { this.deleting.set(false); this.router.navigate(['/teams']); },
-      error: () => { this.error.set('Failed to delete team. Please try again.'); this.deleting.set(false); },
+    this.confirmDialog.open({
+      title: 'Delete team?',
+      message: 'This action cannot be undone. All team data will be permanently removed.',
+      confirmLabel: 'Delete team',
+    }).subscribe(confirmed => {
+      if (!confirmed) return;
+      this.deleting.set(true);
+      this.teamService.delete(this.teamId).subscribe({
+        next:  () => { this.deleting.set(false); this.router.navigate(['/teams']); },
+        error: () => { this.error.set('Failed to delete team. Please try again.'); this.deleting.set(false); },
+      });
     });
   }
 }

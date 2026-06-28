@@ -4,6 +4,7 @@ import {
   OnInit,
   inject,
   signal,
+  computed,
 } from '@angular/core';
 import { Router, RouterLink } from '@angular/router';
 import { TeamService } from '../team.service';
@@ -27,6 +28,7 @@ import { EmptyStateComponent } from '../../../shared/components/empty-state/empt
     EmptyStateComponent,
   ],
   templateUrl: './team-list.component.html',
+  styleUrl: './team-list.component.scss',
 })
 export class TeamListComponent implements OnInit {
   private readonly teamService = inject(TeamService);
@@ -35,6 +37,10 @@ export class TeamListComponent implements OnInit {
   teams   = signal<Team[]>([]);
   loading = signal(false);
   error   = signal<string | null>(null);
+
+  totalMembers = computed(() =>
+    this.teams().reduce((sum, t) => sum + t.members.length, 0)
+  );
 
   ngOnInit(): void {
     this.loadTeams();

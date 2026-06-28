@@ -23,6 +23,7 @@ import { AiChatComponent } from '../../ai/chat/ai-chat.component';
 import { TaskPanelComponent } from '../../tasks/task-panel/task-panel.component';
 import { FormsModule } from '@angular/forms';
 import { DatePipe } from '@angular/common';
+import { ConfirmDialogService } from '../../../shared/components/confirm-dialog/confirm-dialog.service';
 
 type Visibility = 'PRIVATE' | 'TEAM' | 'PUBLIC';
 
@@ -34,6 +35,12 @@ function nameToHue(name: string): number {
   }
   const raw = hash % 320;
   return raw < 30 ? raw + 90 : raw + 60;
+}
+
+interface SummaryData {
+  status: string;
+  risks: string[];
+  milestones: string[];
 }
 
 @Component({
@@ -279,126 +286,193 @@ function nameToHue(name: string): number {
             </app-button>
           </div>
 
-          <!-- Task list + AI drawer wrapper -->
+          <!-- Task list -->
           <div class="pdp-right-body">
-
-            <!-- AI drawer -->
-            @if (aiDrawerOpen()) {
-              <div class="pdp-ai-drawer" role="complementary" aria-label="AI Assistant">
-
-                <!-- Drawer header -->
-                <div class="pdp-ai-drawer-header">
-                  <span class="material-symbols-rounded pdp-ai-drawer-star" aria-hidden="true">auto_awesome</span>
-                  <span class="pdp-ai-drawer-title">
-                    {{ aiMode() === 'generate' ? 'Generate tasks' : aiMode() === 'summarize' ? 'Summarize' : 'AI Chat' }}
-                  </span>
-                  <button class="pdp-ai-drawer-close" (click)="closeAiDrawer()" aria-label="Close AI panel">
-                    <span class="material-symbols-rounded" aria-hidden="true">close</span>
-                  </button>
-                </div>
-
-                <!-- Drawer body -->
-                <div class="pdp-ai-drawer-body">
-
-                  @if (aiError()) {
-                    <app-error-banner [message]="aiError()!" />
-                  }
-
-                  @if (aiMode() === 'generate') {
-                    <app-button variant="secondary" size="sm"
-                                [loading]="generating()"
-                                (click)="generateTasks()">
-                      <span class="material-symbols-rounded" aria-hidden="true">auto_awesome</span>
-                      {{ generating() ? 'Generating…' : 'Generate tasks' }}
-                    </app-button>
-
-                    @if (draftTasks().length > 0) {
-                      <div class="pdp-drafts">
-                        <div class="pdp-drafts-header">
-                          <span class="pdp-drafts-label">
-                            <span class="material-symbols-rounded" aria-hidden="true">auto_awesome</span>
-                            {{ draftTasks().length }} suggested tasks
-                          </span>
-                          <app-button variant="primary" size="sm"
-                                      [loading]="savingTasks()"
-                                      (click)="saveAllTasks()">
-                            <span class="material-symbols-rounded" aria-hidden="true">save</span>
-                            {{ savingTasks() ? 'Saving…' : 'Save all' }}
-                          </app-button>
-                        </div>
-                        @if (saveSuccess()) {
-                          <div class="pdp-success-banner" role="status">
-                            <span class="material-symbols-rounded" aria-hidden="true">check_circle</span>
-                            {{ draftTasks().length }} tasks saved.
-                          </div>
-                        }
-                        <div class="pdp-drafts-list">
-                          @for (task of draftTasks(); track task.title) {
-                            <app-ai-draft-task-item [task]="task" />
-                          }
-                        </div>
-                      </div>
-                    }
-                  }
-
-                  @if (aiMode() === 'summarize') {
-                    <app-button variant="secondary" size="sm"
-                                [loading]="summarizing()"
-                                (click)="summarizeProject()">
-                      <span class="material-symbols-rounded" aria-hidden="true">summarize</span>
-                      {{ summarizing() ? 'Summarizing…' : 'Summarize project' }}
-                    </app-button>
-                    @if (summary()) {
-                      <div class="pdp-summary-result">
-                        <p class="pdp-summary-text">{{ summary() }}</p>
-                      </div>
-                    }
-                  }
-
-                  @if (aiMode() === 'chat') {
-                    <app-ai-chat [projectId]="p.id" />
-                  }
-
-                </div>
-              </div>
-            }
-
             <app-task-panel [projectId]="p.id" />
           </div>
 
           <!-- AI FAB -->
           <div class="pdp-fab-wrap">
-            @if (fabMenuOpen()) {
-              <!-- backdrop -->
-              <div class="pdp-fab-backdrop" (click)="fabMenuOpen.set(false)" aria-hidden="true"></div>
-              <!-- mini menu -->
-              <div class="pdp-fab-menu" role="menu">
-                <button class="pdp-fab-item" role="menuitem" (click)="openAiDrawer('generate')">
-                  <span class="material-symbols-rounded" aria-hidden="true">task_alt</span>
-                  Generate tasks
-                </button>
-                <button class="pdp-fab-item" role="menuitem" (click)="openAiDrawer('summarize')">
-                  <span class="material-symbols-rounded" aria-hidden="true">summarize</span>
-                  Summarize
-                </button>
-                <button class="pdp-fab-item" role="menuitem" (click)="openAiDrawer('chat')">
-                  <span class="material-symbols-rounded" aria-hidden="true">chat</span>
-                  Chat
-                </button>
-              </div>
-            }
             <button
               class="pdp-fab"
-              [class.pdp-fab--active]="fabMenuOpen() || aiDrawerOpen()"
-              (click)="toggleFabMenu()"
+              [class.pdp-fab--active]="aiPanelOpen()"
+              (click)="toggleAiPanel()"
               aria-label="AI Assistant"
-              [attr.aria-expanded]="fabMenuOpen()"
+              [attr.aria-expanded]="aiPanelOpen()"
             >
               <span class="material-symbols-rounded" aria-hidden="true">auto_awesome</span>
             </button>
           </div>
 
         </main>
+
+        <!-- ══ AI PANEL (third column) ═══════════════════════ -->
+        @if (aiPanelOpen()) {
+          <aside class="pdp-ai-panel" aria-label="AI Assistant">
+
+            <!-- Panel header with mode tabs -->
+            <div class="pdp-ai-panel-header">
+              <span class="material-symbols-rounded pdp-ai-panel-icon" aria-hidden="true">auto_awesome</span>
+              <div class="pdp-ai-panel-tabs" role="tablist" aria-label="AI mode">
+                <button class="pdp-ai-tab" [class.pdp-ai-tab--active]="aiMode() === 'generate'"
+                        role="tab" [attr.aria-selected]="aiMode() === 'generate'"
+                        (click)="aiMode.set('generate')">
+                  <span class="material-symbols-rounded" aria-hidden="true">task_alt</span>
+                  Generate
+                </button>
+                <button class="pdp-ai-tab" [class.pdp-ai-tab--active]="aiMode() === 'summarize'"
+                        role="tab" [attr.aria-selected]="aiMode() === 'summarize'"
+                        (click)="aiMode.set('summarize')">
+                  <span class="material-symbols-rounded" aria-hidden="true">summarize</span>
+                  Summarize
+                </button>
+                <button class="pdp-ai-tab" [class.pdp-ai-tab--active]="aiMode() === 'chat'"
+                        role="tab" [attr.aria-selected]="aiMode() === 'chat'"
+                        (click)="aiMode.set('chat')">
+                  <span class="material-symbols-rounded" aria-hidden="true">chat</span>
+                  Chat
+                </button>
+              </div>
+              <button class="pdp-ai-panel-close" (click)="closeAiPanel()" aria-label="Close AI panel">
+                <span class="material-symbols-rounded" aria-hidden="true">close</span>
+              </button>
+            </div>
+
+            <!-- Panel body — scrollable -->
+            <div class="pdp-ai-panel-body">
+
+              @if (aiError()) {
+                <app-error-banner [message]="aiError()!" />
+              }
+
+              @if (aiMode() === 'generate') {
+                <app-button variant="secondary" size="sm"
+                            [loading]="generating()"
+                            (click)="generateTasks()">
+                  <span class="material-symbols-rounded" aria-hidden="true">auto_awesome</span>
+                  {{ generating() ? 'Generating…' : 'Generate tasks' }}
+                </app-button>
+
+                @if (draftTasks().length > 0) {
+                  <div class="pdp-drafts">
+                    <div class="pdp-drafts-header">
+                      <span class="pdp-drafts-label">
+                        <span class="material-symbols-rounded" aria-hidden="true">auto_awesome</span>
+                        {{ draftTasks().length }} suggested tasks
+                      </span>
+                      <app-button variant="primary" size="sm"
+                                  [loading]="savingTasks()"
+                                  [disabled]="savingTasks()"
+                                  (click)="saveSelectedTasks()">
+                        <span class="material-symbols-rounded" aria-hidden="true">save</span>
+                        {{ savingTasks() ? 'Saving…' : selectedDraftCount() > 0 ? 'Save ' + selectedDraftCount() : 'Save all' }}
+                      </app-button>
+                    </div>
+                    <div class="pdp-drafts-select-all">
+                      @if (selectedDraftCount() === draftTasks().length) {
+                        <button class="pdp-drafts-select-btn" (click)="clearDraftSelection()">
+                          Clear selection
+                        </button>
+                      } @else {
+                        <button class="pdp-drafts-select-btn" (click)="selectAllDrafts()">
+                          Select all
+                        </button>
+                      }
+                      @if (selectedDraftCount() > 0) {
+                        <span class="pdp-drafts-select-count">{{ selectedDraftCount() }} selected</span>
+                      }
+                    </div>
+                    @if (saveSuccess()) {
+                      <div class="pdp-success-banner" role="status">
+                        <span class="material-symbols-rounded" aria-hidden="true">check_circle</span>
+                        Tasks saved.
+                      </div>
+                    }
+                    <div class="pdp-drafts-list">
+                      @for (task of draftTasks(); track task.title; let i = $index) {
+                        <app-ai-draft-task-item
+                          [task]="task"
+                          [selected]="selectedDraftIndices().has(i)"
+                          (toggleSelected)="toggleDraftTask(i)"
+                        />
+                      }
+                    </div>
+                  </div>
+                }
+              }
+
+              @if (aiMode() === 'summarize') {
+                <app-button variant="secondary" size="sm"
+                            [loading]="summarizing()"
+                            (click)="summarizeProject()">
+                  <span class="material-symbols-rounded" aria-hidden="true">summarize</span>
+                  {{ summarizing() ? 'Summarizing…' : 'Summarize project' }}
+                </app-button>
+                @if (summaryData(); as sd) {
+                  <div class="pdp-summary-card">
+
+                    <!-- Status -->
+                    <div class="pdp-summary-status">
+                      <span class="material-symbols-rounded pdp-summary-status-icon" aria-hidden="true">info</span>
+                      <p class="pdp-summary-status-text">{{ sd.status }}</p>
+                    </div>
+
+                    <!-- Risks -->
+                    @if (sd.risks.length > 0) {
+                      <div class="pdp-summary-section">
+                        <div class="pdp-summary-section-header pdp-summary-section-header--risk">
+                          <span class="material-symbols-rounded" aria-hidden="true">warning</span>
+                          Risks
+                        </div>
+                        <ul class="pdp-summary-list">
+                          @for (risk of sd.risks; track risk) {
+                            <li class="pdp-summary-list-item pdp-summary-list-item--risk">{{ risk }}</li>
+                          }
+                        </ul>
+                      </div>
+                    }
+
+                    <!-- Milestones -->
+                    @if (sd.milestones.length > 0) {
+                      <div class="pdp-summary-section">
+                        <div class="pdp-summary-section-header pdp-summary-section-header--milestone">
+                          <span class="material-symbols-rounded" aria-hidden="true">flag</span>
+                          Next milestones
+                        </div>
+                        <ul class="pdp-summary-list">
+                          @for (ms of sd.milestones; track ms; let i = $index) {
+                            <li class="pdp-summary-list-item pdp-summary-list-item--milestone">
+                              <span class="pdp-summary-step">{{ i + 1 }}</span>
+                              {{ ms }}
+                            </li>
+                          }
+                        </ul>
+                      </div>
+                    }
+
+                    <!-- Use as description action -->
+                    <div class="pdp-summary-actions">
+                      <app-button variant="secondary" size="sm" (click)="applysummaryAsDescription(sd.status)">
+                        <span class="material-symbols-rounded" aria-hidden="true">edit_note</span>
+                        Use as description
+                      </app-button>
+                    </div>
+
+                  </div>
+                }
+              }
+
+              @if (aiMode() === 'chat') {
+                <app-ai-chat
+                  [projectId]="p.id"
+                  [projectTasks]="taskPanel()?.tasks()?.map(t => ({ title: t.title, status: t.status })) ?? []"
+                />
+              }
+
+            </div>
+
+          </aside>
+        }
 
       </div>
 
@@ -676,6 +750,12 @@ function nameToHue(name: string): number {
         font-style: italic;
       }
 
+      .pdp-summary-actions {
+        display: flex;
+        padding-top: 0.25rem;
+        border-top: 1px solid color-mix(in oklch, var(--color-border) 50%, transparent);
+      }
+
       /* ── Date ────────────────────────────────────── */
       .pdp-date {
         display: flex;
@@ -943,45 +1023,82 @@ function nameToHue(name: string): number {
         white-space: nowrap;
       }
 
-      /* ── AI drawer ───────────────────────────────── */
-      .pdp-ai-drawer {
-        position: absolute;
-        top: 0;
-        right: 0;
-        bottom: 0;
-        width: min(380px, 100%);
-        background: var(--color-bg-surface);
+      /* ── AI panel (native split column) ─────────── */
+      .pdp-ai-panel {
+        width: 420px;
+        flex-shrink: 0;
         border-left: 1px solid var(--color-border);
         display: flex;
         flex-direction: column;
-        z-index: 10;
-        box-shadow: -4px 0 24px oklch(0 0 0 / 0.08);
+        overflow: hidden;
+        background: var(--color-bg-surface);
+        animation: pdp-ai-slide-in 0.22s cubic-bezier(0.2, 0, 0, 1) both;
       }
 
-      .pdp-ai-drawer-header {
+      @keyframes pdp-ai-slide-in {
+        from { width: 0; opacity: 0; }
+        to   { width: 420px; opacity: 1; }
+      }
+
+      .pdp-ai-panel-header {
         display: flex;
         align-items: center;
         gap: 0.5rem;
-        padding: 1rem 1.25rem;
+        padding: 0.75rem 1rem;
         border-bottom: 1px solid var(--color-border);
         flex-shrink: 0;
       }
 
-      .pdp-ai-drawer-star {
+      .pdp-ai-panel-icon {
         font-size: 1rem;
         color: var(--color-accent);
+        flex-shrink: 0;
       }
 
-      .pdp-ai-drawer-title {
+      .pdp-ai-panel-tabs {
         flex: 1;
-        font-family: 'Outfit', sans-serif;
-        font-size: 0.875rem;
-        font-weight: 650;
-        color: var(--color-text-primary);
-        letter-spacing: -0.01em;
+        display: flex;
+        gap: 0.125rem;
+        background: color-mix(in oklch, var(--color-bg-overlay) 60%, transparent);
+        border-radius: 0.5rem;
+        padding: 0.1875rem;
       }
 
-      .pdp-ai-drawer-close {
+      .pdp-ai-tab {
+        flex: 1;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 0.25rem;
+        padding: 0.3125rem 0.5rem;
+        border-radius: 0.375rem;
+        border: none;
+        background: transparent;
+        color: var(--color-text-muted);
+        font-size: 0.6875rem;
+        font-family: 'Outfit', sans-serif;
+        font-weight: 500;
+        cursor: pointer;
+        transition: background 0.15s ease, color 0.15s ease;
+        white-space: nowrap;
+      }
+
+      .pdp-ai-tab .material-symbols-rounded {
+        font-size: 0.8125rem;
+      }
+
+      .pdp-ai-tab:hover {
+        color: var(--color-text-primary);
+        background: color-mix(in oklch, var(--color-bg-elevated) 80%, transparent);
+      }
+
+      .pdp-ai-tab--active {
+        background: var(--color-bg-elevated);
+        color: var(--color-text-primary);
+        box-shadow: 0 1px 3px color-mix(in oklch, var(--color-border) 60%, transparent);
+      }
+
+      .pdp-ai-panel-close {
         display: flex;
         align-items: center;
         justify-content: center;
@@ -993,18 +1110,23 @@ function nameToHue(name: string): number {
         color: var(--color-text-muted);
         cursor: pointer;
         padding: 0;
-        transition: color 0.15s, background 0.15s;
+        transition: color 0.15s ease, background 0.15s ease;
+        flex-shrink: 0;
       }
-      .pdp-ai-drawer-close .material-symbols-rounded { font-size: 1rem; }
-      .pdp-ai-drawer-close:hover {
+
+      .pdp-ai-panel-close .material-symbols-rounded {
+        font-size: 1rem;
+      }
+
+      .pdp-ai-panel-close:hover {
         background: color-mix(in oklch, var(--color-border) 60%, transparent);
         color: var(--color-text-primary);
       }
 
-      .pdp-ai-drawer-body {
+      .pdp-ai-panel-body {
         flex: 1;
         overflow-y: auto;
-        padding: 1rem 1.25rem;
+        padding: 1rem;
         display: flex;
         flex-direction: column;
         gap: 0.875rem;
@@ -1022,12 +1144,6 @@ function nameToHue(name: string): number {
         align-items: flex-end;
         gap: 0.5rem;
         z-index: 20;
-      }
-
-      .pdp-fab-backdrop {
-        position: fixed;
-        inset: 0;
-        z-index: 19;
       }
 
       .pdp-fab {
@@ -1054,45 +1170,6 @@ function nameToHue(name: string): number {
       .pdp-fab--active {
         background: var(--color-accent);
         transform: rotate(20deg) scale(1.06);
-      }
-
-      .pdp-fab-menu {
-        background: var(--color-bg-elevated);
-        border: 1px solid var(--color-border);
-        border-radius: 0.75rem;
-        padding: 0.375rem;
-        display: flex;
-        flex-direction: column;
-        gap: 0.125rem;
-        box-shadow: 0 8px 24px oklch(0 0 0 / 0.12);
-        position: relative;
-        z-index: 21;
-        min-width: 160px;
-      }
-
-      .pdp-fab-item {
-        display: flex;
-        align-items: center;
-        gap: 0.625rem;
-        padding: 0.5rem 0.75rem;
-        border-radius: 0.5rem;
-        border: none;
-        background: transparent;
-        color: var(--color-text-primary);
-        font-size: 0.8125rem;
-        font-family: 'Outfit', sans-serif;
-        cursor: pointer;
-        text-align: left;
-        transition: background 0.12s;
-        white-space: nowrap;
-      }
-      .pdp-fab-item .material-symbols-rounded {
-        font-size: 1rem;
-        color: var(--color-accent);
-        flex-shrink: 0;
-      }
-      .pdp-fab-item:hover {
-        background: color-mix(in oklch, var(--color-accent) 8%, transparent);
       }
 
       /* ── Draft tasks ─────────────────────────────── */
@@ -1131,29 +1208,141 @@ function nameToHue(name: string): number {
         gap: 0.5rem;
       }
 
-      /* ── Summary result ──────────────────────────── */
-      .pdp-summary-result {
+      .pdp-drafts-select-all {
+        display: flex;
+        align-items: center;
+        gap: 0.625rem;
+      }
+
+      .pdp-drafts-select-btn {
+        font-size: 0.6875rem;
+        font-weight: 500;
+        color: var(--color-accent);
+        background: none;
+        border: none;
+        padding: 0;
+        cursor: pointer;
+        font-family: 'Outfit', sans-serif;
+        text-decoration: underline;
+        text-underline-offset: 2px;
+        transition: opacity 0.15s ease;
+      }
+
+      .pdp-drafts-select-btn:hover {
+        opacity: 0.75;
+      }
+
+      .pdp-drafts-select-count {
+        font-size: 0.6875rem;
+        color: var(--color-text-muted);
+        font-family: 'JetBrains Mono', monospace;
+      }
+
+      /* ── Summary card ────────────────────────────── */
+      .pdp-summary-card {
+        display: flex;
+        flex-direction: column;
+        gap: 0.75rem;
+        animation: fade-up 0.2s cubic-bezier(0.2, 0, 0, 1) both;
+      }
+
+      .pdp-summary-status {
         display: flex;
         gap: 0.625rem;
         align-items: flex-start;
         padding: 0.75rem;
-        border-radius: 0.5rem;
-        background: color-mix(in oklch, var(--color-bg-elevated) 80%, transparent);
-        border: 1px solid color-mix(in oklch, var(--color-border) 60%, transparent);
+        border-radius: 0.625rem;
+        background: color-mix(in oklch, var(--color-cyan) 6%, var(--color-bg-elevated));
+        border: 1px solid color-mix(in oklch, var(--color-cyan) 20%, transparent);
       }
 
-      .pdp-summary-icon {
-        font-size: 1.125rem;
+      .pdp-summary-status-icon {
+        font-size: 1rem;
         color: var(--color-cyan);
         flex-shrink: 0;
         margin-top: 0.0625rem;
       }
 
-      .pdp-summary-text {
+      .pdp-summary-status-text {
         font-size: 0.8125rem;
         color: var(--color-text-secondary);
-        line-height: 1.6;
+        line-height: 1.55;
         margin: 0;
+      }
+
+      .pdp-summary-section {
+        display: flex;
+        flex-direction: column;
+        gap: 0.5rem;
+      }
+
+      .pdp-summary-section-header {
+        display: flex;
+        align-items: center;
+        gap: 0.375rem;
+        font-size: 0.6875rem;
+        font-weight: 700;
+        letter-spacing: 0.06em;
+        text-transform: uppercase;
+        font-family: 'JetBrains Mono', monospace;
+      }
+
+      .pdp-summary-section-header .material-symbols-rounded {
+        font-size: 0.875rem;
+      }
+
+      .pdp-summary-section-header--risk {
+        color: var(--color-warning);
+      }
+
+      .pdp-summary-section-header--milestone {
+        color: var(--color-accent);
+      }
+
+      .pdp-summary-list {
+        list-style: none;
+        margin: 0;
+        padding: 0;
+        display: flex;
+        flex-direction: column;
+        gap: 0.375rem;
+      }
+
+      .pdp-summary-list-item {
+        display: flex;
+        align-items: flex-start;
+        gap: 0.5rem;
+        font-size: 0.8125rem;
+        color: var(--color-text-secondary);
+        line-height: 1.45;
+        padding: 0.4375rem 0.625rem;
+        border-radius: 0.4375rem;
+        background: color-mix(in oklch, var(--color-bg-elevated) 70%, transparent);
+        border: 1px solid color-mix(in oklch, var(--color-border) 50%, transparent);
+      }
+
+      .pdp-summary-list-item--risk {
+        border-left: 2px solid color-mix(in oklch, var(--color-warning) 60%, transparent);
+      }
+
+      .pdp-summary-list-item--milestone {
+        border-left: 2px solid color-mix(in oklch, var(--color-accent) 60%, transparent);
+      }
+
+      .pdp-summary-step {
+        flex-shrink: 0;
+        width: 1.125rem;
+        height: 1.125rem;
+        border-radius: 50%;
+        background: color-mix(in oklch, var(--color-accent) 15%, transparent);
+        color: var(--color-accent);
+        font-size: 0.625rem;
+        font-weight: 700;
+        font-family: 'JetBrains Mono', monospace;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        flex-shrink: 0;
       }
 
       /* ══ RIGHT PANEL ══════════════════════════════════ */
@@ -1204,15 +1393,14 @@ export class ProjectDetailPageComponent {
   private readonly aiService      = inject(AiService);
   private readonly taskService    = inject(TaskService);
   private readonly teamService    = inject(TeamService);
+  private readonly confirmDialog  = inject(ConfirmDialogService);
 
   readonly taskPanel        = viewChild(TaskPanelComponent);
 
   readonly project          = signal<Project | null>(null);
   readonly loading          = signal(true);
   readonly error            = signal<string | null>(null);
-  readonly aiExpanded       = signal(false);
-  readonly fabMenuOpen      = signal(false);
-  readonly aiDrawerOpen     = signal(false);
+  readonly aiPanelOpen      = signal(false);
   readonly aiMode           = signal<'generate' | 'summarize' | 'chat'>('generate');
 
   // Team assignment
@@ -1233,13 +1421,34 @@ export class ProjectDetailPageComponent {
   });
 
   // AI assistant
-  readonly generating       = signal(false);
-  readonly summarizing      = signal(false);
-  readonly savingTasks      = signal(false);
-  readonly saveSuccess      = signal(false);
-  readonly draftTasks       = signal<TaskDraft[]>([]);
-  readonly summary          = signal<string | null>(null);
-  readonly aiError          = signal<string | null>(null);
+  readonly generating             = signal(false);
+  readonly summarizing            = signal(false);
+  readonly savingTasks            = signal(false);
+  readonly saveSuccess            = signal(false);
+  readonly draftTasks             = signal<TaskDraft[]>([]);
+  readonly summary                = signal<string | null>(null);
+  readonly summaryData            = computed<SummaryData | null>(() => {
+    const raw = this.summary();
+    if (!raw) return null;
+    try {
+      // Strip markdown fences the model might add
+      const cleaned = raw.replace(/^```(?:json)?\n?/i, '').replace(/\n?```$/i, '').trim();
+      const parsed = JSON.parse(cleaned);
+      // Happy path: model returned the expected structure
+      if (parsed.status && Array.isArray(parsed.risks) && Array.isArray(parsed.milestones)) {
+        return parsed as SummaryData;
+      }
+      // Fallback: model wrapped text in {"summary": "..."} — extract and show as status
+      if (typeof parsed.summary === 'string') {
+        return { status: parsed.summary, risks: [], milestones: [] };
+      }
+    } catch { /* fall through */ }
+    // Could not parse at all — return null so the UI shows nothing broken
+    return null;
+  });
+  readonly aiError                = signal<string | null>(null);
+  readonly selectedDraftIndices   = signal<Set<number>>(new Set());
+  readonly selectedDraftCount     = computed(() => this.selectedDraftIndices().size);
 
   // ── Inline edit state ─────────────────────────────────────────────────
   readonly editingName      = signal(false);
@@ -1414,27 +1623,22 @@ export class ProjectDetailPageComponent {
     });
   }
 
-  toggleAi(): void {
-    this.aiExpanded.update(v => !v);
-  }
-
-  toggleFabMenu(): void {
-    if (this.aiDrawerOpen()) {
-      this.closeAiDrawer();
+  toggleAiPanel(): void {
+    if (this.aiPanelOpen()) {
+      this.closeAiPanel();
     } else {
-      this.fabMenuOpen.update(v => !v);
+      this.aiMode.set('generate');
+      this.aiPanelOpen.set(true);
     }
   }
 
-  openAiDrawer(mode: 'generate' | 'summarize' | 'chat'): void {
+  openAiPanel(mode: 'generate' | 'summarize' | 'chat'): void {
     this.aiMode.set(mode);
-    this.aiDrawerOpen.set(true);
-    this.fabMenuOpen.set(false);
+    this.aiPanelOpen.set(true);
   }
 
-  closeAiDrawer(): void {
-    this.aiDrawerOpen.set(false);
-    this.fabMenuOpen.set(false);
+  closeAiPanel(): void {
+    this.aiPanelOpen.set(false);
   }
 
   onTeamSelectChange(teamId: string): void {
@@ -1473,8 +1677,10 @@ export class ProjectDetailPageComponent {
     this.generating.set(true);
     this.aiError.set(null);
     this.draftTasks.set([]);
+    this.selectedDraftIndices.set(new Set());
     this.saveSuccess.set(false);
-    this.aiService.generateTasks(p.id, p.description ?? p.name, true).subscribe({
+    const existingTitles = this.taskPanel()?.tasks().map(t => t.title) ?? [];
+    this.aiService.generateTasks(p.id, p.description ?? p.name, true, existingTitles).subscribe({
       next:  (res) => { this.draftTasks.set(res.tasks); this.generating.set(false); },
       error: (err) => {
         this.aiError.set(err.status === 503
@@ -1485,15 +1691,41 @@ export class ProjectDetailPageComponent {
     });
   }
 
-  saveAllTasks(): void {
+  toggleDraftTask(index: number): void {
+    this.selectedDraftIndices.update(set => {
+      const next = new Set(set);
+      if (next.has(index)) {
+        next.delete(index);
+      } else {
+        next.add(index);
+      }
+      return next;
+    });
+  }
+
+  selectAllDrafts(): void {
+    this.selectedDraftIndices.set(new Set(this.draftTasks().map((_, i) => i)));
+  }
+
+  clearDraftSelection(): void {
+    this.selectedDraftIndices.set(new Set());
+  }
+
+  saveSelectedTasks(): void {
     const p      = this.project();
     const drafts = this.draftTasks();
     if (!p || drafts.length === 0) return;
 
+    const indices = this.selectedDraftIndices();
+    // If nothing selected, save all
+    const toSave = indices.size > 0
+      ? drafts.filter((_, i) => indices.has(i))
+      : drafts;
+
     this.savingTasks.set(true);
     this.aiError.set(null);
 
-    const requests = drafts.map(draft =>
+    const requests = toSave.map(draft =>
       this.taskService.create({
         projectId:   p.id,
         title:       draft.title,
@@ -1506,10 +1738,13 @@ export class ProjectDetailPageComponent {
       next: () => {
         this.savingTasks.set(false);
         this.saveSuccess.set(true);
-        setTimeout(() => {
-          this.draftTasks.set([]);
-          this.saveSuccess.set(false);
-        }, 2000);
+        // Remove saved tasks from draft list
+        const saved = new Set(indices.size > 0 ? [...indices] : drafts.map((_, i) => i));
+        this.draftTasks.update(prev => prev.filter((_, i) => !saved.has(i)));
+        this.selectedDraftIndices.set(new Set());
+        // Refresh the task panel so newly created tasks appear immediately
+        this.taskPanel()?.loadTasks();
+        setTimeout(() => this.saveSuccess.set(false), 2000);
       },
       error: () => {
         this.aiError.set('Failed to save some tasks. Please try again.');
@@ -1530,17 +1765,29 @@ export class ProjectDetailPageComponent {
     });
   }
 
+  applysummaryAsDescription(statusText: string): void {
+    this.editDescValue = statusText;
+    this.commitDesc();
+  }
+
   archiveProject(): void {
     const p = this.project();
     if (!p) return;
-    if (!confirm(`Archive "${p.name}"? It will be hidden from the project list.`)) return;
-    this.archiving.set(true);
-    this.projectService.archive(p.id).subscribe({
-      next:  () => this.router.navigate(['/projects']),
-      error: () => {
-        this.error.set('Failed to archive project. Please try again.');
-        this.archiving.set(false);
-      },
+    this.confirmDialog.open({
+      title: `Archive "${p.name}"?`,
+      message: 'It will be hidden from the project list. You can restore it later.',
+      confirmLabel: 'Archive',
+      variant: 'warning',
+    }).subscribe(confirmed => {
+      if (!confirmed) return;
+      this.archiving.set(true);
+      this.projectService.archive(p.id).subscribe({
+        next:  () => this.router.navigate(['/projects']),
+        error: () => {
+          this.error.set('Failed to archive project. Please try again.');
+          this.archiving.set(false);
+        },
+      });
     });
   }
 
