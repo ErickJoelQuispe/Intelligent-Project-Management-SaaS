@@ -1,9 +1,9 @@
 <app-page-header
-  [title]="taskId() ? 'Edit task' : 'New task'"
-  description="Fill in the details below"
+  [title]="taskId() ? ('tasks.drawer.newTask' | transloco) : ('tasks.form.title' | transloco)"
+  [description]="'projects.form.createDescription' | transloco"
 >
   <app-button page-action variant="ghost" size="sm" (click)="onCancel()">
-    Cancel
+    {{ 'tasks.form.cancelBtn' | transloco }}
   </app-button>
 </app-page-header>
 
@@ -11,7 +11,7 @@
   <div class="tf-wrap animate-fade-up">
 
     @if (loadingTask()) {
-      <app-spinner size="md" [full]="true" label="Loading task..." />
+      <app-spinner size="md" [full]="true" [label]="'common.loading' | transloco" />
     }
 
     @if (error()) {
@@ -41,26 +41,26 @@
       <!-- ── Title ────────────────────────────────────────── -->
       <div class="tf-field">
         <label class="tf-label" for="title">
-          Title <span class="tf-required">*</span>
+          {{ 'tasks.form.titleLabel' | transloco }} <span class="tf-required">*</span>
         </label>
         <input
           id="title" type="text" formControlName="title"
-          placeholder="What needs to be done?"
+          [placeholder]="'tasks.form.titlePlaceholder' | transloco"
           class="tf-input"
         />
         @if (form.controls.title.hasError('required') && form.controls.title.touched) {
-          <span class="tf-error">Title is required.</span>
+          <span class="tf-error">{{ 'tasks.form.titleRequired' | transloco }}</span>
         }
       </div>
 
       <!-- ── Description ─────────────────────────────────── -->
       <div class="tf-field">
         <label class="tf-label" for="description">
-          Description <span class="tf-optional">optional</span>
+          {{ 'tasks.form.descriptionLabel' | transloco }} <span class="tf-optional">{{ 'common.optional' | transloco }}</span>
         </label>
         <textarea
           id="description" formControlName="description" rows="3"
-          placeholder="Add more context, acceptance criteria, or notes..."
+          [placeholder]="'tasks.form.descriptionPlaceholder' | transloco"
           class="tf-input tf-textarea"
         ></textarea>
       </div>
@@ -69,7 +69,7 @@
       <div class="tf-row">
 
         <div class="tf-field">
-          <label class="tf-label">Priority</label>
+          <label class="tf-label">{{ 'tasks.form.priorityLabel' | transloco }}</label>
           <div class="tf-priority-group">
             @for (p of priorities; track p.value) {
               <label
@@ -89,7 +89,7 @@
 
         <div class="tf-field">
           <label class="tf-label" for="deadline">
-            Deadline <span class="tf-optional">optional</span>
+            {{ 'tasks.form.deadlineLabel' | transloco }} <span class="tf-optional">{{ 'common.optional' | transloco }}</span>
           </label>
           <input
             id="deadline" type="date" formControlName="deadline"
@@ -102,10 +102,10 @@
       <!-- ── Assignee ─────────────────────────────────────── -->
       <div class="tf-field">
         <label class="tf-label" for="assigneeId">
-          Assignee <span class="tf-optional">optional</span>
+          {{ 'tasks.form.assigneeLabel' | transloco }} <span class="tf-optional">{{ 'common.optional' | transloco }}</span>
         </label>
         <select id="assigneeId" formControlName="assigneeId" class="tf-input tf-select">
-          <option value="">Unassigned</option>
+          <option value="">{{ 'tasks.form.unassigned' | transloco }}</option>
           @for (user of users(); track user.id) {
             <option [value]="user.id">
               {{ user.firstName && user.lastName ? user.firstName + ' ' + user.lastName : user.email }}
@@ -140,9 +140,9 @@
       <div class="tf-divider"></div>
 
       <div class="tf-actions">
-        <app-button type="button" variant="secondary" (click)="onCancel()">Cancel</app-button>
+        <app-button type="button" variant="secondary" (click)="onCancel()">{{ 'tasks.form.cancelBtn' | transloco }}</app-button>
         <app-button type="submit" variant="primary" [loading]="loading()">
-          {{ taskId() ? 'Save changes' : 'Create task' }}
+          {{ taskId() ? ('common.update' | transloco) : ('tasks.form.submitBtn' | transloco) }}
         </app-button>
       </div>
 

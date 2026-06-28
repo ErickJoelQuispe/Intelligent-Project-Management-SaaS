@@ -156,7 +156,8 @@
       "submitBtn": "Crear tarea",
       "cancelBtn": "Cancelar",
       "closeBtn": "Cerrar",
-      "createError": "Error al crear la tarea. Inténtalo de nuevo."
+      "createError": "Error al crear la tarea. Int\u00e9ntalo de nuevo.",
+      "unassigned": "Sin asignar"
     },
     "drawer": {
       "newTask": "Nueva tarea",
@@ -178,7 +179,8 @@
       "title": "Tareas",
       "empty": "Sin tareas a\u00fan",
       "emptyDesc": "Crea tu primera tarea para comenzar.",
-      "loadError": "Error al cargar las tareas."
+      "loadError": "Error al cargar las tareas.",
+      "statusCol": "Estado"
     },
     "kanban": {
       "board": "Tablero",
@@ -297,14 +299,27 @@
       "removeMember": "Eliminar miembro",
       "owner": "Propietario",
       "editName": "Editar nombre del equipo",
+      "editDesc": "Editar descripci\u00f3n del equipo",
+      "addDescription": "Agregar una descripci\u00f3n\u2026",
       "loadError": "Error al cargar el equipo.",
       "deleteTeam": "Eliminar equipo",
+      "deleteTeamMsg": "Esta acci\u00f3n no se puede deshacer. Todos los datos del equipo ser\u00e1n eliminados de forma permanente.",
       "deleteError": "Error al eliminar el equipo.",
       "inviteMember": "Invitar miembro",
       "inviteByEmail": "Invitar por correo",
       "inviteBtn": "Enviar invitaci\u00f3n",
-      "inviteError": "Error al enviar la invitaci\u00f3n.",
-      "memberCount": "{{count}} miembros"
+      "inviteError": "Error al agregar miembro. Int\u00e9ntalo de nuevo.",
+      "memberCount": "{{count}} miembros",
+      "suggestions": "Sugerencias",
+      "alreadyMember": "Este usuario ya es miembro del equipo.",
+      "noPermission": "No tienes permiso para agregar miembros.",
+      "changeRoleError": "Error al cambiar el rol. Int\u00e9ntalo de nuevo.",
+      "removeMemberMsg": "Esta persona perder\u00e1 el acceso al equipo y sus proyectos.",
+      "userNotFound": "No se encontr\u00f3 ning\u00fan usuario con ese correo.",
+      "emailRequired": "El correo es obligatorio.",
+      "emailInvalid": "Ingresa una direcci\u00f3n de correo v\u00e1lida.",
+      "roleMember": "Miembro",
+      "roleViewer": "Visualizador"
     },
     "create": {
       "title": "Crear equipo",

@@ -1,9 +1,9 @@
 <app-page-header
-  title="New team"
-  description="Fill in the details to create a new team"
+  [title]="'teams.create.title' | transloco"
+  [description]="'teams.list.description' | transloco"
 >
   <app-button page-action variant="ghost" size="sm" (click)="onCancel()">
-    Cancel
+    {{ 'teams.create.cancelBtn' | transloco }}
   </app-button>
 </app-page-header>
 
@@ -19,7 +19,7 @@
       <!-- ── Name ────────────────────────────────────────── -->
       <div class="tc-field">
         <label class="tc-label" for="name">
-          Team name <span class="tc-required">*</span>
+          {{ 'teams.create.nameLabel' | transloco }} <span class="tc-required">*</span>
         </label>
         <input
           id="name" type="text" formControlName="name"
@@ -28,18 +28,18 @@
           class="tc-input"
         />
         @if (form.controls.name.hasError('required') && form.controls.name.touched) {
-          <span class="tc-error">Team name is required.</span>
+          <span class="tc-error">{{ 'teams.create.nameLabel' | transloco }} {{ 'common.required' | transloco }}.</span>
         }
         @if (form.controls.name.hasError('maxlength') && form.controls.name.touched) {
-          <span class="tc-error">Team name cannot exceed 100 characters.</span>
+          <span class="tc-error">{{ 'projects.form.nameMaxLength' | transloco }}</span>
         }
       </div>
 
       <!-- ── Description ─────────────────────────────────── -->
       <div class="tc-field">
         <div class="tc-label-row">
-          <label class="tc-label" for="description">Description</label>
-          <span class="tc-optional">optional</span>
+          <label class="tc-label" for="description">{{ 'projects.form.descriptionLabel' | transloco }}</label>
+          <span class="tc-optional">{{ 'common.optional' | transloco }}</span>
           <span class="tc-char-hint">{{ form.controls.description.value.length }} / 500</span>
         </div>
         <textarea
@@ -49,7 +49,7 @@
           class="tc-input tc-textarea"
         ></textarea>
         @if (form.controls.description.hasError('maxlength') && form.controls.description.touched) {
-          <span class="tc-error">Description cannot exceed 500 characters.</span>
+          <span class="tc-error">{{ 'projects.form.nameMaxLength' | transloco }}</span>
         }
       </div>
 
@@ -79,9 +79,9 @@
       <div class="tc-divider"></div>
 
       <div class="tc-actions">
-        <app-button type="button" variant="secondary" (click)="onCancel()">Cancel</app-button>
+        <app-button type="button" variant="secondary" (click)="onCancel()">{{ 'teams.create.cancelBtn' | transloco }}</app-button>
         <app-button type="submit" variant="primary" [loading]="submitting()" data-testid="submit-button">
-          Create team
+          {{ 'teams.create.submitBtn' | transloco }}
         </app-button>
       </div>
 

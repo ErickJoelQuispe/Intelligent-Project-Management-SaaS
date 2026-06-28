@@ -7,6 +7,7 @@ import {
   computed,
 } from '@angular/core';
 import { Router, RouterLink } from '@angular/router';
+import { TranslocoService, TranslocoPipe } from '@jsverse/transloco';
 import { TeamService } from '../team.service';
 import { Team } from '../../../core/models/team.model';
 import { PageHeaderComponent } from '../../../shared/components/page-header/page-header.component';
@@ -21,6 +22,7 @@ import { EmptyStateComponent } from '../../../shared/components/empty-state/empt
   changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [
     RouterLink,
+    TranslocoPipe,
     PageHeaderComponent,
     ButtonComponent,
     SpinnerComponent,
@@ -31,8 +33,9 @@ import { EmptyStateComponent } from '../../../shared/components/empty-state/empt
   styleUrl: './team-list.component.scss',
 })
 export class TeamListComponent implements OnInit {
-  private readonly teamService = inject(TeamService);
-  private readonly router      = inject(Router);
+  private readonly teamService        = inject(TeamService);
+  private readonly router             = inject(Router);
+  private readonly translocoService   = inject(TranslocoService);
 
   teams   = signal<Team[]>([]);
   loading = signal(false);
@@ -51,7 +54,7 @@ export class TeamListComponent implements OnInit {
     this.error.set(null);
     this.teamService.getAll().subscribe({
       next:  (t) => { this.teams.set(t); this.loading.set(false); },
-      error: ()  => { this.error.set('Failed to load teams.'); this.loading.set(false); },
+      error: ()  => { this.error.set(this.translocoService.translate('teams.list.loadError')); this.loading.set(false); },
     });
   }
 

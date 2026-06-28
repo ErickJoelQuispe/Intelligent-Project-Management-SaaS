@@ -50,6 +50,10 @@ describe('App', () => {
     const translocoServiceMock = {
       getActiveLang: vi.fn().mockReturnValue('en'),
       setActiveLang: setActiveLangSpy,
+      config: { reRenderOnLangChange: false, defaultLang: 'en', availableLangs: ['en'] },
+      translate: vi.fn((key: string) => key),
+      selectTranslate: vi.fn().mockReturnValue({ pipe: vi.fn().mockReturnValue({ subscribe: vi.fn() }) }),
+      langChanges$: { pipe: vi.fn().mockReturnValue({ subscribe: vi.fn() }) },
     };
 
     await TestBed.configureTestingModule({

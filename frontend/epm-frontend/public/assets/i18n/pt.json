@@ -156,7 +156,8 @@
       "submitBtn": "Create task",
       "cancelBtn": "Cancel",
       "closeBtn": "Close",
-      "createError": "Failed to create task. Please try again."
+      "createError": "Failed to create task. Please try again.",
+      "unassigned": "Unassigned"
     },
     "drawer": {
       "newTask": "New task",
@@ -178,7 +179,8 @@
       "title": "Tasks",
       "empty": "No tasks yet",
       "emptyDesc": "Create your first task to get started.",
-      "loadError": "Failed to load tasks."
+      "loadError": "Failed to load tasks.",
+      "statusCol": "Status"
     },
     "kanban": {
       "board": "Board",
@@ -297,14 +299,27 @@
       "removeMember": "Remove member",
       "owner": "Owner",
       "editName": "Edit team name",
+      "editDesc": "Edit team description",
+      "addDescription": "Add a description\u2026",
       "loadError": "Failed to load team.",
       "deleteTeam": "Delete team",
+      "deleteTeamMsg": "This action cannot be undone. All team data will be permanently removed.",
       "deleteError": "Failed to delete team.",
       "inviteMember": "Invite member",
       "inviteByEmail": "Invite by email",
       "inviteBtn": "Send invite",
-      "inviteError": "Failed to send invite.",
-      "memberCount": "{{count}} members"
+      "inviteError": "Failed to add member. Please try again.",
+      "memberCount": "{{count}} members",
+      "suggestions": "Suggestions",
+      "alreadyMember": "This user is already a member of the team.",
+      "noPermission": "You do not have permission to add members.",
+      "changeRoleError": "Failed to change role. Please try again.",
+      "removeMemberMsg": "This person will lose access to the team and its projects.",
+      "userNotFound": "No user found with that email address.",
+      "emailRequired": "Email is required.",
+      "emailInvalid": "Enter a valid email address.",
+      "roleMember": "Member",
+      "roleViewer": "Viewer"
     },
     "create": {
       "title": "Create team",

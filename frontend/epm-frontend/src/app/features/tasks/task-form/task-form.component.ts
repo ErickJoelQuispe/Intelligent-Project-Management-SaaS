@@ -19,6 +19,7 @@ import { ButtonComponent } from '../../../shared/components/button/button.compon
 import { ErrorBannerComponent } from '../../../shared/components/error-banner/error-banner.component';
 import { SpinnerComponent } from '../../../shared/components/spinner/spinner.component';
 import { TitleCasePipe } from '@angular/common';
+import { TranslocoService, TranslocoPipe } from '@jsverse/transloco';
 
 @Component({
   selector: 'app-task-form',
@@ -28,6 +29,7 @@ import { TitleCasePipe } from '@angular/common';
     ReactiveFormsModule,
     PageHeaderComponent,
     ButtonComponent,
+    TranslocoPipe,
     ErrorBannerComponent,
     SpinnerComponent,
     TitleCasePipe,
@@ -36,12 +38,13 @@ import { TitleCasePipe } from '@angular/common';
   styleUrl: './task-form.component.scss',
 })
 export class TaskFormComponent implements OnInit {
-  private readonly fb             = inject(FormBuilder);
-  private readonly taskService    = inject(TaskService);
-  private readonly userService    = inject(UserService);
-  private readonly projectService = inject(ProjectService);
-  private readonly route          = inject(ActivatedRoute);
-  private readonly router         = inject(Router);
+  private readonly fb               = inject(FormBuilder);
+  private readonly taskService      = inject(TaskService);
+  private readonly userService      = inject(UserService);
+  private readonly projectService   = inject(ProjectService);
+  private readonly route            = inject(ActivatedRoute);
+  private readonly router           = inject(Router);
+  private readonly translocoService = inject(TranslocoService);
 
   projectId   = '';
   taskId      = signal<string | null>(null);
@@ -92,7 +95,7 @@ export class TaskFormComponent implements OnInit {
 
   private loadTask(id: string): void {
     if (!id || id === 'undefined' || id === 'null') {
-      this.error.set('Invalid task ID.');
+      this.error.set(this.translocoService.translate('tasks.form.createError'));
       return;
     }
     this.loadingTask.set(true);
@@ -109,7 +112,7 @@ export class TaskFormComponent implements OnInit {
         this.loadingTask.set(false);
       },
       error: () => {
-        this.error.set('Failed to load task.');
+        this.error.set(this.translocoService.translate('tasks.panel.loadError'));
         this.loadingTask.set(false);
       },
     });
@@ -144,7 +147,7 @@ export class TaskFormComponent implements OnInit {
         )
         .subscribe({
           next:  () => { this.loading.set(false); this.goBack(); },
-          error: () => { this.error.set('Failed to update task.'); this.loading.set(false); },
+          error: () => { this.error.set(this.translocoService.translate('tasks.form.createError')); this.loading.set(false); },
         });
     } else {
       this.taskService
@@ -158,7 +161,7 @@ export class TaskFormComponent implements OnInit {
         })
         .subscribe({
           next:  () => { this.loading.set(false); this.goBack(); },
-          error: () => { this.error.set('Failed to create task.'); this.loading.set(false); },
+          error: () => { this.error.set(this.translocoService.translate('tasks.form.createError')); this.loading.set(false); },
         });
     }
   }

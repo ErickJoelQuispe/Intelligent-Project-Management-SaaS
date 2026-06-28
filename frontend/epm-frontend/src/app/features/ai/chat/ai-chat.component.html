@@ -1,13 +1,13 @@
 <div class="chat-root">
 
   <!-- Message thread -->
-  <div class="chat-messages" #messageList role="log" aria-label="AI chat messages" aria-live="polite">
+  <div class="chat-messages" #messageList role="log" [attr.aria-label]="'ai.chat.messagesAriaLabel' | transloco" aria-live="polite">
 
     @if (messages().length === 0) {
       <div class="chat-empty" data-testid="empty-state">
         <span class="material-symbols-rounded chat-empty-icon" aria-hidden="true">chat_bubble_outline</span>
-        <span class="chat-empty-text">Ask the AI anything about this project</span>
-        <span class="chat-empty-hint">Press Enter to send · Shift+Enter for new line</span>
+        <span class="chat-empty-text">{{ 'ai.chat.emptyTitle' | transloco }}</span>
+        <span class="chat-empty-hint">{{ 'ai.chat.emptyHint' | transloco }}</span>
       </div>
 
     } @else {
@@ -25,7 +25,7 @@
               <div class="chat-bubble-text chat-bubble-text--md"
                    [innerHTML]="renderMarkdown(msg.content)"></div>
               @if (msg.streaming) {
-                <span class="chat-cursor" aria-label="Typing…"></span>
+                <span class="chat-cursor" [attr.aria-label]="'ai.chat.typingAriaLabel' | transloco"></span>
               }
             </div>
           </div>
@@ -47,12 +47,12 @@
     <textarea
       class="chat-input"
       rows="1"
-      placeholder="Ask something about this project…"
+      [placeholder]="'ai.chat.inputPlaceholder' | transloco"
       [value]="inputText()"
       [disabled]="loading()"
       (input)="onInput($any($event.target))"
       (keydown.enter)="onEnterKey($any($event))"
-      aria-label="Chat message"
+      [attr.aria-label]="'ai.chat.inputAriaLabel' | transloco"
     ></textarea>
 
     <button
@@ -60,7 +60,7 @@
       data-testid="send-button"
       [disabled]="loading() || !inputText().trim()"
       (click)="send()"
-      aria-label="Send message"
+      [attr.aria-label]="'ai.chat.sendAriaLabel' | transloco"
     >
       @if (loading()) {
         <span class="chat-send-spinner" aria-hidden="true"></span>

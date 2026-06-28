@@ -1,34 +1,34 @@
 <app-page-header
-  title="Teams"
-  description="Manage your teams and members"
+  [title]="'teams.list.title' | transloco"
+  [description]="'teams.list.description' | transloco"
 >
   <app-button page-action variant="primary" (click)="goToCreate()">
     <span class="material-symbols-rounded text-sm">group_add</span>
-    New team
+    {{ 'teams.list.newTeam' | transloco }}
   </app-button>
 </app-page-header>
 
 <div class="p-6 flex flex-col gap-6">
 
   @if (loading()) {
-    <app-spinner size="lg" [full]="true" label="Loading teams..." />
+    <app-spinner size="lg" [full]="true" [label]="'common.loading' | transloco" />
 
   } @else if (error()) {
     <app-error-banner
       [message]="error()!"
-      retryLabel="Try again"
+      [retryLabel]="'common.retry' | transloco"
       (retry)="loadTeams()"
     />
 
   } @else if (teams().length === 0) {
     <app-empty-state
       icon="group"
-      title="No teams yet"
-      description="Create your first team and start collaborating."
+      [title]="'teams.list.empty' | transloco"
+      [description]="'teams.list.emptyDesc' | transloco"
     >
       <app-button action variant="primary" (click)="goToCreate()">
         <span class="material-symbols-rounded text-sm">group_add</span>
-        New team
+        {{ 'teams.list.newTeam' | transloco }}
       </app-button>
     </app-empty-state>
 
@@ -39,13 +39,13 @@
 
       <div class="stat-pill">
         <span class="stat-pill__value">{{ teams().length }}</span>
-        <span class="stat-pill__label">{{ teams().length === 1 ? 'team' : 'teams' }}</span>
+        <span class="stat-pill__label">{{ teams().length === 1 ? ('teams.list.title' | transloco).toLowerCase() : ('teams.list.title' | transloco).toLowerCase() }}</span>
       </div>
 
       <div class="stat-pill">
         <span class="material-symbols-rounded stat-pill__icon" aria-hidden="true">person</span>
         <span class="stat-pill__value">{{ totalMembers() }}</span>
-        <span class="stat-pill__label">{{ totalMembers() === 1 ? 'member' : 'members' }}</span>
+        <span class="stat-pill__label">{{ totalMembers() === 1 ? ('teams.detail.members' | transloco).toLowerCase() : ('teams.detail.members' | transloco).toLowerCase() }}</span>
       </div>
 
     </div>
@@ -89,7 +89,7 @@
             </p>
           } @else {
             <p class="text-xs italic" style="color: var(--color-text-muted);">
-              No description
+              {{ 'projects.detail.noDescription' | transloco }}
             </p>
           }
 

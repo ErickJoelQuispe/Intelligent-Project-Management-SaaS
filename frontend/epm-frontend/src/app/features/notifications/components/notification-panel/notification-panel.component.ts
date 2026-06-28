@@ -5,6 +5,7 @@ import {
   computed,
   output,
 } from '@angular/core';
+import { TranslocoPipe } from '@jsverse/transloco';
 import { NotificationStore } from '../../store/notification.store';
 import { NotificationItemComponent } from '../../../../shared/components/notification-item/notification-item.component';
 
@@ -18,9 +19,10 @@ import { Notification } from '../../models/notification.model';
   imports: [
     NotificationItemComponent,
     SpinnerComponent,
+    TranslocoPipe,
   ],
   template: `
-    <div class="notif-panel animate-fade-up" data-testid="notification-panel" role="dialog" aria-label="Notifications">
+    <div class="notif-panel animate-fade-up" data-testid="notification-panel" role="dialog" [attr.aria-label]="'notifications.panel.title' | transloco">
 
       <!-- Top accent line -->
       <div class="notif-panel-line" aria-hidden="true"></div>
@@ -29,7 +31,7 @@ import { Notification } from '../../models/notification.model';
       <header class="notif-panel-header">
         <div class="notif-panel-title-row">
           <span class="material-symbols-rounded notif-panel-title-icon" aria-hidden="true">notifications</span>
-          <span class="notif-panel-title">Notifications</span>
+          <span class="notif-panel-title">{{ 'notifications.panel.title' | transloco }}</span>
           @if (store.unreadCount() > 0) {
             <span class="notif-unread-pill" aria-label="{{ store.unreadCount() }} unread">
               {{ store.unreadCount() }}
@@ -43,16 +45,16 @@ import { Notification } from '../../models/notification.model';
               class="notif-mark-all-btn"
               data-testid="mark-all-read-btn"
               (click)="store.markAllAsRead()"
-              aria-label="Mark all notifications as read"
+              [attr.aria-label]="'notifications.panel.markAllAriaLabel' | transloco"
             >
               <span class="material-symbols-rounded" aria-hidden="true">done_all</span>
-              Mark all read
+              {{ 'notifications.panel.markAllRead' | transloco }}
             </button>
           }
           <button
             class="notif-close-btn"
             (click)="closePanel.emit()"
-            aria-label="Close notifications"
+            [attr.aria-label]="'notifications.panel.close' | transloco"
           >
             <span class="material-symbols-rounded" aria-hidden="true">close</span>
           </button>
@@ -72,16 +74,16 @@ import { Notification } from '../../models/notification.model';
         } @else if (store.notifications().length === 0) {
           <div class="notif-empty">
             <span class="material-symbols-rounded notif-empty-icon" aria-hidden="true">notifications_off</span>
-            <span class="notif-empty-title">You're all caught up</span>
-            <span class="notif-empty-desc">No notifications yet.</span>
+            <span class="notif-empty-title">{{ 'notifications.panel.allCaughtUp' | transloco }}</span>
+            <span class="notif-empty-desc">{{ 'notifications.panel.noNotifications' | transloco }}</span>
           </div>
 
         } @else {
 
           <!-- Unread section -->
           @if (unread().length > 0) {
-            <div class="notif-section-label" aria-label="Unread notifications">
-              <span>Unread</span>
+            <div class="notif-section-label" [attr.aria-label]="'notifications.panel.unread' | transloco">
+              <span>{{ 'notifications.panel.unread' | transloco }}</span>
               <span class="notif-section-count">{{ unread().length }}</span>
             </div>
             @for (n of unread(); track n.id) {
@@ -96,8 +98,8 @@ import { Notification } from '../../models/notification.model';
 
           <!-- Read section -->
           @if (read().length > 0) {
-            <div class="notif-section-label notif-section-label--read" aria-label="Read notifications">
-              <span>Earlier</span>
+            <div class="notif-section-label notif-section-label--read" [attr.aria-label]="'notifications.panel.earlier' | transloco">
+              <span>{{ 'notifications.panel.earlier' | transloco }}</span>
             </div>
             @for (n of read(); track n.id) {
               <app-notification-item

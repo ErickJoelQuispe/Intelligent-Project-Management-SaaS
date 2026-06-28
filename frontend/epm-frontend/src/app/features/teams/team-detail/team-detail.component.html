@@ -16,16 +16,16 @@
 
       <!-- Top bar: back + delete -->
       <div class="td-top-bar">
-        <a class="td-back-link" routerLink="/teams" aria-label="Back to teams">
+        <a class="td-back-link" routerLink="/teams" [attr.aria-label]="'teams.detail.backToTeams' | transloco">
           <span class="material-symbols-rounded" aria-hidden="true">arrow_back</span>
-          Teams
+          {{ 'teams.detail.backToTeams' | transloco }}
         </a>
         @if (isOwner()) {
           <app-button variant="danger" size="sm"
                       [loading]="deleting()"
                       (click)="onDeleteTeam()"
-                      aria-label="Delete team"
-                      title="Delete team">
+                      [attr.aria-label]="'teams.detail.deleteTeam' | transloco"
+                      [title]="'teams.detail.deleteTeam' | transloco">
             <span class="material-symbols-rounded" aria-hidden="true">delete</span>
           </app-button>
         }
@@ -79,8 +79,8 @@
             (keydown.escape)="cancelDesc()"
             (blur)="commitDesc()"
             rows="3"
-            placeholder="Add a description…"
-            aria-label="Edit team description"
+            [placeholder]="'teams.detail.addDescription' | transloco"
+            [attr.aria-label]="'teams.detail.editDesc' | transloco"
           ></textarea>
         } @else {
           <p
@@ -94,7 +94,7 @@
             [attr.role]="isOwner() ? 'button' : null"
             [attr.aria-label]="isOwner() ? 'Team description — click to edit' : null"
           >
-            {{ t.description || 'Add a description…' }}
+            {{ t.description || ('teams.detail.addDescription' | transloco) }}
             @if (isOwner()) {
               <span class="material-symbols-rounded td-edit-hint td-edit-hint--sm" aria-hidden="true">edit</span>
             }
@@ -105,7 +105,7 @@
       <!-- Team meta -->
       <p class="td-meta">
         <span class="material-symbols-rounded" style="font-size:14px;" aria-hidden="true">group</span>
-        {{ t.members.length }} {{ t.members.length === 1 ? 'member' : 'members' }}
+        {{ 'teams.detail.memberCount' | transloco: { count: t.members.length } }}
       </p>
 
       <div class="td-divider" aria-hidden="true"></div>
@@ -113,7 +113,7 @@
       <!-- Add member form — only for owners -->
       @if (isOwner()) {
         <div class="td-add-section">
-          <h3 class="td-section-heading">Add member</h3>
+          <h3 class="td-section-heading">{{ 'teams.detail.addMember' | transloco }}</h3>
 
           @if (memberError()) {
             <app-error-banner [message]="memberError()!" variant="inline" />
@@ -123,7 +123,7 @@
                 class="flex flex-col gap-3">
 
             <div class="flex flex-col gap-1.5">
-              <label class="text-xs" style="color: var(--color-text-secondary);">Email</label>
+              <label class="text-xs" style="color: var(--color-text-secondary);">{{ 'teams.detail.inviteByEmail' | transloco }}</label>
               <input
                 type="email" formControlName="email"
                 placeholder="user@example.com"
@@ -133,7 +133,7 @@
             </div>
 
             <div class="flex flex-col gap-1.5">
-              <label class="text-xs" style="color: var(--color-text-secondary);">Role</label>
+              <label class="text-xs" style="color: var(--color-text-secondary);">{{ 'settings.notifications.eventCol' | transloco }}</label>
               <select
                 formControlName="role"
                 data-testid="role-select"
@@ -152,21 +152,21 @@
                         [loading]="addingMember()"
                         data-testid="add-member-button">
               <span class="material-symbols-rounded text-sm">person_add</span>
-              Add
+              {{ 'teams.detail.inviteBtn' | transloco }}
             </app-button>
 
           </form>
 
           @if (addMemberForm.controls.email.hasError('required') && addMemberForm.controls.email.touched) {
-            <span class="text-xs" style="color: var(--color-danger);">Email is required.</span>
+            <span class="text-xs" style="color: var(--color-danger);">{{ 'teams.detail.emailRequired' | transloco }}</span>
           } @else if (addMemberForm.controls.email.hasError('email') && addMemberForm.controls.email.touched) {
-            <span class="text-xs" style="color: var(--color-danger);">Enter a valid email address.</span>
+            <span class="text-xs" style="color: var(--color-danger);">{{ 'teams.detail.emailInvalid' | transloco }}</span>
           }
 
           <!-- Quick-add suggestions -->
           @if (suggestions().length > 0) {
             <div class="td-suggestions">
-              <p class="td-suggestions-label">Suggestions</p>
+              <p class="td-suggestions-label">{{ 'teams.detail.suggestions' | transloco }}</p>
               <div class="td-suggestions-list">
                 @for (u of suggestions(); track u.id) {
                   <button
@@ -193,11 +193,11 @@
     <main class="td-right" aria-label="Members">
 
       <div class="td-right-header">
-        <h2 class="td-section-heading" style="margin: 0;">Members</h2>
+        <h2 class="td-section-heading" style="margin: 0;">{{ 'teams.detail.members' | transloco }}</h2>
       </div>
 
       @if (t.members.length === 0) {
-        <p class="td-meta" style="padding: 1rem 0;">No members yet.</p>
+        <p class="td-meta" style="padding: 1rem 0;">{{ 'teams.detail.noMembers' | transloco }}</p>
       } @else {
         <div class="td-member-list">
           @for (member of t.members; track member.userId; let last = $last) {
@@ -226,8 +226,8 @@
                     (change)="onRoleChange(member, $any($event.target).value)"
                     [attr.aria-label]="'Change role for ' + memberDisplayName(member)"
                   >
-                    <option value="MEMBER">Member</option>
-                    <option value="VIEWER">Viewer</option>
+                    <option value="MEMBER">{{ 'teams.detail.roleMember' | transloco }}</option>
+                    <option value="VIEWER">{{ 'teams.detail.roleViewer' | transloco }}</option>
                   </select>
                 } @else {
                   <app-team-role-badge [role]="member.role" />
@@ -239,8 +239,8 @@
                     class="td-remove-btn"
                     (click)="onRemoveMember(member.userId)"
                     [disabled]="removingMember() === member.userId"
-                    aria-label="Remove member"
-                    title="Remove member"
+                    [attr.aria-label]="'teams.detail.removeMember' | transloco"
+                    [title]="'teams.detail.removeMember' | transloco"
                   >
                     @if (removingMember() === member.userId) {
                       <span class="td-remove-spinner" aria-hidden="true"></span>

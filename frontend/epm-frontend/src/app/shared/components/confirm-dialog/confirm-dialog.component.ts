@@ -4,6 +4,7 @@ import {
   input,
   output,
 } from '@angular/core';
+import { TranslocoPipe } from '@jsverse/transloco';
 import { ButtonComponent } from '../button/button.component';
 
 export interface ConfirmDialogConfig {
@@ -18,7 +19,7 @@ export interface ConfirmDialogConfig {
   selector: 'app-confirm-dialog',
   standalone: true,
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [ButtonComponent],
+  imports: [ButtonComponent, TranslocoPipe],
   template: `
     <!-- Backdrop -->
     <div class="backdrop" (click)="onCancel()" aria-hidden="true"></div>
@@ -47,14 +48,14 @@ export interface ConfirmDialogConfig {
       <!-- Actions -->
       <div class="dialog-actions">
         <app-button variant="secondary" size="md" (click)="onCancel()">
-          {{ config().cancelLabel ?? 'Cancel' }}
+          {{ config().cancelLabel ?? ('confirmDialog.cancel' | transloco) }}
         </app-button>
         <app-button
           [variant]="config().variant === 'warning' ? 'primary' : 'danger'"
           size="md"
           (click)="onConfirm()"
         >
-          {{ config().confirmLabel ?? 'Confirm' }}
+          {{ config().confirmLabel ?? ('confirmDialog.confirm' | transloco) }}
         </app-button>
       </div>
     </div>

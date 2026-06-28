@@ -59,7 +59,7 @@
       @if (task().parentTaskId) {
         <div class="task-meta-chip" aria-label="This is a subtask">
           <span class="material-symbols-rounded" aria-hidden="true">subdirectory_arrow_right</span>
-          <span>Subtask</span>
+          <span>{{ 'tasks.panel.subtasks' | transloco }}</span>
         </div>
       }
 
@@ -85,7 +85,7 @@
           <app-spinner size="sm" />
         </div>
       } @else if (subtasks().length === 0) {
-        <p class="task-card-subtasks-empty">No subtasks yet</p>
+        <p class="task-card-subtasks-empty">{{ 'tasks.panel.noTasks' | transloco }}</p>
       } @else {
         <ul class="task-card-subtasks-list" aria-label="Subtasks">
           @for (sub of subtasks(); track sub.id) {

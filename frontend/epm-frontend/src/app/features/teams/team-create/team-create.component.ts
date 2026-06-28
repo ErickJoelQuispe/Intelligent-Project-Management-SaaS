@@ -6,6 +6,7 @@ import {
 } from '@angular/core';
 import { Router } from '@angular/router';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
+import { TranslocoService, TranslocoPipe } from '@jsverse/transloco';
 import { TeamService } from '../team.service';
 import { PageHeaderComponent } from '../../../shared/components/page-header/page-header.component';
 import { ButtonComponent } from '../../../shared/components/button/button.component';
@@ -17,6 +18,7 @@ import { ErrorBannerComponent } from '../../../shared/components/error-banner/er
   changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [
     ReactiveFormsModule,
+    TranslocoPipe,
     PageHeaderComponent,
     ButtonComponent,
     ErrorBannerComponent,
@@ -24,9 +26,10 @@ import { ErrorBannerComponent } from '../../../shared/components/error-banner/er
   templateUrl: './team-create.component.html',
 })
 export class TeamCreateComponent {
-  private readonly fb          = inject(FormBuilder);
-  private readonly teamService = inject(TeamService);
-  private readonly router      = inject(Router);
+  private readonly fb               = inject(FormBuilder);
+  private readonly teamService      = inject(TeamService);
+  private readonly router           = inject(Router);
+  private readonly translocoService = inject(TranslocoService);
 
   submitting = signal(false);
   error      = signal<string | null>(null);
@@ -47,7 +50,7 @@ export class TeamCreateComponent {
       .create({ name, description: description || undefined })
       .subscribe({
         next:  (t) => { this.submitting.set(false); this.router.navigate(['/teams', t.id]); },
-        error: ()  => { this.error.set('Failed to create team. Please try again.'); this.submitting.set(false); },
+        error: ()  => { this.error.set(this.translocoService.translate('teams.create.createError')); this.submitting.set(false); },
       });
   }
 

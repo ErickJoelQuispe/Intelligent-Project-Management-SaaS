@@ -8,6 +8,7 @@ import {
   signal,
 } from '@angular/core';
 import { DatePipe } from '@angular/common';
+import { TranslocoPipe } from '@jsverse/transloco';
 import { AvatarComponent } from '../../../../shared/components/avatar/avatar.component';
 import { TaskPriorityBadgeComponent } from '../../../../shared/components/task-priority-badge/task-priority-badge.component';
 import { SpinnerComponent } from '../../../../shared/components/spinner/spinner.component';
@@ -21,7 +22,7 @@ import { ConfirmDialogService } from '../../../../shared/components/confirm-dial
   selector: 'app-task-card',
   standalone: true,
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [DatePipe, AvatarComponent, TaskPriorityBadgeComponent, SpinnerComponent],
+  imports: [DatePipe, TranslocoPipe, AvatarComponent, TaskPriorityBadgeComponent, SpinnerComponent],
   templateUrl: './task-card.component.html',
   styleUrl: './task-card.component.scss',
 })

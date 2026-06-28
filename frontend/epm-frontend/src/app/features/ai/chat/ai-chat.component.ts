@@ -12,6 +12,7 @@ import {
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FormsModule } from '@angular/forms';
 import { DomSanitizer, SafeHtml } from '@angular/platform-browser';
+import { TranslocoPipe } from '@jsverse/transloco';
 import { AiService } from '../ai.service';
 import { ChatMessage, ChatTurn } from '../models/chat.models';
 
@@ -20,7 +21,7 @@ import { ChatMessage, ChatTurn } from '../models/chat.models';
   selector: 'app-ai-chat',
   standalone: true,
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [FormsModule],
+  imports: [FormsModule, TranslocoPipe],
   templateUrl: './ai-chat.component.html',
 })
 export class AiChatComponent {

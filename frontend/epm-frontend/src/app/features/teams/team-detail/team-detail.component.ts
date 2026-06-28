@@ -8,6 +8,7 @@ import {
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { FormBuilder, ReactiveFormsModule, FormsModule, Validators } from '@angular/forms';
 import { OAuthService } from 'angular-oauth2-oidc';
+import { TranslocoService, TranslocoPipe } from '@jsverse/transloco';
 import { TeamService } from '../team.service';
 import { UserService } from '../../settings/services/user.service';
 import {
@@ -33,6 +34,7 @@ import { ConfirmDialogService } from '../../../shared/components/confirm-dialog/
     RouterLink,
     ReactiveFormsModule,
     FormsModule,
+    TranslocoPipe,
     ButtonComponent,
     SpinnerComponent,
     ErrorBannerComponent,
@@ -42,13 +44,14 @@ import { ConfirmDialogService } from '../../../shared/components/confirm-dialog/
   templateUrl: './team-detail.component.html',
 })
 export class TeamDetailComponent {
-  private readonly route       = inject(ActivatedRoute);
-  private readonly router      = inject(Router);
-  private readonly teamService   = inject(TeamService);
-  private readonly userService   = inject(UserService);
-  private readonly oauth         = inject(OAuthService);
-  private readonly fb            = inject(FormBuilder);
-  private readonly confirmDialog = inject(ConfirmDialogService);
+  private readonly route            = inject(ActivatedRoute);
+  private readonly router           = inject(Router);
+  private readonly teamService      = inject(TeamService);
+  private readonly userService      = inject(UserService);
+  private readonly oauth            = inject(OAuthService);
+  private readonly fb               = inject(FormBuilder);
+  private readonly confirmDialog    = inject(ConfirmDialogService);
+  private readonly translocoService = inject(TranslocoService);
 
   // ── Core state ──────────────────────────────────────────────────────────
   readonly team           = signal<Team | null>(null);
@@ -121,7 +124,7 @@ export class TeamDetailComponent {
   constructor() {
     const teamId = this.route.snapshot.paramMap.get('teamId');
     if (!teamId) {
-      this.error.set('Team ID not found.');
+      this.error.set(this.translocoService.translate('teams.detail.loadError'));
       this.loading.set(false);
       return;
     }
@@ -137,7 +140,7 @@ export class TeamDetailComponent {
     this.error.set(null);
     this.teamService.getById(id).subscribe({
       next:  t  => { this.team.set(t); this.loading.set(false); },
-      error: () => { this.error.set('Failed to load team.'); this.loading.set(false); },
+      error: () => { this.error.set(this.translocoService.translate('teams.detail.loadError')); this.loading.set(false); },
     });
   }
 
@@ -215,7 +218,7 @@ export class TeamDetailComponent {
         this.flushPending();
       },
       error: () => {
-        this.inlineSaveError.set('Could not save. Please try again.');
+        this.inlineSaveError.set(this.translocoService.translate('projects.detail.saveError'));
         this.isSaving = false;
         this.savingInline.set(false);
       },
@@ -250,9 +253,9 @@ export class TeamDetailComponent {
       },
       error: (err: { status?: number }) => {
         if (err?.status === 409) {
-          this.memberError.set('This user is already a member of the team.');
+          this.memberError.set(this.translocoService.translate('teams.detail.alreadyMember'));
         } else {
-          this.memberError.set('Failed to add member. Please try again.');
+          this.memberError.set(this.translocoService.translate('teams.detail.inviteError'));
         }
         this.addingMember.set(false);
       },
@@ -273,7 +276,7 @@ export class TeamDetailComponent {
       },
       error: () => {
         this.changingRoleFor.set(null);
-        this.memberError.set('Failed to change role. Please try again.');
+        this.memberError.set(this.translocoService.translate('teams.detail.changeRoleError'));
       },
     });
   }
@@ -296,7 +299,7 @@ export class TeamDetailComponent {
 
     const userId = this.resolveUserIdFromEmail();
     if (!userId) {
-      this.memberError.set('No user found with that email address.');
+      this.memberError.set(this.translocoService.translate('teams.detail.userNotFound'));
       return;
     }
 
@@ -329,11 +332,11 @@ export class TeamDetailComponent {
       },
       error: (err: { status?: number }) => {
         if (err?.status === 409) {
-          this.memberError.set('This user is already a member of the team.');
+          this.memberError.set(this.translocoService.translate('teams.detail.alreadyMember'));
         } else if (err?.status === 403) {
-          this.memberError.set('You do not have permission to add members.');
+          this.memberError.set(this.translocoService.translate('teams.detail.noPermission'));
         } else {
-          this.memberError.set('Failed to add member. Please try again.');
+          this.memberError.set(this.translocoService.translate('teams.detail.inviteError'));
         }
         this.addingMember.set(false);
       },
@@ -342,9 +345,9 @@ export class TeamDetailComponent {
 
   onRemoveMember(userId: string): void {
     this.confirmDialog.open({
-      title: 'Remove member?',
-      message: 'This person will lose access to the team and its projects.',
-      confirmLabel: 'Remove',
+      title: this.translocoService.translate('teams.detail.removeMember'),
+      message: this.translocoService.translate('teams.detail.removeMemberMsg'),
+      confirmLabel: this.translocoService.translate('teams.detail.removeMember'),
     }).subscribe(confirmed => {
       if (!confirmed) return;
       this.removingMember.set(userId);
@@ -354,25 +357,25 @@ export class TeamDetailComponent {
           this.removingMember.set(null);
           this.loadTeam(this.teamId, true);
         },
-        error: () => {
-          this.memberError.set('Failed to remove member. Please try again.');
-          this.removingMember.set(null);
-        },
+          error: () => {
+            this.memberError.set(this.translocoService.translate('teams.detail.deleteError'));
+            this.removingMember.set(null);
+          },
       });
     });
   }
 
   onDeleteTeam(): void {
     this.confirmDialog.open({
-      title: 'Delete team?',
-      message: 'This action cannot be undone. All team data will be permanently removed.',
-      confirmLabel: 'Delete team',
+      title: this.translocoService.translate('teams.detail.deleteTeam'),
+      message: this.translocoService.translate('teams.detail.deleteTeamMsg'),
+      confirmLabel: this.translocoService.translate('teams.detail.deleteTeam'),
     }).subscribe(confirmed => {
       if (!confirmed) return;
       this.deleting.set(true);
       this.teamService.delete(this.teamId).subscribe({
         next:  () => { this.deleting.set(false); this.router.navigate(['/teams']); },
-        error: () => { this.error.set('Failed to delete team. Please try again.'); this.deleting.set(false); },
+        error: () => { this.error.set(this.translocoService.translate('teams.detail.deleteError')); this.deleting.set(false); },
       });
     });
   }

@@ -7,6 +7,7 @@ import {
 } from '@angular/core';
 import { DatePipe } from '@angular/common';
 import { ActivatedRoute, RouterLink } from '@angular/router';
+import { TranslocoService, TranslocoPipe } from '@jsverse/transloco';
 import { TaskService } from '../task.service';
 import { Task } from '../../../core/models/task.models';
 import { PageHeaderComponent } from '../../../shared/components/page-header/page-header.component';
@@ -28,6 +29,7 @@ import { ConfirmDialogService } from '../../../shared/components/confirm-dialog/
     PageHeaderComponent,
     ButtonComponent,
     SpinnerComponent,
+    TranslocoPipe,
     ErrorBannerComponent,
     EmptyStateComponent,
     TaskStatusBadgeComponent,
@@ -37,9 +39,10 @@ import { ConfirmDialogService } from '../../../shared/components/confirm-dialog/
   styleUrl: './task-list.component.scss',
 })
 export class TaskListComponent implements OnInit {
-  private readonly taskService   = inject(TaskService);
-  private readonly route         = inject(ActivatedRoute);
-  private readonly confirmDialog = inject(ConfirmDialogService);
+  private readonly taskService        = inject(TaskService);
+  private readonly route              = inject(ActivatedRoute);
+  private readonly confirmDialog      = inject(ConfirmDialogService);
+  private readonly translocoService   = inject(TranslocoService);
 
   readonly tableHeaders = ['Title', 'Status', 'Priority', 'Deadline', ''];
 
@@ -61,20 +64,20 @@ export class TaskListComponent implements OnInit {
     this.error.set(null);
     this.taskService.list(this.projectId, this.pageIndex, this.pageSize).subscribe({
       next:  (page) => { this.tasks.set(page.content); this.totalElements.set(page.totalElements); this.loading.set(false); },
-      error: ()     => { this.error.set('Failed to load tasks.'); this.loading.set(false); },
+      error: ()     => { this.error.set(this.translocoService.translate('tasks.list.loadError')); this.loading.set(false); },
     });
   }
 
   deleteTask(taskId: string, title: string): void {
     this.confirmDialog.open({
       title: `Delete "${title}"?`,
-      message: 'This action cannot be undone.',
-      confirmLabel: 'Delete',
+      message: this.translocoService.translate('tasks.panel.deleteError'),
+      confirmLabel: this.translocoService.translate('common.delete'),
     }).subscribe(confirmed => {
       if (!confirmed) return;
       this.taskService.delete(taskId).subscribe({
         next:  () => this.loadTasks(),
-        error: () => this.error.set('Failed to delete task.'),
+        error: () => this.error.set(this.translocoService.translate('tasks.panel.deleteError')),
       });
     });
   }

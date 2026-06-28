@@ -6,6 +6,7 @@ import {
   ElementRef,
   ViewChild,
 } from '@angular/core';
+import { TranslocoPipe } from '@jsverse/transloco';
 import { NotificationStore } from '../../store/notification.store';
 import { NotificationPanelComponent } from '../notification-panel/notification-panel.component';
 
@@ -13,7 +14,7 @@ import { NotificationPanelComponent } from '../notification-panel/notification-p
   selector: 'app-notification-bell',
   standalone: true,
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [NotificationPanelComponent],
+  imports: [NotificationPanelComponent, TranslocoPipe],
   template: `
     <div class="bell-host" #bellRef>
 
@@ -24,8 +25,8 @@ import { NotificationPanelComponent } from '../notification-panel/notification-p
         [class.bell-btn--active]="panelOpen()"
         [class.bell-btn--has-unread]="store.unreadCount() > 0"
         [attr.aria-label]="store.unreadCount() > 0
-          ? store.unreadCount() + ' unread notifications'
-          : 'Notifications'"
+          ? ('notifications.bell.unreadCount' | transloco: { count: store.unreadCount() })
+          : ('notifications.bell.ariaLabel' | transloco)"
         [attr.aria-expanded]="panelOpen()"
       >
         <span class="material-symbols-rounded bell-icon" aria-hidden="true">

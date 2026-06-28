@@ -1,12 +1,13 @@
 import { Component, ChangeDetectionStrategy, inject, signal, computed } from '@angular/core';
 import { Router, RouterLink, RouterLinkActive } from '@angular/router';
 import { OAuthService } from 'angular-oauth2-oidc';
+import { TranslocoPipe } from '@jsverse/transloco';
 import { AuthService } from '../../../core/auth/auth.service';
 import { NotificationBellComponent } from '../../../features/notifications/components/notification-bell/notification-bell.component';
 import { ThemePickerComponent } from '../theme-picker/theme-picker.component';
 
 interface NavItem {
-  label: string;
+  labelKey: string;
   icon: string;
   route: string;
 }
@@ -15,7 +16,7 @@ interface NavItem {
   selector: 'app-sidebar',
   standalone: true,
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [RouterLink, RouterLinkActive, NotificationBellComponent, ThemePickerComponent],
+  imports: [RouterLink, RouterLinkActive, NotificationBellComponent, ThemePickerComponent, TranslocoPipe],
   template: `
     <aside
       class="sidebar-root relative flex flex-col h-screen shrink-0 overflow-hidden"
@@ -93,8 +94,8 @@ interface NavItem {
 
         @if (!collapsed()) {
           <div class="brand-text animate-fade-up">
-            <span class="brand-name">EPM</span>
-            <span class="brand-sub">Project Management</span>
+            <span class="brand-name">{{ 'sidebar.brand.name' | transloco }}</span>
+            <span class="brand-sub">{{ 'sidebar.brand.subtitle' | transloco }}</span>
           </div>
         }
       </header>
@@ -112,8 +113,8 @@ interface NavItem {
              [routerLinkActiveOptions]="{ exact: false }"
              class="nav-item"
              [class.nav-item--collapsed]="collapsed()"
-             [attr.aria-label]="collapsed() ? item.label : null"
-             [title]="collapsed() ? item.label : ''"
+             [attr.aria-label]="collapsed() ? (item.labelKey | transloco) : null"
+             [title]="collapsed() ? (item.labelKey | transloco) : ''"
           >
             <!-- Active pill background -->
             <span class="nav-item-bg" aria-hidden="true"></span>
@@ -125,7 +126,7 @@ interface NavItem {
             <span class="material-symbols-rounded nav-item-icon" aria-hidden="true">{{ item.icon }}</span>
 
             @if (!collapsed()) {
-              <span class="nav-item-label">{{ item.label }}</span>
+              <span class="nav-item-label">{{ item.labelKey | transloco }}</span>
             }
           </a>
         }
@@ -151,8 +152,8 @@ interface NavItem {
             <button
               (click)="logout()"
               class="user-logout-btn"
-              aria-label="Logout"
-              title="Logout"
+              [attr.aria-label]="'common.logout' | transloco"
+              [title]="'common.logout' | transloco"
             >
               <span class="material-symbols-rounded" aria-hidden="true">logout</span>
             </button>
@@ -170,8 +171,8 @@ interface NavItem {
             (click)="toggleCollapse()"
             class="ctrl-btn ctrl-btn--collapse"
             [class.ctrl-btn--icon-only]="collapsed()"
-            [title]="collapsed() ? 'Expand sidebar' : 'Collapse sidebar'"
-            [attr.aria-label]="collapsed() ? 'Expand sidebar' : 'Collapse sidebar'"
+            [title]="collapsed() ? ('sidebar.expandAriaLabel' | transloco) : ('sidebar.collapseAriaLabel' | transloco)"
+            [attr.aria-label]="collapsed() ? ('sidebar.expandAriaLabel' | transloco) : ('sidebar.collapseAriaLabel' | transloco)"
             [attr.aria-expanded]="!collapsed()"
           >
             <span
@@ -182,7 +183,7 @@ interface NavItem {
               chevron_right
             </span>
             @if (!collapsed()) {
-              <span class="ctrl-btn-label">Collapse</span>
+              <span class="ctrl-btn-label">{{ 'sidebar.collapse' | transloco }}</span>
             }
           </button>
         </div>
@@ -615,9 +616,9 @@ export class SidebarComponent {
   collapsed = signal(false);
 
   readonly navItems: NavItem[] = [
-    { label: 'Projects', icon: 'folder',   route: '/projects' },
-    { label: 'Teams',    icon: 'group',    route: '/teams' },
-    { label: 'Settings', icon: 'settings', route: '/settings' },
+    { labelKey: 'sidebar.nav.projects', icon: 'folder',   route: '/projects' },
+    { labelKey: 'sidebar.nav.teams',    icon: 'group',    route: '/teams' },
+    { labelKey: 'sidebar.nav.settings', icon: 'settings', route: '/settings' },
   ];
 
   userName = computed(() => {
