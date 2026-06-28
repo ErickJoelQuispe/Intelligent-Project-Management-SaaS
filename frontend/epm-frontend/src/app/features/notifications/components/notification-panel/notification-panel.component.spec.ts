@@ -61,9 +61,9 @@ describe('NotificationPanelComponent', () => {
     const { fixture } = setup([]);
     await fixture.whenStable();
     const el = fixture.nativeElement as HTMLElement;
-    const emptyState = el.querySelector('app-empty-state');
+    // The component uses an inline .notif-empty div (not app-empty-state component)
+    const emptyState = el.querySelector('.notif-empty');
     expect(emptyState).toBeTruthy();
-    // Template empty-state title is "You're all caught up", description contains "No new notifications."
     expect(emptyState!.textContent).toContain('caught up');
   });
 
@@ -87,10 +87,12 @@ describe('NotificationPanelComponent', () => {
     await fixture.whenStable();
     const el = fixture.nativeElement as HTMLElement;
     const items = el.querySelectorAll('app-notification-item');
-    // First item (n1) is unread — should contain a "Mark read" button
-    expect(items[0].textContent).toContain('Mark read');
-    // Second item (n2) is read — should NOT contain a "Mark read" button
-    expect(items[1].textContent).not.toContain('Mark read');
+    // Unread item (n1) is rendered with role="button" on its inner div (clickable to mark as read).
+    // Read item (n2) has no role="button" — it is not interactive.
+    const unreadInner = items[0].querySelector('[role="button"]');
+    const readInner   = items[1].querySelector('[role="button"]');
+    expect(unreadInner).toBeTruthy();
+    expect(readInner).toBeNull();
   });
 
   it('calls store.markAsRead when "Mark read" button is clicked', async () => {
@@ -98,10 +100,10 @@ describe('NotificationPanelComponent', () => {
     const { fixture, storeMock } = setup(notifs);
     await fixture.whenStable();
     const el = fixture.nativeElement as HTMLElement;
-    // Find the "Mark read" button inside the first notification item
+    // The unread notification item renders a div with role="button" that calls markAsRead on click.
     const notifItem = el.querySelector('app-notification-item');
-    const btn = notifItem?.querySelector('button') as HTMLButtonElement;
-    btn.click();
+    const clickTarget = notifItem?.querySelector('[role="button"]') as HTMLElement;
+    clickTarget.click();
     expect(storeMock.markAsRead).toHaveBeenCalledWith('n1');
   });
 

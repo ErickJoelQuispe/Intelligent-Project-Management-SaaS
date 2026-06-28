@@ -72,6 +72,11 @@ describe('ProjectListComponent', () => {
     projectServiceMock.list.mockReturnValue(of(mockProjects));
     fixture.detectChanges();
     await fixture.whenStable();
+
+    // The mockProjects list includes one ARCHIVED project. The component filters
+    // archived projects from the 'projects' computed signal when showArchived=false.
+    // Enable showArchived so all 3 projects (including the archived one) are shown.
+    component.showArchived.set(true);
     fixture.detectChanges();
 
     const cards = fixture.nativeElement.querySelectorAll('app-project-card');

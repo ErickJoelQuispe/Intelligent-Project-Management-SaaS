@@ -42,10 +42,10 @@ describe('TaskCardComponent', () => {
 
   it('renders the task title from input', () => {
     const compiled = fixture.nativeElement as HTMLElement;
-    // Template uses a <span> with the title text directly (no semantic CSS class)
-    const spans = Array.from(compiled.querySelectorAll('span'));
-    const titleSpan = spans.find((s) => s.textContent?.trim() === 'Fix critical bug');
-    expect(titleSpan).toBeTruthy();
+    // Template uses <p class="task-card-title"> to render the task title
+    const titleEl = compiled.querySelector('p.task-card-title');
+    expect(titleEl).toBeTruthy();
+    expect(titleEl?.textContent?.trim()).toBe('Fix critical bug');
   });
 
   it('renders the priority chip with correct priority label', () => {

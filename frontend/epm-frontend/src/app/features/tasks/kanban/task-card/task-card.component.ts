@@ -15,6 +15,7 @@ import { Task, TaskSummary } from '../../../../core/models/task.models';
 import { TenantUser } from '../../../../core/models/user-profile.model';
 import { DragStateService } from '../drag/drag-state.service';
 import { TaskService } from '../../task.service';
+import { ConfirmDialogService } from '../../../../shared/components/confirm-dialog/confirm-dialog.service';
 
 @Component({
   selector: 'app-task-card',
@@ -30,8 +31,9 @@ export class TaskCardComponent {
   users      = input<TenantUser[]>([]);
   deleteTask = output<string>();
 
-  private readonly dragState   = inject(DragStateService);
-  private readonly taskService = inject(TaskService);
+  private readonly dragState     = inject(DragStateService);
+  private readonly taskService   = inject(TaskService);
+  private readonly confirmDialog = inject(ConfirmDialogService);
 
   // ── Expand state ────────────────────────────────────────────────────────────
   expanded        = signal(false);
@@ -125,7 +127,13 @@ export class TaskCardComponent {
 
   onDelete(event: MouseEvent): void {
     event.stopPropagation();
-    if (!confirm(`Delete "${this.task().title}"? This cannot be undone.`)) return;
-    this.deleteTask.emit(this.task().taskId);
+    this.confirmDialog.open({
+      title: `Delete "${this.task().title}"?`,
+      message: 'This action cannot be undone.',
+      confirmLabel: 'Delete',
+    }).subscribe(confirmed => {
+      if (!confirmed) return;
+      this.deleteTask.emit(this.task().taskId);
+    });
   }
 }

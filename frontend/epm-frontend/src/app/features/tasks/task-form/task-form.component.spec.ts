@@ -60,8 +60,8 @@ describe('TaskFormComponent', () => {
     await fixture.whenStable();
     fixture.detectChanges();
 
-    // Template uses a <span> with error text (not mat-error) when title is touched + invalid
-    const errorSpan = fixture.nativeElement.querySelector('.text-danger.text-xs');
+    // Template uses a <span class="tf-error"> when title is touched + invalid
+    const errorSpan = fixture.nativeElement.querySelector('.tf-error');
     expect(errorSpan).not.toBeNull();
     expect(errorSpan.textContent).toContain('required');
   });

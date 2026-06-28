@@ -160,7 +160,8 @@ describe('AiChatComponent', () => {
       component.send();
       fixture.detectChanges();
 
-      const btn = fixture.debugElement.query(By.css('[data-testid="send-button"] button'));
+      // The data-testid is placed directly on the <button> element in the template.
+      const btn = fixture.debugElement.query(By.css('[data-testid="send-button"]'));
       expect(btn?.nativeElement?.disabled).toBe(true);
     });
   });

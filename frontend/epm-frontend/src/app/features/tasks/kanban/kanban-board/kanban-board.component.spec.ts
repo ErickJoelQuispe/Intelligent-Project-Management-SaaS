@@ -78,7 +78,8 @@ describe('KanbanBoardComponent', () => {
     const storeMock = makeStoreMock(emptyColumns);
     await setup(storeMock);
 
-    const emptyPlaceholders = fixture.nativeElement.querySelectorAll('app-empty-state');
+    // kanban-column uses an inline .kanban-col-empty div (not app-empty-state component)
+    const emptyPlaceholders = fixture.nativeElement.querySelectorAll('.kanban-col-empty');
     expect(emptyPlaceholders.length).toBe(5);
     emptyPlaceholders.forEach((el: Element) => {
       expect(el.textContent).toContain('No tasks');

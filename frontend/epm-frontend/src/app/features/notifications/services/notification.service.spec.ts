@@ -7,26 +7,24 @@ import { OAuthService } from 'angular-oauth2-oidc';
 import { NotificationService } from './notification.service';
 import { Notification } from '../models/notification.model';
 
-// ─── RxStomp module mock ──────────────────────────────────────────────────────
-// Using async factory so the MockRxStompClass IS a proper constructor.
-
-vi.mock('@stomp/rx-stomp', async () => {
-  class MockRxStompClass {
-    configure = vi.fn();
-    activate = vi.fn();
-    deactivate = vi.fn().mockResolvedValue(undefined);
-    watch = vi.fn();
-  }
-  return {
-    RxStomp: MockRxStompClass,
-    RxStompConfig: class {},
-  };
-});
-
-// Helper that returns the mock instance from the service
+// Helper that returns the RxStomp instance from the service with spies applied.
+// We spy directly on the instance after connect() creates it, because Vitest
+// module mocking for class constructors is unreliable with Angular's TestBed.
 function stomp(service: NotificationService) {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   return service.getRxStomp() as any;
+}
+
+// Spy on the RxStomp prototype methods so every instance gets spied automatically.
+// This runs before each test via beforeEach below.
+let spiedPrototype = false;
+function ensurePrototypeSpies() {
+  if (spiedPrototype) return;
+  spiedPrototype = true;
+  vi.spyOn(RxStomp.prototype, 'configure');
+  vi.spyOn(RxStomp.prototype, 'activate');
+  vi.spyOn(RxStomp.prototype, 'deactivate').mockResolvedValue(undefined);
+  vi.spyOn(RxStomp.prototype, 'watch');
 }
 
 describe('NotificationService', () => {
@@ -34,6 +32,7 @@ describe('NotificationService', () => {
   let httpMock: HttpTestingController;
 
   beforeEach(() => {
+    ensurePrototypeSpies();
     TestBed.configureTestingModule({
       providers: [
         provideHttpClient(),

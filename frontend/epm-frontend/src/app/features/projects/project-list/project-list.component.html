@@ -26,7 +26,7 @@
       (retry)="loadProjects()"
     />
 
-  } @else if (projects().length === 0) {
+  } @else if (allProjects().length === 0) {
     <app-empty-state
       icon="folder"
       title="No projects yet"
@@ -43,27 +43,22 @@
     <!-- Stats bar -->
     <div class="stats-bar animate-fade-up" role="status" aria-live="polite">
 
-      <div class="stat-item">
-        <span class="stat-number gradient-text">{{ projects().length }}</span>
-        <span class="stat-label">{{ projects().length === 1 ? 'project' : 'projects' }}</span>
+      <div class="stat-pill">
+        <span class="stat-pill__value">{{ allProjects().length }}</span>
+        <span class="stat-pill__label">{{ allProjects().length === 1 ? 'project' : 'projects' }}</span>
       </div>
 
-      <div class="stat-divider" aria-hidden="true"></div>
-
-      <div class="stat-item">
-        <span class="stat-dot stat-dot--active" aria-hidden="true"></span>
-        <span class="stat-count">{{ activeCount() }}</span>
-        <span class="stat-label">active</span>
+      <div class="stat-pill stat-pill--active">
+        <span class="stat-dot" aria-hidden="true"></span>
+        <span class="stat-pill__value">{{ activeCount() }}</span>
+        <span class="stat-pill__label">active</span>
       </div>
 
-      @if (archivedCount() > 0) {
-        <div class="stat-divider" aria-hidden="true"></div>
-        <div class="stat-item">
-          <span class="material-symbols-rounded stat-icon" aria-hidden="true">inventory_2</span>
-          <span class="stat-count">{{ archivedCount() }}</span>
-          <span class="stat-label">archived</span>
-        </div>
-      }
+      <div class="stat-pill stat-pill--archived">
+        <span class="material-symbols-rounded stat-pill__icon" aria-hidden="true">inventory_2</span>
+        <span class="stat-pill__value">{{ archivedCount() }}</span>
+        <span class="stat-pill__label">archived</span>
+      </div>
 
     </div>
 

@@ -26,19 +26,14 @@ function nameToHue(name: string): number {
   standalone: true,
   changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [DatePipe, RouterLink, ProjectStatusBadgeComponent],
+  host: { style: 'display: flex; flex-direction: column; height: 100%;' },
   template: `
     <article
       class="project-card animate-card-in"
       [class.project-card--archived]="isArchived()"
       [routerLink]="['/projects', project().id]"
+      [style.border-left-color]="accentColor()"
     >
-      <!-- Per-project color strip (top) -->
-      <div
-        class="project-card-strip"
-        [style.background]="accentGradient()"
-        aria-hidden="true"
-      ></div>
-
       <!-- Hover glow backdrop -->
       <div
         class="project-card-glow"
@@ -121,12 +116,14 @@ function nameToHue(name: string): number {
         position: relative;
         display: flex;
         flex-direction: column;
+        height: 100%;           /* fills the listitem flex container */
         border-radius: 0.875rem;
         overflow: hidden;
         background: var(--glass-bg);
         backdrop-filter: blur(12px);
         -webkit-backdrop-filter: blur(12px);
         border: 1px solid var(--color-border);
+        border-left-width: 3px;
         transition:
           border-color 0.2s ease,
           box-shadow 0.2s ease,
@@ -158,17 +155,6 @@ function nameToHue(name: string): number {
       }
       .project-card:hover::after {
         opacity: 1;
-      }
-
-      /* ── Color strip ─────────────────────────────── */
-      .project-card-strip {
-        height: 3px;
-        width: 100%;
-        flex-shrink: 0;
-        transition: height 0.2s ease;
-      }
-      .project-card:hover .project-card-strip {
-        height: 3px;
       }
 
       /* ── Hover glow backdrop ─────────────────────── */
@@ -318,6 +304,7 @@ function nameToHue(name: string): number {
       }
 
       .project-card-desc {
+        flex: 1;               /* pushes the date to the bottom */
         font-size: 0.8125rem;
         line-height: 1.6;
         color: var(--color-text-secondary);

@@ -63,53 +63,32 @@ export type ButtonSize    = 'sm' | 'md' | 'lg';
     button[data-size="md"] { padding: 0.5rem  1.125rem;  font-size: 0.875rem; }
     button[data-size="lg"] { padding: 0.75rem 1.5rem;    font-size: 1rem; }
 
-    /* ── PRIMARY — gradiente violet→indigo, sin border visible ── */
+    /* ── PRIMARY — outlined with soft accent fill, theme-aware ── */
     button[data-variant="primary"] {
-      background: linear-gradient(135deg,
-        var(--color-accent-hover) 0%,
-        var(--color-accent) 55%,
-        oklch(0.50 0.24 255) 100%
-      );
-      color: white;
-      border-color: transparent;
-      /* Brillo interno superior — da sensación de profundidad */
-      box-shadow:
-        0 1px 0 oklch(1 0 0 / 0.18) inset,
-        0 -1px 0 oklch(0 0 0 / 0.25) inset,
-        0 0 20px color-mix(in oklch, var(--color-accent) 28%, transparent),
-        0 2px 8px oklch(0 0 0 / 0.5);
+      background: color-mix(in oklch, var(--color-accent) 10%, transparent);
+      color: var(--color-accent-hover);
+      border: 1.5px solid var(--color-accent);
+      box-shadow: none;
+      font-weight: 650;
     }
 
-    /* Shimmer en la mitad superior — solo visual, no interactivo */
+    /* No shimmer needed for outlined style */
     button[data-variant="primary"]::before {
-      content: '';
-      position: absolute;
-      top: 0; left: 0; right: 0;
-      height: 50%;
-      background: linear-gradient(180deg, oklch(1 0 0 / 0.07) 0%, transparent 100%);
-      border-radius: 0.625rem 0.625rem 0 0;
-      pointer-events: none;
+      content: none;
     }
 
     button[data-variant="primary"]:hover:not(:disabled) {
-      background: linear-gradient(135deg,
-        var(--color-accent-hover) 0%,
-        var(--color-accent) 55%,
-        oklch(0.55 0.24 255) 100%
-      );
-      box-shadow:
-        0 1px 0 oklch(1 0 0 / 0.2) inset,
-        0 -1px 0 oklch(0 0 0 / 0.2) inset,
-        0 0 28px color-mix(in oklch, var(--color-accent) 50%, transparent),
-        0 4px 16px oklch(0 0 0 / 0.4);
+      background: color-mix(in oklch, var(--color-accent) 16%, transparent);
+      border-color: var(--color-accent-hover);
+      color: var(--color-accent-hover);
+      box-shadow: 0 0 16px color-mix(in oklch, var(--color-accent) 25%, transparent);
       transform: translateY(-1px);
     }
 
     button[data-variant="primary"]:active:not(:disabled) {
       transform: translateY(0px);
-      box-shadow:
-        0 1px 0 oklch(0 0 0 / 0.2) inset,
-        0 0 12px color-mix(in oklch, var(--color-accent) 30%, transparent);
+      background: color-mix(in oklch, var(--color-accent) 20%, transparent);
+      box-shadow: none;
     }
 
     /* ── SECONDARY — glass, borde sutil con tinte violeta ── */

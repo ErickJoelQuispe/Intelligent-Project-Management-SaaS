@@ -1,6 +1,8 @@
 import { TestBed } from '@angular/core/testing';
 import { ComponentFixture } from '@angular/core/testing';
 import { provideAnimations } from '@angular/platform-browser/animations';
+import { provideHttpClient } from '@angular/common/http';
+import { provideHttpClientTesting } from '@angular/common/http/testing';
 import { KanbanColumnComponent } from './kanban-column.component';
 import { TaskSummary } from '../../../../core/models/task.models';
 
@@ -16,11 +18,17 @@ describe('KanbanColumnComponent', () => {
   beforeEach(async () => {
     await TestBed.configureTestingModule({
       imports: [KanbanColumnComponent],
-      providers: [provideAnimations()],
+      providers: [
+        provideAnimations(),
+        provideHttpClient(),
+        provideHttpClientTesting(),
+      ],
     }).compileComponents();
 
     fixture = TestBed.createComponent(KanbanColumnComponent);
     component = fixture.componentInstance;
+    // projectId is required by KanbanColumnComponent (used by task-card children)
+    fixture.componentRef.setInput('projectId', 'proj-test');
     fixture.componentRef.setInput('status', 'TODO');
     fixture.componentRef.setInput('tasks', mockTasks);
     fixture.detectChanges();
@@ -29,17 +37,16 @@ describe('KanbanColumnComponent', () => {
 
   it('renders the human-readable column title for the given status', () => {
     const compiled = fixture.nativeElement as HTMLElement;
-    // Status label rendered as an uppercase span inside the column header
-    const spans = Array.from(compiled.querySelectorAll('span'));
-    const header = spans.find(s => s.textContent?.trim().toUpperCase() === 'TO DO');
-    expect(header?.textContent?.trim().toUpperCase()).toBe('TO DO');
+    // Status label rendered in an <h2 class="kanban-col-title"> element
+    const h2 = compiled.querySelector('h2.kanban-col-title');
+    expect(h2?.textContent?.trim().toUpperCase()).toBe('TO DO');
   });
 
   it('displays correct task count matching number of tasks provided', () => {
     const compiled = fixture.nativeElement as HTMLElement;
-    // Task count rendered inside app-badge
-    const badge = compiled.querySelector('app-badge');
-    expect(badge?.textContent?.trim()).toBe('2');
+    // Task count rendered in <span class="kanban-col-count">
+    const countSpan = compiled.querySelector('.kanban-col-count');
+    expect(countSpan?.textContent?.trim()).toBe('2');
   });
 
   it('renders a task card for each task in the tasks input', () => {
@@ -53,7 +60,8 @@ describe('KanbanColumnComponent', () => {
     fixture.detectChanges();
 
     const compiled = fixture.nativeElement as HTMLElement;
-    const emptyState = compiled.querySelector('app-empty-state');
+    // The column uses an inline .kanban-col-empty div (not app-empty-state component)
+    const emptyState = compiled.querySelector('.kanban-col-empty');
     expect(emptyState).toBeTruthy();
     expect(emptyState?.textContent?.trim()).toContain('No tasks');
   });

@@ -420,7 +420,7 @@ services:
   #           kafka, redis
   # ─────────────────────────────────────────────────────────────────
   ai-service:
-    image: ghcr.io/erickjoelquispe/epm-ai:${TAG:-latest}
+    image: epm-ai-local
     container_name: epm-ai-service
     ports:
       - "8086:8086"
