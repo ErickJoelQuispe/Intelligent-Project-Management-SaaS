@@ -6,6 +6,7 @@ import { signal } from '@angular/core';
 import { KanbanBoardComponent } from './kanban-board.component';
 import { TaskStore } from '../../task.store';
 import { KanbanColumn } from '../../../../core/models/task.models';
+import { provideTranslocoTesting } from '../../../../testing/transloco-testing';
 
 function makeStoreMock(columns: KanbanColumn[]) {
   return {
@@ -38,6 +39,7 @@ describe('KanbanBoardComponent', () => {
             snapshot: { paramMap: { get: (_: string) => 'project-abc' } },
           },
         },
+        ...provideTranslocoTesting(),
       ],
     })
       .overrideComponent(KanbanBoardComponent, {

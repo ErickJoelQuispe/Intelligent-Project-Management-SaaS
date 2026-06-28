@@ -3,6 +3,7 @@ import { HttpTestingController, provideHttpClientTesting } from '@angular/common
 import { provideHttpClient } from '@angular/common/http';
 import { UserService } from './user.service';
 import { UserProfile, UpdateProfileRequest } from '../../../core/models/user-profile.model';
+import { provideTranslocoTesting } from '../../../testing/transloco-testing';
 
 const BASE_URL = 'http://localhost:8080/api/v1/users';
 
@@ -28,6 +29,7 @@ describe('UserService', () => {
         UserService,
         provideHttpClient(),
         provideHttpClientTesting(),
+        ...provideTranslocoTesting(),
       ],
     });
     service = TestBed.inject(UserService);

@@ -1,6 +1,7 @@
 import { TestBed } from '@angular/core/testing';
 import { MAT_DIALOG_DATA, MatDialogRef } from '@angular/material/dialog';
 import { ConfirmDeleteAccountDialogComponent } from './confirm-delete-account-dialog.component';
+import { provideTranslocoTesting } from '../../../../testing/transloco-testing';
 
 describe('ConfirmDeleteAccountDialogComponent', () => {
   let mockDialogRef: { close: ReturnType<typeof vi.fn> };
@@ -13,6 +14,7 @@ describe('ConfirmDeleteAccountDialogComponent', () => {
       providers: [
         { provide: MatDialogRef, useValue: mockDialogRef },
         { provide: MAT_DIALOG_DATA, useValue: {} },
+        ...provideTranslocoTesting(),
       ],
     });
 

@@ -3,6 +3,7 @@ import { HttpTestingController, provideHttpClientTesting } from '@angular/common
 import { provideHttpClient } from '@angular/common/http';
 import { AuthApiService } from './auth-api.service';
 import { environment } from '../../../environments/environment';
+import { provideTranslocoTesting } from '../../testing/transloco-testing';
 
 describe('AuthApiService', () => {
   let service: AuthApiService;
@@ -14,6 +15,7 @@ describe('AuthApiService', () => {
         AuthApiService,
         provideHttpClient(),
         provideHttpClientTesting(),
+        ...provideTranslocoTesting(),
       ],
     });
     service = TestBed.inject(AuthApiService);

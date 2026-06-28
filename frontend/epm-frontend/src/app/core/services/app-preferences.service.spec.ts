@@ -1,5 +1,6 @@
 import { TestBed } from '@angular/core/testing';
 import { AppPreferencesService } from './app-preferences.service';
+import { provideTranslocoTesting } from '../../testing/transloco-testing';
 
 describe('AppPreferencesService', () => {
   let service: AppPreferencesService;
@@ -13,7 +14,7 @@ describe('AppPreferencesService', () => {
     setItemSpy = vi.spyOn(Storage.prototype, 'setItem').mockImplementation(() => undefined);
 
     TestBed.configureTestingModule({
-      providers: [AppPreferencesService],
+      providers: [AppPreferencesService, ...provideTranslocoTesting()],
     });
 
     service = TestBed.inject(AppPreferencesService);

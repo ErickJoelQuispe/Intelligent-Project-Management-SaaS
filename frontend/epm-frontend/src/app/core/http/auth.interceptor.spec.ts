@@ -8,6 +8,7 @@ import {
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { OAuthService } from 'angular-oauth2-oidc';
 import { authInterceptor } from './auth.interceptor';
+import { provideTranslocoTesting } from '../../testing/transloco-testing';
 
 describe('authInterceptor', () => {
   let httpClient: HttpClient;
@@ -24,6 +25,7 @@ describe('authInterceptor', () => {
         provideHttpClient(withInterceptors([authInterceptor])),
         provideHttpClientTesting(),
         { provide: OAuthService, useValue: oauthServiceMock },
+        ...provideTranslocoTesting(),
       ],
     });
 

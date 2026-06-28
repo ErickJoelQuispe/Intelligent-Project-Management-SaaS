@@ -11,6 +11,7 @@ import { TeamDetailComponent } from './team-detail.component';
 import { TeamService } from '../team.service';
 import { UserService } from '../../settings/services/user.service';
 import { Team } from '../../../core/models/team.model';
+import { provideTranslocoTesting } from '../../../testing/transloco-testing';
 
 const OWNER_ID = 'owner-001';
 const MEMBER_ID = 'member-002';
@@ -87,6 +88,7 @@ async function createFixture(
         provide: ActivatedRoute,
         useValue: { snapshot: { paramMap: { get: () => 'team-001' } } },
       },
+      ...provideTranslocoTesting(),
     ],
   }).compileComponents();
 

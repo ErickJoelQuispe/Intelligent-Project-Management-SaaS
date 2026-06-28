@@ -4,6 +4,7 @@ import { provideHttpClient } from '@angular/common/http';
 import { ProjectService } from './project.service';
 import { Project, ProjectStatus, ProjectVisibility } from '../../core/models/project.model';
 import { CreateProjectRequest } from '../../core/models/create-project.request';
+import { provideTranslocoTesting } from '../../testing/transloco-testing';
 
 const BASE_URL = 'http://localhost:8080/api/v1/projects';
 
@@ -29,6 +30,7 @@ describe('ProjectService', () => {
         ProjectService,
         provideHttpClient(),
         provideHttpClientTesting(),
+        ...provideTranslocoTesting(),
       ],
     });
     service = TestBed.inject(ProjectService);

@@ -6,6 +6,7 @@ import { HttpErrorResponse } from '@angular/common/http';
 import { ProfileStore } from './profile.store';
 import { UserService } from '../services/user.service';
 import { UserProfile, UpdateProfileRequest } from '../../../core/models/user-profile.model';
+import { provideTranslocoTesting } from '../../../testing/transloco-testing';
 
 const mockProfile: UserProfile = {
   id: '11111111-1111-1111-1111-111111111111',
@@ -38,6 +39,7 @@ describe('ProfileStore', () => {
         provideHttpClientTesting(),
         ProfileStore,
         { provide: UserService, useValue: serviceMock },
+        ...provideTranslocoTesting(),
       ],
     });
 

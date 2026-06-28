@@ -5,6 +5,7 @@ import { of, throwError } from 'rxjs';
 import { NotificationPreferencesStore } from './notification-preferences.store';
 import { NotificationPreferencesService } from '../services/notification-preferences.service';
 import { NotificationPreference } from '../models/notification.model';
+import { provideTranslocoTesting } from '../../../testing/transloco-testing';
 
 const mockPreferences: NotificationPreference[] = [
   { eventType: 'TASK_CREATED', channel: 'IN_APP', enabled: true },
@@ -31,6 +32,7 @@ describe('NotificationPreferencesStore', () => {
         provideHttpClientTesting(),
         NotificationPreferencesStore,
         { provide: NotificationPreferencesService, useValue: serviceMock },
+        ...provideTranslocoTesting(),
       ],
     });
 

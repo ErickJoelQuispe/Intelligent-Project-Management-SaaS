@@ -9,6 +9,7 @@ import { of, throwError } from 'rxjs';
 import { TaskListComponent } from './task-list.component';
 import { TaskService } from '../task.service';
 import { TaskSummary } from '../../../core/models/task.models';
+import { provideTranslocoTesting } from '../../../testing/transloco-testing';
 
 describe('TaskListComponent', () => {
   let fixture: ComponentFixture<TaskListComponent>;
@@ -39,6 +40,7 @@ describe('TaskListComponent', () => {
           provide: ActivatedRoute,
           useValue: { snapshot: { paramMap: { get: () => 'project-123' } } },
         },
+        ...provideTranslocoTesting(),
       ],
     }).compileComponents();
 

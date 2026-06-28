@@ -3,6 +3,7 @@ import { provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { TaskService } from './task.service';
 import { KanbanResponse } from '../../core/models/task.models';
+import { provideTranslocoTesting } from '../../testing/transloco-testing';
 
 describe('TaskService', () => {
   let service: TaskService;
@@ -14,6 +15,7 @@ describe('TaskService', () => {
         provideHttpClient(),
         provideHttpClientTesting(),
         TaskService,
+        ...provideTranslocoTesting(),
       ],
     });
 

@@ -6,6 +6,7 @@ import { provideAnimations } from '@angular/platform-browser/animations';
 import { NotificationBellComponent } from './notification-bell.component';
 import { NotificationStore } from '../../store/notification.store';
 import { NotificationService } from '../../services/notification.service';
+import { provideTranslocoTesting } from '../../../../testing/transloco-testing';
 
 function createStoreMock(unreadCount = 0) {
   return {
@@ -31,6 +32,7 @@ describe('NotificationBellComponent', () => {
         provideAnimations(),
         { provide: NotificationStore, useValue: storeMock },
         { provide: NotificationService, useValue: {} },
+        ...provideTranslocoTesting(),
       ],
     });
 

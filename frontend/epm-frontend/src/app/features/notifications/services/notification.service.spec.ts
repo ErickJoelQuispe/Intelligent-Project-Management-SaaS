@@ -6,6 +6,7 @@ import { RxStomp } from '@stomp/rx-stomp';
 import { OAuthService } from 'angular-oauth2-oidc';
 import { NotificationService } from './notification.service';
 import { Notification } from '../models/notification.model';
+import { provideTranslocoTesting } from '../../../testing/transloco-testing';
 
 // Helper that returns the RxStomp instance from the service with spies applied.
 // We spy directly on the instance after connect() creates it, because Vitest
@@ -42,6 +43,7 @@ describe('NotificationService', () => {
           provide: OAuthService,
           useValue: { getAccessToken: vi.fn().mockReturnValue('fresh-token') },
         },
+        ...provideTranslocoTesting(),
       ],
     });
 

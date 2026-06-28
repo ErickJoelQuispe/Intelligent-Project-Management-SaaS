@@ -3,6 +3,7 @@ import { ComponentFixture } from '@angular/core/testing';
 import { provideAnimations } from '@angular/platform-browser/animations';
 import { TaskCardComponent } from './task-card.component';
 import { TaskSummary } from '../../../../core/models/task.models';
+import { provideTranslocoTesting } from '../../../../testing/transloco-testing';
 
 describe('TaskCardComponent', () => {
   let fixture: ComponentFixture<TaskCardComponent>;
@@ -26,7 +27,7 @@ describe('TaskCardComponent', () => {
   async function createComponent(task: TaskSummary) {
     await TestBed.configureTestingModule({
       imports: [TaskCardComponent],
-      providers: [provideAnimations()],
+      providers: [provideAnimations(), ...provideTranslocoTesting()],
     }).compileComponents();
 
     fixture = TestBed.createComponent(TaskCardComponent);

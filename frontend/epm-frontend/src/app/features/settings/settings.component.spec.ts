@@ -16,6 +16,7 @@ import { signal } from '@angular/core';
 import { of, throwError } from 'rxjs';
 import { UserProfile, UserPreferences } from '../../core/models/user-profile.model';
 import { UserSession } from '../../core/models/user-session.model';
+import { provideTranslocoTesting } from '../../testing/transloco-testing';
 
 /**
  * Angular Material 21 renders mat-slide-toggle with the aria-label and
@@ -72,6 +73,7 @@ describe('SettingsComponent — appearance wiring', () => {
         { provide: SessionsStore, useValue: { sessions: signal([]), isLoading: signal(false), revokingSessionId: signal(null), error: signal(null), loadSessions: vi.fn(), revokeSession: vi.fn(), currentSessionId: vi.fn().mockReturnValue(null) } },
         { provide: OAuthService, useValue: { getIdentityClaims: vi.fn().mockReturnValue({}), getAccessTokenExpiration: vi.fn().mockReturnValue(Date.now() + 3600000) } },
         { provide: AuthService, useValue: { logout: vi.fn() } },
+        ...provideTranslocoTesting(),
       ],
     });
 
@@ -215,6 +217,7 @@ describe('SettingsComponent — workspace preferences wiring', () => {
           useValue: { getIdentityClaims: vi.fn().mockReturnValue({}), getAccessTokenExpiration: vi.fn().mockReturnValue(Date.now() + 3600000) }
         },
         { provide: AuthService, useValue: { logout: vi.fn() } },
+        ...provideTranslocoTesting(),
       ],
     });
 
@@ -348,6 +351,7 @@ describe('SettingsComponent — delete account flow', () => {
         { provide: AuthApiService, useValue: authApiServiceMock },
         { provide: UserService, useValue: userServiceMock },
         { provide: MatDialog, useValue: dialogMock },
+        ...provideTranslocoTesting(),
       ],
     });
 
@@ -473,6 +477,7 @@ describe('SettingsComponent — sessions UI wiring', () => {
         { provide: SessionsStore, useValue: sessionsStoreMock },
         { provide: OAuthService, useValue: { getIdentityClaims: vi.fn().mockReturnValue({}), getAccessTokenExpiration: vi.fn().mockReturnValue(Date.now() + 3600000) } },
         { provide: AuthService, useValue: { logout: vi.fn() } },
+        ...provideTranslocoTesting(),
       ],
     });
 

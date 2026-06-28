@@ -7,6 +7,7 @@ import { NotificationPanelComponent } from './notification-panel.component';
 import { NotificationStore } from '../../store/notification.store';
 import { NotificationService } from '../../services/notification.service';
 import { Notification } from '../../models/notification.model';
+import { provideTranslocoTesting } from '../../../../testing/transloco-testing';
 
 function mockNotif(overrides: Partial<Notification> = {}): Notification {
   return {
@@ -47,6 +48,7 @@ describe('NotificationPanelComponent', () => {
         provideAnimations(),
         { provide: NotificationStore, useValue: storeMock },
         { provide: NotificationService, useValue: {} },
+        ...provideTranslocoTesting(),
       ],
     });
 

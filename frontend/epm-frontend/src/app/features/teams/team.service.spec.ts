@@ -3,6 +3,7 @@ import { HttpTestingController, provideHttpClientTesting } from '@angular/common
 import { provideHttpClient } from '@angular/common/http';
 import { TeamService } from './team.service';
 import { Team, UpdateTeamRequest, UpdateMemberRoleRequest } from '../../core/models/team.model';
+import { provideTranslocoTesting } from '../../testing/transloco-testing';
 
 const BASE_URL = 'http://localhost:8080/api/v1/teams';
 
@@ -42,6 +43,7 @@ describe('TeamService', () => {
         TeamService,
         provideHttpClient(),
         provideHttpClientTesting(),
+        ...provideTranslocoTesting(),
       ],
     });
     service = TestBed.inject(TeamService);

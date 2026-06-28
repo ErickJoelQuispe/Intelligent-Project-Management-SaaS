@@ -3,6 +3,7 @@ import { By } from '@angular/platform-browser';
 import { of, throwError, Subject } from 'rxjs';
 import { AiChatComponent } from './ai-chat.component';
 import { AiService } from '../ai.service';
+import { provideTranslocoTesting } from '../../../testing/transloco-testing';
 
 function makeAiServiceStub(streamSource: Subject<string>) {
   return {
@@ -22,7 +23,7 @@ describe('AiChatComponent', () => {
 
     await TestBed.configureTestingModule({
       imports: [AiChatComponent],
-      providers: [{ provide: AiService, useValue: aiServiceStub }],
+      providers: [{ provide: AiService, useValue: aiServiceStub }, ...provideTranslocoTesting()],
     }).compileComponents();
 
     fixture = TestBed.createComponent(AiChatComponent);

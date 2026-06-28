@@ -6,6 +6,7 @@ import { of, throwError } from 'rxjs';
 import { ProjectListComponent } from './project-list.component';
 import { ProjectService } from '../project.service';
 import { Project, ProjectStatus, ProjectVisibility } from '../../../core/models/project.model';
+import { provideTranslocoTesting } from '../../../testing/transloco-testing';
 
 const mockProjects: Project[] = [
   {
@@ -57,6 +58,7 @@ describe('ProjectListComponent', () => {
         { provide: ProjectService, useValue: projectServiceMock },
         provideRouter([]),
         provideAnimations(),
+        ...provideTranslocoTesting(),
       ],
     }).compileComponents();
 

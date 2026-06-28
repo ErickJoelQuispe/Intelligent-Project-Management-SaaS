@@ -5,6 +5,7 @@ import { of } from 'rxjs';
 import { TaskStore } from './task.store';
 import { TaskService } from './task.service';
 import { KanbanResponse } from '../../core/models/task.models';
+import { provideTranslocoTesting } from '../../testing/transloco-testing';
 
 describe('TaskStore', () => {
   let store: InstanceType<typeof TaskStore>;
@@ -22,6 +23,7 @@ describe('TaskStore', () => {
         provideHttpClientTesting(),
         TaskStore,
         { provide: TaskService, useValue: taskServiceMock },
+        ...provideTranslocoTesting(),
       ],
     });
 

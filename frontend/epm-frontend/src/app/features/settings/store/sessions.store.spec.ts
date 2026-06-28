@@ -8,6 +8,7 @@ import { AuthApiService } from '../../../core/services/auth-api.service';
 import { OAuthService } from 'angular-oauth2-oidc';
 import { MatDialog } from '@angular/material/dialog';
 import { UserSession } from '../../../core/models/user-session.model';
+import { provideTranslocoTesting } from '../../../testing/transloco-testing';
 
 const MOCK_SESSIONS: UserSession[] = [
   {
@@ -54,6 +55,7 @@ describe('SessionsStore', () => {
         { provide: AuthApiService, useValue: authApiMock },
         { provide: OAuthService, useValue: oauthMock },
         { provide: MatDialog, useValue: dialogMock },
+        ...provideTranslocoTesting(),
       ],
     });
 

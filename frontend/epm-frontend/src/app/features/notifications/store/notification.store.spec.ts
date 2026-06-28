@@ -6,6 +6,7 @@ import { OAuthService } from 'angular-oauth2-oidc';
 import { NotificationStore } from './notification.store';
 import { NotificationService } from '../services/notification.service';
 import { Notification } from '../models/notification.model';
+import { provideTranslocoTesting } from '../../../testing/transloco-testing';
 
 const mockNotification = (overrides: Partial<Notification> = {}): Notification => ({
   id: 'n1',
@@ -53,6 +54,7 @@ describe('NotificationStore', () => {
         NotificationStore,
         { provide: NotificationService, useValue: serviceMock },
         { provide: OAuthService, useValue: oauthMock },
+        ...provideTranslocoTesting(),
       ],
     });
 

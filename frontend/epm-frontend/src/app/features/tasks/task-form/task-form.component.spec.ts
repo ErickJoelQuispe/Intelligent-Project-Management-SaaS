@@ -5,6 +5,7 @@ import { provideAnimations } from '@angular/platform-browser/animations';
 import { of } from 'rxjs';
 import { TaskFormComponent } from './task-form.component';
 import { TaskService } from '../task.service';
+import { provideTranslocoTesting } from '../../../testing/transloco-testing';
 
 describe('TaskFormComponent', () => {
   let component: TaskFormComponent;
@@ -35,6 +36,7 @@ describe('TaskFormComponent', () => {
           },
         },
         { provide: TaskService, useValue: taskServiceMock },
+        ...provideTranslocoTesting(),
       ],
     }).compileComponents();
 

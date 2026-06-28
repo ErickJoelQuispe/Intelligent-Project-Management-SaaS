@@ -5,6 +5,7 @@ import { provideHttpClient } from '@angular/common/http';
 import { provideHttpClientTesting } from '@angular/common/http/testing';
 import { KanbanColumnComponent } from './kanban-column.component';
 import { TaskSummary } from '../../../../core/models/task.models';
+import { provideTranslocoTesting } from '../../../../testing/transloco-testing';
 
 describe('KanbanColumnComponent', () => {
   let fixture: ComponentFixture<KanbanColumnComponent>;
@@ -22,6 +23,7 @@ describe('KanbanColumnComponent', () => {
         provideAnimations(),
         provideHttpClient(),
         provideHttpClientTesting(),
+        ...provideTranslocoTesting(),
       ],
     }).compileComponents();
 

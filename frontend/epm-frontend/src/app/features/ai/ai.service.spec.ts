@@ -4,6 +4,7 @@ import { provideHttpClient } from '@angular/common/http';
 import { OAuthService } from 'angular-oauth2-oidc';
 import { AiService } from './ai.service';
 import { ChatResponse } from './models/chat.models';
+import { provideTranslocoTesting } from '../../testing/transloco-testing';
 
 const BASE_URL = 'http://localhost:8080/api/v1/ai';
 
@@ -22,6 +23,7 @@ describe('AiService', () => {
         provideHttpClient(),
         provideHttpClientTesting(),
         { provide: OAuthService, useValue: oauthServiceMock },
+        ...provideTranslocoTesting(),
       ],
     });
     service = TestBed.inject(AiService);

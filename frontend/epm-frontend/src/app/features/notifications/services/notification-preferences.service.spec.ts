@@ -3,6 +3,7 @@ import { HttpTestingController, provideHttpClientTesting } from '@angular/common
 import { provideHttpClient } from '@angular/common/http';
 import { NotificationPreferencesService } from './notification-preferences.service';
 import { NotificationPreference } from '../models/notification.model';
+import { provideTranslocoTesting } from '../../../testing/transloco-testing';
 
 describe('NotificationPreferencesService', () => {
   let service: NotificationPreferencesService;
@@ -19,6 +20,7 @@ describe('NotificationPreferencesService', () => {
         provideHttpClient(),
         provideHttpClientTesting(),
         NotificationPreferencesService,
+        ...provideTranslocoTesting(),
       ],
     });
 
