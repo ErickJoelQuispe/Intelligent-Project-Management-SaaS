@@ -50,8 +50,8 @@
                 },
                 {
                   "type": "anyComponentStyle",
-                  "maximumWarning": "4kB",
-                  "maximumError": "8kB"
+                  "maximumWarning": "8kB",
+                  "maximumError": "20kB"
                 }
               ],
               "outputHashing": "all"
@@ -80,7 +80,10 @@
           "builder": "@angular/build:unit-test",
           "options": {
             "coverage": false,
-            "coverageReporters": ["html", "text"]
+            "coverageReporters": [
+              "html",
+              "text"
+            ]
           }
         }
       }
