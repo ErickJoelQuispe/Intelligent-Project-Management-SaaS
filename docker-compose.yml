@@ -420,6 +420,9 @@ services:
   #           kafka, redis
   # ─────────────────────────────────────────────────────────────────
   ai-service:
+    build:
+      context: ./services/ai-service
+      dockerfile: Dockerfile.local
     image: epm-ai-local
     container_name: epm-ai-service
     ports:

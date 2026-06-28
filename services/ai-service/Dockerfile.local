@@ -4,8 +4,8 @@ WORKDIR /app
 RUN addgroup -S epm && adduser -S epm -G epm
 USER epm
 
-COPY target/notification-service-*.jar app.jar
+COPY target/ai-service-*.jar app.jar
 
-EXPOSE 8085
+EXPOSE 8086
 
 ENTRYPOINT ["java", "-jar", "app.jar"]

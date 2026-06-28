@@ -147,12 +147,21 @@ if [ -z "$SA_ID" ]; then
 fi
 
 # add-roles: || true so script doesn't exit if role already assigned
+# manage-users: create/update/delete user accounts
+# manage-roles: read and assign realm roles (required for assignRole in auth-service)
 $KCADM add-roles -r "$REALM" \
   --uid "$SA_ID" \
   --cclientid "realm-management" \
   --rolename "manage-users" \
   && echo "manage-users role granted to service-account-epm-backend" \
   || echo "manage-users already assigned or add-roles failed — continuing"
+
+$KCADM add-roles -r "$REALM" \
+  --uid "$SA_ID" \
+  --cclientid "realm-management" \
+  --rolename "view-realm" \
+  && echo "view-realm role granted to service-account-epm-backend" \
+  || echo "view-realm already assigned or add-roles failed — continuing"
 
 # ---------------------------------------------------------------------------
 # 5. Test user creation (idempotent)

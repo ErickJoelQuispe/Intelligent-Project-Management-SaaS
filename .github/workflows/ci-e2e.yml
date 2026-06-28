@@ -21,13 +21,31 @@ jobs:
           distribution: 'temurin'
           cache: 'maven'
 
+      - name: Build JARs for local services
+        # user-service, task-service, notification-service, and ai-service use
+        # Dockerfile.local which copies a pre-built JAR from target/. Build them
+        # first so docker compose build can copy the artifacts.
+        run: |
+          ./mvnw package -DskipTests --batch-mode \
+            -pl services/user-service,services/task-service,services/notification-service,services/ai-service
+
+      - name: Build local Docker images
+        # Build only the four services that rely on Dockerfile.local + pre-built JARs.
+        # All other services pull their images from GHCR.
+        run: |
+          docker compose build \
+            user-service \
+            task-service \
+            notification-service \
+            ai-service
+
       - name: Start stack
         run: docker compose up -d
 
       - name: Wait for api-gateway
         run: |
           echo "Waiting for api-gateway to be healthy..."
-          timeout=60
+          timeout=120
           elapsed=0
           until curl -sf http://localhost:8080/actuator/health > /dev/null 2>&1; do
             if [ $elapsed -ge $timeout ]; then
@@ -58,6 +76,9 @@ jobs:
 
       - name: Configure Keycloak
         run: |
+          # Keycloak listens on port 8080 inside its container; kcadm.sh runs
+          # inside the container so it must use the internal port (8080), not
+          # the host-mapped port (8180).
           docker exec epm-keycloak /opt/keycloak/bin/kcadm.sh config credentials \
             --server http://localhost:8080 --realm master --user admin --password admin
 
@@ -70,11 +91,11 @@ jobs:
 
           echo "Granting realm-management roles to service account $SA_ID..."
           docker exec epm-keycloak /opt/keycloak/bin/kcadm.sh add-roles -r epm \
-            --uid "$SA_ID" --cclientid realm-management --rolename realm-admin 2>&1 \
-            && echo "  realm-admin: OK" || echo "  realm-admin: already present"
-          docker exec epm-keycloak /opt/keycloak/bin/kcadm.sh add-roles -r epm \
             --uid "$SA_ID" --cclientid realm-management --rolename manage-users 2>&1 \
             && echo "  manage-users: OK" || echo "  manage-users: already present"
+          docker exec epm-keycloak /opt/keycloak/bin/kcadm.sh add-roles -r epm \
+            --uid "$SA_ID" --cclientid realm-management --rolename view-realm 2>&1 \
+            && echo "  view-realm: OK" || echo "  view-realm: already present"
 
       - name: Restart auth-service
         run: |
