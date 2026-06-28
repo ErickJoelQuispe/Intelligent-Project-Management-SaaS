@@ -46,6 +46,13 @@ spring:
 
   cloud:
     gateway:
+      # Disable Eureka auto-generated routes. These conflict with manually-defined
+      # routes because they strip the /api/v1/ prefix via a RewritePath filter,
+      # causing downstream services to receive incorrect paths (e.g. /chat/stream
+      # instead of /api/v1/ai/chat/stream). All routing is explicit below.
+      discovery:
+        locator:
+          enabled: false
       server:
         webflux:
           globalcors:
@@ -115,10 +122,21 @@ spring:
               predicates:
                 - Path=/ws/notifications/**
               filters: []
-            # order: 100 — /api/v1/ai/** is an independent path (no sub-path conflict
-            #   with existing routes). Higher order value keeps it evaluated last,
-            #   but since there is no overlap with other routes it has no practical
-            #   effect. Using 100 as a positive sentinel to distinguish it visually.
+            # order: 100 — /api/v1/ai/** independent path, no sub-path conflict.
+            #
+            # SSE streaming route — NO CircuitBreaker filter.
+            # Spring Cloud Gateway's CircuitBreaker filter is incompatible with
+            # SSE/streaming responses: it buffers the response to detect failures,
+            # which breaks the long-lived connection and causes the stream to be
+            # cut by the TimeLimiter before it completes.
+            # Resilience for streaming is handled inside the ai-service itself
+            # (Resilience4j CircuitBreaker on the DeepSeek adapter).
+            - id: ai-service-stream
+              uri: lb://ai-service
+              order: 99  # higher priority than ai-service (100) to match /chat/stream first
+              predicates:
+                - Path=/api/v1/ai/chat/stream
+                - Method=POST
             - id: ai-service
               uri: lb://ai-service
               order: 100

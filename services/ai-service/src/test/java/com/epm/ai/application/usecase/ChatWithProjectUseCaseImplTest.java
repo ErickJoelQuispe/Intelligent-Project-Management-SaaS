@@ -10,6 +10,8 @@ import static org.mockito.Mockito.when;
 import java.util.List;
 
 import com.epm.ai.domain.exception.ProjectNotFoundException;
+import com.epm.ai.domain.model.ChatTurn;
+import com.epm.ai.domain.model.TaskSummary;
 import com.epm.ai.domain.model.AiRequest;
 import com.epm.ai.domain.model.AiResponse;
 import com.epm.ai.domain.model.ProjectContext;
@@ -51,7 +53,7 @@ class ChatWithProjectUseCaseImplTest {
         when(contextPort.fetchProjectContext("proj-1", "tenant-1")).thenReturn(SAMPLE_CONTEXT);
         when(modelPort.chat(any(AiRequest.class))).thenReturn(modelResponse);
 
-        AiResponse response = useCase.execute("proj-1", "user-1", "tenant-1", "How many members?");
+        AiResponse response = useCase.execute("proj-1", "user-1", "tenant-1", "How many members?", List.of(), List.of());
 
         assertThat(response.content()).isEqualTo("The project has 2 members.");
         assertThat(response.inputTokens()).isEqualTo(50);
@@ -68,7 +70,7 @@ class ChatWithProjectUseCaseImplTest {
         when(contextPort.fetchProjectContext("proj-1", "tenant-1")).thenReturn(SAMPLE_CONTEXT);
         when(modelPort.chat(any(AiRequest.class))).thenReturn(modelResponse);
 
-        useCase.execute("proj-1", "user-1", "tenant-1", "What is the project about?");
+        useCase.execute("proj-1", "user-1", "tenant-1", "What is the project about?", List.of(), List.of());
 
         ArgumentCaptor<AiRequest> captor = ArgumentCaptor.forClass(AiRequest.class);
         verify(modelPort).chat(captor.capture());
@@ -87,7 +89,7 @@ class ChatWithProjectUseCaseImplTest {
         when(contextPort.fetchProjectContext("missing", "tenant-1"))
                 .thenThrow(new ProjectNotFoundException("missing"));
 
-        assertThatThrownBy(() -> useCase.execute("missing", "user-1", "tenant-1", "Any question?"))
+        assertThatThrownBy(() -> useCase.execute("missing", "user-1", "tenant-1", "Any question?", List.of(), List.of()))
                 .isInstanceOf(ProjectNotFoundException.class)
                 .hasMessageContaining("missing");
     }
@@ -100,7 +102,7 @@ class ChatWithProjectUseCaseImplTest {
         when(modelPort.chat(any(AiRequest.class)))
                 .thenThrow(new RuntimeException("AI service temporarily unavailable"));
 
-        assertThatThrownBy(() -> useCase.execute("proj-1", "user-1", "tenant-1", "Any question?"))
+        assertThatThrownBy(() -> useCase.execute("proj-1", "user-1", "tenant-1", "Any question?", List.of(), List.of()))
                 .isInstanceOf(RuntimeException.class)
                 .hasMessageContaining("AI service temporarily unavailable");
     }

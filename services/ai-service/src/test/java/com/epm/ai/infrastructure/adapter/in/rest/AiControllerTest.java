@@ -1,5 +1,6 @@
 package com.epm.ai.infrastructure.adapter.in.rest;
 
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyBoolean;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.when;
@@ -83,7 +84,7 @@ class AiControllerTest {
         List<TaskDraft> drafts = List.of(
                 new TaskDraft("Set up DB schema", "Create tables for user data", TaskPriority.HIGH),
                 new TaskDraft("Write API docs", "OpenAPI documentation", TaskPriority.MEDIUM));
-        when(generateTasksUseCase.execute(anyString(), anyString(), anyString(), anyString(), anyBoolean()))
+        when(generateTasksUseCase.execute(anyString(), anyString(), anyString(), anyString(), anyBoolean(), any()))
                 .thenReturn(drafts);
 
         mockMvc.perform(post("/api/v1/ai/tasks/generate")
@@ -117,7 +118,7 @@ class AiControllerTest {
 
     @Test
     void generateTasks_returns500_whenUseCaseThrows() throws Exception {
-        when(generateTasksUseCase.execute(anyString(), anyString(), anyString(), anyString(), anyBoolean()))
+        when(generateTasksUseCase.execute(anyString(), anyString(), anyString(), anyString(), anyBoolean(), any()))
                 .thenThrow(new RuntimeException("AI service temporarily unavailable"));
 
         mockMvc.perform(post("/api/v1/ai/tasks/generate")
@@ -151,7 +152,7 @@ class AiControllerTest {
     @Test
     void chat_returns200_withResponse() throws Exception {
         AiResponse aiResponse = new AiResponse("The project is on track.", 50, 20, "deepseek-chat", false);
-        when(chatWithProjectUseCase.execute(anyString(), anyString(), anyString(), anyString()))
+        when(chatWithProjectUseCase.execute(anyString(), anyString(), anyString(), anyString(), any(), any()))
                 .thenReturn(aiResponse);
 
         mockMvc.perform(post("/api/v1/ai/chat")
@@ -186,7 +187,7 @@ class AiControllerTest {
 
     @Test
     void chat_returns400_whenMessageExceedsMaxLength() throws Exception {
-        String hugeMessage = "x".repeat(4001);
+        String hugeMessage = "x".repeat(2001);
         mockMvc.perform(post("/api/v1/ai/chat")
                         .with(jwt().jwt(j -> j
                                 .subject(USER_ID)
@@ -216,7 +217,7 @@ class AiControllerTest {
 
     @Test
     void chatStream_acceptsPost_andStartsAsync() throws Exception {
-        when(chatWithProjectUseCase.executeStream(anyString(), anyString(), anyString(), anyString()))
+        when(chatWithProjectUseCase.executeStream(anyString(), anyString(), anyString(), anyString(), any(), any()))
                 .thenReturn(List.of("hello").iterator());
 
         mockMvc.perform(post("/api/v1/ai/chat/stream")

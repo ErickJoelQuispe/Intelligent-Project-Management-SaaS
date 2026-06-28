@@ -67,11 +67,19 @@ public class SummarizeProjectUseCaseImpl implements SummarizeProjectUseCase {
     }
 
     private String buildPrompt(ProjectContext context) {
-        return "Project: " + context.name() + "\n"
+        String members = context.memberNames().isEmpty()
+                ? "No members assigned yet"
+                : String.join(", ", context.memberNames());
+        return "Analyze this project and respond with ONLY a JSON object.\n"
+                + "Do NOT use a 'summary' key. Use EXACTLY these three keys: status, risks, milestones.\n\n"
+                + "Project name: " + context.name() + "\n"
                 + "Description: " + context.description() + "\n"
-                + "Members: " + String.join(", ", context.memberNames()) + "\n"
-                + "Please provide a concise summary (max 300 words) of the project's current state, "
-                + "key metrics, risks, and recommended next milestones.";
+                + "Members: " + members + "\n\n"
+                + "Required JSON format (no other text, no markdown):\n"
+                + "{\"status\":\"<one sentence about current state>\","
+                + "\"risks\":[\"<risk 1>\",\"<risk 2>\",\"<risk 3>\"],"
+                + "\"milestones\":[\"<next step 1>\",\"<next step 2>\",\"<next step 3>\"]}\n\n"
+                + "Rules: each risk and milestone under 12 words. status under 20 words.";
     }
 
     private void trackCost(AiResponse response) {

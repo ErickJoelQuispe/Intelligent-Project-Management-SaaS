@@ -1,10 +1,13 @@
 package com.epm.ai.application.usecase;
 
 import java.util.Iterator;
+import java.util.List;
 
 import com.epm.ai.domain.model.AiRequest;
 import com.epm.ai.domain.model.AiResponse;
+import com.epm.ai.domain.model.ChatTurn;
 import com.epm.ai.domain.model.ProjectContext;
+import com.epm.ai.domain.model.TaskSummary;
 import com.epm.ai.domain.port.in.ChatWithProjectUseCase;
 import com.epm.ai.domain.port.out.AiModelPort;
 import com.epm.ai.domain.port.out.AiTokenTracker;
@@ -16,7 +19,7 @@ import com.epm.ai.domain.port.out.ProjectContextPort;
  * <p>Flow:
  * <ol>
  *   <li>Fetch project context via {@link ProjectContextPort}</li>
- *   <li>Build a context-enriched chat prompt</li>
+ *   <li>Build a context-enriched chat prompt including conversation history and task list</li>
  *   <li>Call {@link AiModelPort#chat} and return the full response</li>
  *   <li>Track token usage via {@link AiTokenTracker}</li>
  * </ol>
@@ -44,9 +47,10 @@ public class ChatWithProjectUseCaseImpl implements ChatWithProjectUseCase {
     }
 
     @Override
-    public AiResponse execute(String projectId, String userId, String tenantId, String message) {
+    public AiResponse execute(String projectId, String userId, String tenantId, String message,
+                              List<ChatTurn> history, List<TaskSummary> existingTasks) {
         ProjectContext context = contextPort.fetchProjectContext(projectId, tenantId);
-        String prompt = buildPrompt(context, message);
+        String prompt = buildPrompt(context, message, history, existingTasks);
         AiRequest request = new AiRequest(prompt, projectId, userId, tenantId);
         AiResponse response = modelPort.chat(request);
         trackCost(response);
@@ -54,18 +58,39 @@ public class ChatWithProjectUseCaseImpl implements ChatWithProjectUseCase {
     }
 
     @Override
-    public Iterator<String> executeStream(String projectId, String userId, String tenantId, String message) {
+    public Iterator<String> executeStream(String projectId, String userId, String tenantId, String message,
+                                          List<ChatTurn> history, List<TaskSummary> existingTasks) {
         ProjectContext context = contextPort.fetchProjectContext(projectId, tenantId);
-        String prompt = buildPrompt(context, message);
+        String prompt = buildPrompt(context, message, history, existingTasks);
         AiRequest request = new AiRequest(prompt, projectId, userId, tenantId);
         return modelPort.chatStream(request);
     }
 
-    private String buildPrompt(ProjectContext context, String userMessage) {
-        return "Project: " + context.name() + "\n"
-                + "Description: " + context.description() + "\n"
-                + "Members: " + String.join(", ", context.memberNames()) + "\n"
-                + "User question: " + userMessage;
+    private String buildPrompt(ProjectContext context, String userMessage,
+                               List<ChatTurn> history, List<TaskSummary> existingTasks) {
+        StringBuilder sb = new StringBuilder();
+        sb.append("Project: ").append(context.name()).append("\n");
+        sb.append("Description: ").append(context.description()).append("\n");
+        sb.append("Members: ").append(String.join(", ", context.memberNames())).append("\n");
+
+        if (existingTasks != null && !existingTasks.isEmpty()) {
+            sb.append("\nCurrent project tasks:\n");
+            for (TaskSummary task : existingTasks) {
+                sb.append("- [").append(task.status()).append("] ").append(task.title()).append("\n");
+            }
+        }
+
+        if (history != null && !history.isEmpty()) {
+            sb.append("\nConversation so far:\n");
+            for (ChatTurn turn : history) {
+                String roleLabel = "user".equals(turn.role()) ? "User" : "Assistant";
+                sb.append(roleLabel).append(": ").append(turn.content()).append("\n");
+            }
+            sb.append("\n");
+        }
+
+        sb.append("User question: ").append(userMessage);
+        return sb.toString();
     }
 
     private void trackCost(AiResponse response) {

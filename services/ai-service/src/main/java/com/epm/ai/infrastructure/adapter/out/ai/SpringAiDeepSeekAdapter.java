@@ -52,6 +52,14 @@ public class SpringAiDeepSeekAdapter implements AiModelPort {
             + "Never add markdown, code fences, or text outside the JSON. "
             + "Output raw JSON only.";
 
+    private static final String CHAT_SYSTEM_PROMPT =
+            "You are a project management assistant. "
+            + "You have been given context about a specific project. "
+            + "Answer ONLY questions related to the project, its tasks, team, goals, risks, or planning. "
+            + "If the user asks about anything unrelated to the project or project management, "
+            + "politely decline and redirect them to ask about the project instead. "
+            + "Be concise, helpful, and professional.";
+
     @Override
     public AiResponse generate(AiRequest request) {
         try {
@@ -78,6 +86,7 @@ public class SpringAiDeepSeekAdapter implements AiModelPort {
         try {
             return circuitBreaker.executeCheckedSupplier(() -> {
                 ChatResponse chatResponse = chatClient.prompt()
+                        .system(CHAT_SYSTEM_PROMPT)
                         .user(request.prompt())
                         .call()
                         .chatResponse();
@@ -97,6 +106,7 @@ public class SpringAiDeepSeekAdapter implements AiModelPort {
     public Iterator<String> chatStream(AiRequest request) {
         try {
             return circuitBreaker.executeCheckedSupplier(() -> chatClient.prompt()
+                    .system(CHAT_SYSTEM_PROMPT)
                     .user(request.prompt())
                     .stream()
                     .content()

@@ -12,13 +12,15 @@ public interface GenerateTasksUseCase {
     /**
      * Generates a list of task drafts based on a description and project context.
      *
-     * @param projectId   the target project identifier
-     * @param userId      the user requesting generation
-     * @param tenantId    the tenant identifier
-     * @param description a free-form description of the work to be done
-     * @param bypassCache when true, skips the cache and forces a fresh LLM call
+     * @param projectId            the target project identifier
+     * @param userId               the user requesting generation
+     * @param tenantId             the tenant identifier
+     * @param description          a free-form description of the work to be done
+     * @param bypassCache          when true, skips the cache and forces a fresh LLM call
+     * @param existingTaskTitles   titles of tasks that already exist — used to avoid duplicates
      * @return list of generated task drafts
      */
     List<TaskDraft> execute(String projectId, String userId, String tenantId,
-                            String description, boolean bypassCache);
+                            String description, boolean bypassCache,
+                            List<String> existingTaskTitles);
 }

@@ -71,7 +71,7 @@ class GenerateTasksUseCaseImplTest {
         when(cachePort.get(anyString())).thenReturn(Optional.of(cached));
         when(contextPort.fetchProjectContext("proj-1", "tenant-1")).thenReturn(SAMPLE_CONTEXT);
 
-        List<TaskDraft> tasks = useCase.execute("proj-1", "user-1", "tenant-1", "Build login", false);
+        List<TaskDraft> tasks = useCase.execute("proj-1", "user-1", "tenant-1", "Build login", false, List.of());
 
         assertThat(tasks).hasSize(2);
         assertThat(tasks.get(0).title()).isEqualTo("Set up CI/CD");
@@ -88,7 +88,7 @@ class GenerateTasksUseCaseImplTest {
         when(contextPort.fetchProjectContext("proj-1", "tenant-1")).thenReturn(SAMPLE_CONTEXT);
         when(modelPort.generate(any(AiRequest.class))).thenReturn(MODEL_RESPONSE);
 
-        List<TaskDraft> tasks = useCase.execute("proj-1", "user-1", "tenant-1", "Build login", false);
+        List<TaskDraft> tasks = useCase.execute("proj-1", "user-1", "tenant-1", "Build login", false, List.of());
 
         assertThat(tasks).hasSize(2);
         assertThat(tasks.get(1).title()).isEqualTo("Write tests");
@@ -104,7 +104,7 @@ class GenerateTasksUseCaseImplTest {
         when(contextPort.fetchProjectContext("proj-1", "tenant-1")).thenReturn(SAMPLE_CONTEXT);
         when(modelPort.generate(any(AiRequest.class))).thenReturn(MODEL_RESPONSE);
 
-        useCase.execute("proj-1", "user-1", "tenant-1", "Build login", false);
+        useCase.execute("proj-1", "user-1", "tenant-1", "Build login", false, List.of());
 
         ArgumentCaptor<AiTasksGenerated> captor = ArgumentCaptor.forClass(AiTasksGenerated.class);
         verify(eventPublisher).publish(captor.capture());
@@ -123,7 +123,7 @@ class GenerateTasksUseCaseImplTest {
         when(contextPort.fetchProjectContext("proj-1", "tenant-1")).thenReturn(SAMPLE_CONTEXT);
         when(modelPort.generate(any(AiRequest.class))).thenReturn(MODEL_RESPONSE);
 
-        List<TaskDraft> tasks = useCase.execute("proj-1", "user-1", "tenant-1", "Build login", true);
+        List<TaskDraft> tasks = useCase.execute("proj-1", "user-1", "tenant-1", "Build login", true, List.of());
 
         assertThat(tasks).hasSize(2);
         verify(modelPort).generate(any(AiRequest.class));
@@ -140,7 +140,7 @@ class GenerateTasksUseCaseImplTest {
                 .thenThrow(new RuntimeException("DeepSeek connection refused"));
 
         assertThatThrownBy(() ->
-                useCase.execute("proj-1", "user-1", "tenant-1", "Build login", false))
+                useCase.execute("proj-1", "user-1", "tenant-1", "Build login", false, List.of()))
                 .isInstanceOf(RuntimeException.class)
                 .hasMessageContaining("DeepSeek connection refused");
     }

@@ -61,7 +61,8 @@ public class GenerateTasksUseCaseImpl implements GenerateTasksUseCase {
 
     @Override
     public List<TaskDraft> execute(String projectId, String userId, String tenantId,
-                                   String description, boolean bypassCache) {
+                                   String description, boolean bypassCache,
+                                   List<String> existingTaskTitles) {
         ProjectContext context = contextPort.fetchProjectContext(projectId, tenantId);
         String cacheKey = CacheKeyGenerator.generate("task-gen", projectId, description);
 
@@ -72,7 +73,7 @@ public class GenerateTasksUseCaseImpl implements GenerateTasksUseCase {
             }
         }
 
-        String prompt = buildPrompt(context, description);
+        String prompt = buildPrompt(context, description, existingTaskTitles);
         AiRequest request = new AiRequest(prompt, projectId, userId, tenantId);
         AiResponse response = modelPort.generate(request);
 
@@ -90,16 +91,27 @@ public class GenerateTasksUseCaseImpl implements GenerateTasksUseCase {
         return tasks;
     }
 
-    private String buildPrompt(ProjectContext context, String description) {
+    private String buildPrompt(ProjectContext context, String description,
+                               List<String> existingTaskTitles) {
         String projectDesc = context.description().isBlank()
                 ? "No description provided"
                 : context.description();
-        return "Generate 3 to 8 project tasks as a JSON array.\n"
-                + "Return ONLY the JSON array, no other text.\n"
-                + "Format: [{\"title\":\"...\",\"description\":\"...\",\"priority\":\"HIGH|MEDIUM|LOW\"}]\n\n"
-                + "Project: " + context.name() + "\n"
-                + "Description: " + projectDesc + "\n"
-                + "Request: " + description;
+
+        StringBuilder prompt = new StringBuilder();
+        prompt.append("Generate 3 to 8 project tasks as a JSON array.\n")
+              .append("Return ONLY the JSON array, no other text.\n")
+              .append("Format: [{\"title\":\"...\",\"description\":\"...\",\"priority\":\"HIGH|MEDIUM|LOW\"}]\n\n")
+              .append("Project: ").append(context.name()).append("\n")
+              .append("Description: ").append(projectDesc).append("\n")
+              .append("Request: ").append(description).append("\n");
+
+        if (existingTaskTitles != null && !existingTaskTitles.isEmpty()) {
+            prompt.append("\nTasks that ALREADY EXIST — do NOT generate these or anything similar:\n");
+            existingTaskTitles.forEach(t -> prompt.append("- ").append(t).append("\n"));
+            prompt.append("\nGenerate only NEW tasks that complement the existing ones.\n");
+        }
+
+        return prompt.toString();
     }
 
     private void trackCost(AiResponse response) {
