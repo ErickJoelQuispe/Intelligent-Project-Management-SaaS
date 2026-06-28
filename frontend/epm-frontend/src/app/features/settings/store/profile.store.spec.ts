@@ -66,6 +66,27 @@ describe('ProfileStore', () => {
       expect(store.error()).toBeNull();
     });
 
+    it('should set loaded=true after successful fetch', () => {
+      serviceMock.getMe.mockReturnValue(of(mockProfile));
+
+      TestBed.runInInjectionContext(() => {
+        store.loadProfile();
+      });
+
+      expect(store.loaded()).toBe(true);
+    });
+
+    it('should not call getMe a second time when loaded=true (double-load guard)', () => {
+      serviceMock.getMe.mockReturnValue(of(mockProfile));
+
+      TestBed.runInInjectionContext(() => {
+        store.loadProfile(); // first call — loads profile
+        store.loadProfile(); // second call — should be a no-op
+      });
+
+      expect(serviceMock.getMe).toHaveBeenCalledOnce();
+    });
+
     it('should set error on failure and loading to false', () => {
       serviceMock.getMe.mockReturnValue(
         throwError(() => new Error('Network error')),

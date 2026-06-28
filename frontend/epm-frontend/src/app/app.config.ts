@@ -6,6 +6,7 @@ import { provideOAuthClient } from 'angular-oauth2-oidc';
 import { routes } from './app.routes';
 import { authInterceptor } from './core/http/auth.interceptor';
 import { provideAuthInitializer } from './core/auth/auth.init';
+import { provideAppTransloco } from './core/i18n/transloco.config';
 
 export const appConfig: ApplicationConfig = {
   providers: [
@@ -15,5 +16,6 @@ export const appConfig: ApplicationConfig = {
     provideAnimationsAsync(),
     provideOAuthClient(),
     provideAuthInitializer(),
+    ...provideAppTransloco(),
   ],
 };

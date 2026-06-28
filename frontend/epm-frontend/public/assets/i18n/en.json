@@ -1,0 +1,355 @@
+{
+  "common": {
+    "save": "Save",
+    "cancel": "Cancel",
+    "edit": "Edit",
+    "delete": "Delete",
+    "loading": "Loading...",
+    "error": "An error occurred",
+    "close": "Close",
+    "confirm": "Confirm",
+    "back": "Back",
+    "create": "Create",
+    "update": "Update",
+    "archive": "Archive",
+    "restore": "Restore",
+    "optional": "optional",
+    "required": "required",
+    "noData": "No data available",
+    "retry": "Retry",
+    "revoke": "Revoke",
+    "signOut": "Sign out",
+    "logout": "Logout",
+    "collapse": "Collapse",
+    "expand": "Expand"
+  },
+  "settings": {
+    "title": "Settings",
+    "description": "Manage your account and application preferences",
+    "nav": {
+      "profile": "Profile",
+      "notifications": "Notifications",
+      "appearance": "Appearance",
+      "workspace": "Workspace",
+      "security": "Security"
+    },
+    "profile": {
+      "title": "Profile",
+      "editBtn": "Edit profile",
+      "saveBtn": "Save changes",
+      "cancelBtn": "Cancel",
+      "noBio": "No bio yet.",
+      "firstName": "First name",
+      "lastName": "Last name",
+      "bio": "Bio",
+      "avatarUrl": "Avatar URL",
+      "firstNamePlaceholder": "Jane",
+      "lastNamePlaceholder": "Doe",
+      "bioPlaceholder": "Tell us a bit about yourself...",
+      "avatarUrlPlaceholder": "https://example.com/avatar.png",
+      "session": "Session",
+      "activeSession": "Active session",
+      "tokenExpiry": "Token expires in ~"
+    },
+    "notifications": {
+      "title": "Notification preferences",
+      "description": "Choose which events trigger notifications and through which channel.",
+      "noPreferences": "No preferences configured",
+      "eventCol": "Event",
+      "inAppCol": "In-app",
+      "emailCol": "Email",
+      "toggleAllInApp": "Toggle all {{label}} in-app notifications",
+      "toggleAllEmail": "Toggle all {{label}} email notifications",
+      "groups": {
+        "tasks": "Tasks",
+        "projects": "Projects",
+        "team": "Team"
+      }
+    },
+    "appearance": {
+      "title": "Appearance",
+      "theme": "Theme",
+      "accentColor": "Accent color",
+      "accentSelected": "Selected: {{label}}",
+      "compactMode": "Compact mode",
+      "compactModeDesc": "Reduce padding and spacing across the UI",
+      "reduceAnimations": "Reduce animations",
+      "reduceAnimationsDesc": "Minimize motion for accessibility or performance",
+      "toggleCompactMode": "Toggle compact mode",
+      "toggleReduceAnimations": "Toggle reduce animations",
+      "themes": {
+        "midnight": "Midnight",
+        "amber": "Amber",
+        "catppuccin": "Catppuccin",
+        "nord": "Nord",
+        "rose": "Rose"
+      },
+      "accents": {
+        "violet": "Violet (default)",
+        "cyan": "Cyan",
+        "fuchsia": "Fuchsia",
+        "amber": "Amber",
+        "emerald": "Emerald",
+        "rose": "Rose"
+      }
+    },
+    "workspace": {
+      "title": "Workspace",
+      "language": "Language",
+      "timezone": "Timezone",
+      "dateFormat": "Date format",
+      "startOfWeek": "Start of week",
+      "saveBtn": "Save workspace preferences",
+      "syncNote": "Workspace preferences are synced to your account and apply across all devices.",
+      "days": {
+        "sunday": "Sunday",
+        "monday": "Monday",
+        "saturday": "Saturday"
+      },
+      "languages": {
+        "en": "English",
+        "es": "Spanish",
+        "pt": "Portuguese"
+      }
+    },
+    "security": {
+      "title": "Security",
+      "activeSessions": "Active sessions",
+      "noActiveSessions": "No active sessions",
+      "currentSession": "Current session",
+      "started": "Started:",
+      "lastSeen": "Last seen:",
+      "revokeBtn": "Revoke",
+      "dangerZone": "Danger Zone",
+      "deleteAccount": "Delete account",
+      "deleteAccountDesc": "Permanently delete your account and all data. This cannot be undone.",
+      "deletingAccount": "Deleting...",
+      "confirmDeleteTitle": "Delete account",
+      "confirmDeleteMessage": "This action is irreversible. Your account will be deactivated and all associated data will be permanently removed. This cannot be undone.",
+      "confirmDeleteBtn": "Delete my account",
+      "cancelDeleteBtn": "Cancel"
+    }
+  },
+  "tasks": {
+    "status": {
+      "todo": "To Do",
+      "inProgress": "In Progress",
+      "inReview": "In Review",
+      "done": "Done",
+      "cancelled": "Cancelled"
+    },
+    "priority": {
+      "high": "High",
+      "medium": "Medium",
+      "low": "Low"
+    },
+    "form": {
+      "title": "New task",
+      "titleLabel": "Title",
+      "titleRequired": "Title is required.",
+      "descriptionLabel": "Description",
+      "priorityLabel": "Priority",
+      "deadlineLabel": "Deadline",
+      "assigneeLabel": "Assignee",
+      "titlePlaceholder": "What needs to be done?",
+      "descriptionPlaceholder": "Add context or notes...",
+      "submitBtn": "Create task",
+      "cancelBtn": "Cancel",
+      "closeBtn": "Close"
+    },
+    "drawer": {
+      "newTask": "New task",
+      "close": "Close"
+    },
+    "panel": {
+      "newTask": "New task",
+      "noTasks": "No tasks yet",
+      "noTasksDesc": "Create your first task to get started.",
+      "loadError": "Failed to load tasks."
+    },
+    "list": {
+      "title": "Tasks",
+      "empty": "No tasks yet",
+      "emptyDesc": "Create your first task to get started.",
+      "loadError": "Failed to load tasks."
+    },
+    "kanban": {
+      "board": "Board",
+      "newTask": "New task",
+      "openBoardView": "Open board view"
+    }
+  },
+  "projects": {
+    "list": {
+      "title": "Projects",
+      "description": "Manage your projects",
+      "newProject": "New project",
+      "empty": "No projects yet",
+      "emptyDesc": "Create your first project to get started.",
+      "loadError": "Failed to load projects.",
+      "archiveError": "Failed to archive project. Please try again.",
+      "restoreError": "Failed to restore project. Please try again.",
+      "showArchived": "Show archived",
+      "hideArchived": "Hide archived"
+    },
+    "detail": {
+      "backToProjects": "Projects",
+      "tasks": "Tasks",
+      "newTask": "New task",
+      "board": "Board",
+      "noDescription": "Add a description\u2026",
+      "noTeam": "No team assigned",
+      "noTeamsYet": "No teams yet \u2014",
+      "createTeam": "create one",
+      "selectTeam": "Select a team\u2026",
+      "changeTeam": "Change team",
+      "changeAssignedTeam": "Change assigned team",
+      "restoreProject": "Restore project",
+      "archiveProject": "Archive project",
+      "editProjectName": "Project name \u2014 click to edit",
+      "editDescription": "Project description \u2014 click to edit",
+      "visibilityLabel": "Visibility: {{visibility}} \u2014 click to change",
+      "createdAt": "Created"
+    },
+    "form": {
+      "createTitle": "Create project",
+      "editTitle": "Edit project",
+      "nameLabel": "Project name",
+      "descriptionLabel": "Description",
+      "visibilityLabel": "Visibility",
+      "namePlaceholder": "My awesome project",
+      "descriptionPlaceholder": "Describe the project...",
+      "submitBtn": "Create project",
+      "updateBtn": "Update project",
+      "cancelBtn": "Cancel",
+      "loadError": "Failed to load project.",
+      "createError": "Failed to create project. Please try again.",
+      "updateError": "Failed to update project. Please try again.",
+      "visibility": {
+        "private": "Private \u2014 only you",
+        "team": "Team \u2014 members only",
+        "public": "Public \u2014 everyone"
+      }
+    },
+    "archive": {
+      "confirmTitle": "Archive \"{{name}}\"?",
+      "confirmMessage": "It will be hidden from the project list. You can restore it later.",
+      "confirmBtn": "Archive"
+    },
+    "ai": {
+      "generate": "Generate",
+      "summarize": "Summarize",
+      "chat": "Chat",
+      "generateTasks": "Generate tasks",
+      "generating": "Generating\u2026",
+      "summarizeProject": "Summarize project",
+      "summarizing": "Summarizing\u2026",
+      "saveAll": "Save all",
+      "saving": "Saving\u2026",
+      "save": "Save",
+      "suggestedTasks": "{{count}} suggested tasks",
+      "selectAll": "Select all",
+      "clearSelection": "Clear selection",
+      "selected": "{{count}} selected",
+      "tasksSaved": "Tasks saved.",
+      "useAsDescription": "Use as description",
+      "risks": "Risks",
+      "nextMilestones": "Next milestones",
+      "closePanel": "Close AI panel",
+      "aiAssistant": "AI Assistant"
+    }
+  },
+  "teams": {
+    "list": {
+      "title": "Teams",
+      "description": "Manage your teams",
+      "newTeam": "New team",
+      "empty": "No teams yet",
+      "emptyDesc": "Create your first team to collaborate.",
+      "loadError": "Failed to load teams.",
+      "totalMembers": "{{count}} members across all teams"
+    },
+    "detail": {
+      "backToTeams": "Teams",
+      "members": "Members",
+      "noMembers": "No members yet",
+      "addMember": "Add member",
+      "removeMember": "Remove member",
+      "owner": "Owner",
+      "editName": "Edit team name",
+      "loadError": "Failed to load team.",
+      "deleteTeam": "Delete team",
+      "deleteError": "Failed to delete team.",
+      "inviteMember": "Invite member",
+      "inviteByEmail": "Invite by email",
+      "inviteBtn": "Send invite",
+      "inviteError": "Failed to send invite.",
+      "memberCount": "{{count}} members"
+    },
+    "create": {
+      "title": "Create team",
+      "nameLabel": "Team name",
+      "namePlaceholder": "Engineering team",
+      "submitBtn": "Create team",
+      "cancelBtn": "Cancel",
+      "createError": "Failed to create team. Please try again."
+    }
+  },
+  "notifications": {
+    "panel": {
+      "title": "Notifications",
+      "markAllRead": "Mark all read",
+      "close": "Close notifications",
+      "allCaughtUp": "You're all caught up",
+      "noNotifications": "No notifications yet.",
+      "unread": "Unread",
+      "earlier": "Earlier",
+      "markAllAriaLabel": "Mark all notifications as read"
+    },
+    "bell": {
+      "ariaLabel": "Open notifications",
+      "unreadCount": "{{count}} unread notifications"
+    },
+    "events": {
+      "TASK_CREATED": "Task created",
+      "TASK_ASSIGNED": "Task assigned to you",
+      "TASK_STATUS_CHANGED": "Task status changed",
+      "TASK_DELETED": "Task deleted",
+      "PROJECT_CREATED": "Project created",
+      "PROJECT_ARCHIVED": "Project archived",
+      "TEAM_ASSIGNED_TO_PROJECT": "Team assigned to project",
+      "MEMBER_JOINED_TEAM": "Member joined team",
+      "MEMBER_LEFT_TEAM": "Member left team"
+    }
+  },
+  "sidebar": {
+    "nav": {
+      "projects": "Projects",
+      "teams": "Teams",
+      "settings": "Settings"
+    },
+    "brand": {
+      "name": "EPM",
+      "subtitle": "Project Management"
+    },
+    "collapse": "Collapse",
+    "expand": "Expand sidebar",
+    "collapseAriaLabel": "Collapse sidebar",
+    "expandAriaLabel": "Expand sidebar"
+  },
+  "ai": {
+    "chat": {
+      "emptyTitle": "Ask the AI anything about this project",
+      "emptyHint": "Press Enter to send \u00b7 Shift+Enter for new line",
+      "inputPlaceholder": "Ask something about this project\u2026",
+      "inputAriaLabel": "Chat message",
+      "sendAriaLabel": "Send message",
+      "messagesAriaLabel": "AI chat messages",
+      "typingAriaLabel": "Typing\u2026"
+    }
+  },
+  "confirmDialog": {
+    "cancel": "Cancel",
+    "confirm": "Confirm"
+  }
+}

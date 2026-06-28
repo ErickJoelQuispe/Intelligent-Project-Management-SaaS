@@ -1,0 +1,355 @@
+{
+  "common": {
+    "save": "Guardar",
+    "cancel": "Cancelar",
+    "edit": "Editar",
+    "delete": "Eliminar",
+    "loading": "Cargando...",
+    "error": "Ocurri\u00f3 un error",
+    "close": "Cerrar",
+    "confirm": "Confirmar",
+    "back": "Volver",
+    "create": "Crear",
+    "update": "Actualizar",
+    "archive": "Archivar",
+    "restore": "Restaurar",
+    "optional": "opcional",
+    "required": "obligatorio",
+    "noData": "No hay datos disponibles",
+    "retry": "Reintentar",
+    "revoke": "Revocar",
+    "signOut": "Cerrar sesi\u00f3n",
+    "logout": "Salir",
+    "collapse": "Contraer",
+    "expand": "Expandir"
+  },
+  "settings": {
+    "title": "Configuraci\u00f3n",
+    "description": "Administra tu cuenta y las preferencias de la aplicaci\u00f3n",
+    "nav": {
+      "profile": "Perfil",
+      "notifications": "Notificaciones",
+      "appearance": "Apariencia",
+      "workspace": "Espacio de trabajo",
+      "security": "Seguridad"
+    },
+    "profile": {
+      "title": "Perfil",
+      "editBtn": "Editar perfil",
+      "saveBtn": "Guardar cambios",
+      "cancelBtn": "Cancelar",
+      "noBio": "Sin biograf\u00eda a\u00fan.",
+      "firstName": "Nombre",
+      "lastName": "Apellido",
+      "bio": "Biograf\u00eda",
+      "avatarUrl": "URL del avatar",
+      "firstNamePlaceholder": "Jane",
+      "lastNamePlaceholder": "Doe",
+      "bioPlaceholder": "Cu\u00e9ntanos un poco sobre ti...",
+      "avatarUrlPlaceholder": "https://example.com/avatar.png",
+      "session": "Sesi\u00f3n",
+      "activeSession": "Sesi\u00f3n activa",
+      "tokenExpiry": "El token expira en ~"
+    },
+    "notifications": {
+      "title": "Preferencias de notificaciones",
+      "description": "Elige qu\u00e9 eventos generan notificaciones y a trav\u00e9s de qu\u00e9 canal.",
+      "noPreferences": "No hay preferencias configuradas",
+      "eventCol": "Evento",
+      "inAppCol": "En la app",
+      "emailCol": "Correo",
+      "toggleAllInApp": "Activar/desactivar todas las notificaciones en app de {{label}}",
+      "toggleAllEmail": "Activar/desactivar todas las notificaciones por correo de {{label}}",
+      "groups": {
+        "tasks": "Tareas",
+        "projects": "Proyectos",
+        "team": "Equipo"
+      }
+    },
+    "appearance": {
+      "title": "Apariencia",
+      "theme": "Tema",
+      "accentColor": "Color de acento",
+      "accentSelected": "Seleccionado: {{label}}",
+      "compactMode": "Modo compacto",
+      "compactModeDesc": "Reducir el relleno y el espaciado en toda la interfaz",
+      "reduceAnimations": "Reducir animaciones",
+      "reduceAnimationsDesc": "Minimizar el movimiento para accesibilidad o rendimiento",
+      "toggleCompactMode": "Activar/desactivar modo compacto",
+      "toggleReduceAnimations": "Activar/desactivar reducci\u00f3n de animaciones",
+      "themes": {
+        "midnight": "Medianoche",
+        "amber": "\u00c1mbar",
+        "catppuccin": "Catppuccin",
+        "nord": "Nord",
+        "rose": "Rosa"
+      },
+      "accents": {
+        "violet": "Violeta (predeterminado)",
+        "cyan": "Cian",
+        "fuchsia": "Fucsia",
+        "amber": "\u00c1mbar",
+        "emerald": "Esmeralda",
+        "rose": "Rosa"
+      }
+    },
+    "workspace": {
+      "title": "Espacio de trabajo",
+      "language": "Idioma",
+      "timezone": "Zona horaria",
+      "dateFormat": "Formato de fecha",
+      "startOfWeek": "Inicio de semana",
+      "saveBtn": "Guardar preferencias del espacio de trabajo",
+      "syncNote": "Las preferencias del espacio de trabajo se sincronizan con tu cuenta y se aplican en todos los dispositivos.",
+      "days": {
+        "sunday": "Domingo",
+        "monday": "Lunes",
+        "saturday": "S\u00e1bado"
+      },
+      "languages": {
+        "en": "Ingl\u00e9s",
+        "es": "Espa\u00f1ol",
+        "pt": "Portugu\u00e9s"
+      }
+    },
+    "security": {
+      "title": "Seguridad",
+      "activeSessions": "Sesiones activas",
+      "noActiveSessions": "Sin sesiones activas",
+      "currentSession": "Sesi\u00f3n actual",
+      "started": "Iniciada:",
+      "lastSeen": "\u00daltima actividad:",
+      "revokeBtn": "Revocar",
+      "dangerZone": "Zona peligrosa",
+      "deleteAccount": "Eliminar cuenta",
+      "deleteAccountDesc": "Elimina permanentemente tu cuenta y todos los datos. Esta acci\u00f3n no se puede deshacer.",
+      "deletingAccount": "Eliminando...",
+      "confirmDeleteTitle": "Eliminar cuenta",
+      "confirmDeleteMessage": "Esta acci\u00f3n es irreversible. Tu cuenta ser\u00e1 desactivada y todos los datos asociados ser\u00e1n eliminados permanentemente. Esto no se puede deshacer.",
+      "confirmDeleteBtn": "Eliminar mi cuenta",
+      "cancelDeleteBtn": "Cancelar"
+    }
+  },
+  "tasks": {
+    "status": {
+      "todo": "Por hacer",
+      "inProgress": "En progreso",
+      "inReview": "En revisi\u00f3n",
+      "done": "Completado",
+      "cancelled": "Cancelado"
+    },
+    "priority": {
+      "high": "Alta",
+      "medium": "Media",
+      "low": "Baja"
+    },
+    "form": {
+      "title": "Nueva tarea",
+      "titleLabel": "T\u00edtulo",
+      "titleRequired": "El t\u00edtulo es obligatorio.",
+      "descriptionLabel": "Descripci\u00f3n",
+      "priorityLabel": "Prioridad",
+      "deadlineLabel": "Fecha l\u00edmite",
+      "assigneeLabel": "Asignado a",
+      "titlePlaceholder": "\u00bfQu\u00e9 hay que hacer?",
+      "descriptionPlaceholder": "Agrega contexto o notas...",
+      "submitBtn": "Crear tarea",
+      "cancelBtn": "Cancelar",
+      "closeBtn": "Cerrar"
+    },
+    "drawer": {
+      "newTask": "Nueva tarea",
+      "close": "Cerrar"
+    },
+    "panel": {
+      "newTask": "Nueva tarea",
+      "noTasks": "Sin tareas a\u00fan",
+      "noTasksDesc": "Crea tu primera tarea para comenzar.",
+      "loadError": "Error al cargar las tareas."
+    },
+    "list": {
+      "title": "Tareas",
+      "empty": "Sin tareas a\u00fan",
+      "emptyDesc": "Crea tu primera tarea para comenzar.",
+      "loadError": "Error al cargar las tareas."
+    },
+    "kanban": {
+      "board": "Tablero",
+      "newTask": "Nueva tarea",
+      "openBoardView": "Abrir vista de tablero"
+    }
+  },
+  "projects": {
+    "list": {
+      "title": "Proyectos",
+      "description": "Administra tus proyectos",
+      "newProject": "Nuevo proyecto",
+      "empty": "Sin proyectos a\u00fan",
+      "emptyDesc": "Crea tu primer proyecto para comenzar.",
+      "loadError": "Error al cargar los proyectos.",
+      "archiveError": "Error al archivar el proyecto. Int\u00e9ntalo de nuevo.",
+      "restoreError": "Error al restaurar el proyecto. Int\u00e9ntalo de nuevo.",
+      "showArchived": "Mostrar archivados",
+      "hideArchived": "Ocultar archivados"
+    },
+    "detail": {
+      "backToProjects": "Proyectos",
+      "tasks": "Tareas",
+      "newTask": "Nueva tarea",
+      "board": "Tablero",
+      "noDescription": "Agrega una descripci\u00f3n\u2026",
+      "noTeam": "Sin equipo asignado",
+      "noTeamsYet": "A\u00fan no hay equipos \u2014",
+      "createTeam": "crear uno",
+      "selectTeam": "Selecciona un equipo\u2026",
+      "changeTeam": "Cambiar equipo",
+      "changeAssignedTeam": "Cambiar equipo asignado",
+      "restoreProject": "Restaurar proyecto",
+      "archiveProject": "Archivar proyecto",
+      "editProjectName": "Nombre del proyecto \u2014 clic para editar",
+      "editDescription": "Descripci\u00f3n del proyecto \u2014 clic para editar",
+      "visibilityLabel": "Visibilidad: {{visibility}} \u2014 clic para cambiar",
+      "createdAt": "Creado"
+    },
+    "form": {
+      "createTitle": "Crear proyecto",
+      "editTitle": "Editar proyecto",
+      "nameLabel": "Nombre del proyecto",
+      "descriptionLabel": "Descripci\u00f3n",
+      "visibilityLabel": "Visibilidad",
+      "namePlaceholder": "Mi proyecto increible",
+      "descriptionPlaceholder": "Describe el proyecto...",
+      "submitBtn": "Crear proyecto",
+      "updateBtn": "Actualizar proyecto",
+      "cancelBtn": "Cancelar",
+      "loadError": "Error al cargar el proyecto.",
+      "createError": "Error al crear el proyecto. Int\u00e9ntalo de nuevo.",
+      "updateError": "Error al actualizar el proyecto. Int\u00e9ntalo de nuevo.",
+      "visibility": {
+        "private": "Privado \u2014 solo t\u00fa",
+        "team": "Equipo \u2014 solo miembros",
+        "public": "P\u00fablico \u2014 todos"
+      }
+    },
+    "archive": {
+      "confirmTitle": "Archivar \"{{name}}\"?",
+      "confirmMessage": "Se ocultar\u00e1 de la lista de proyectos. Puedes restaurarlo m\u00e1s adelante.",
+      "confirmBtn": "Archivar"
+    },
+    "ai": {
+      "generate": "Generar",
+      "summarize": "Resumir",
+      "chat": "Chat",
+      "generateTasks": "Generar tareas",
+      "generating": "Generando\u2026",
+      "summarizeProject": "Resumir proyecto",
+      "summarizing": "Resumiendo\u2026",
+      "saveAll": "Guardar todo",
+      "saving": "Guardando\u2026",
+      "save": "Guardar",
+      "suggestedTasks": "{{count}} tareas sugeridas",
+      "selectAll": "Seleccionar todo",
+      "clearSelection": "Limpiar selecci\u00f3n",
+      "selected": "{{count}} seleccionadas",
+      "tasksSaved": "Tareas guardadas.",
+      "useAsDescription": "Usar como descripci\u00f3n",
+      "risks": "Riesgos",
+      "nextMilestones": "Pr\u00f3ximos hitos",
+      "closePanel": "Cerrar panel de IA",
+      "aiAssistant": "Asistente de IA"
+    }
+  },
+  "teams": {
+    "list": {
+      "title": "Equipos",
+      "description": "Administra tus equipos",
+      "newTeam": "Nuevo equipo",
+      "empty": "Sin equipos a\u00fan",
+      "emptyDesc": "Crea tu primer equipo para colaborar.",
+      "loadError": "Error al cargar los equipos.",
+      "totalMembers": "{{count}} miembros en total"
+    },
+    "detail": {
+      "backToTeams": "Equipos",
+      "members": "Miembros",
+      "noMembers": "Sin miembros a\u00fan",
+      "addMember": "Agregar miembro",
+      "removeMember": "Eliminar miembro",
+      "owner": "Propietario",
+      "editName": "Editar nombre del equipo",
+      "loadError": "Error al cargar el equipo.",
+      "deleteTeam": "Eliminar equipo",
+      "deleteError": "Error al eliminar el equipo.",
+      "inviteMember": "Invitar miembro",
+      "inviteByEmail": "Invitar por correo",
+      "inviteBtn": "Enviar invitaci\u00f3n",
+      "inviteError": "Error al enviar la invitaci\u00f3n.",
+      "memberCount": "{{count}} miembros"
+    },
+    "create": {
+      "title": "Crear equipo",
+      "nameLabel": "Nombre del equipo",
+      "namePlaceholder": "Equipo de ingenier\u00eda",
+      "submitBtn": "Crear equipo",
+      "cancelBtn": "Cancelar",
+      "createError": "Error al crear el equipo. Int\u00e9ntalo de nuevo."
+    }
+  },
+  "notifications": {
+    "panel": {
+      "title": "Notificaciones",
+      "markAllRead": "Marcar todo como le\u00eddo",
+      "close": "Cerrar notificaciones",
+      "allCaughtUp": "Est\u00e1s al d\u00eda",
+      "noNotifications": "No hay notificaciones a\u00fan.",
+      "unread": "Sin leer",
+      "earlier": "Anteriores",
+      "markAllAriaLabel": "Marcar todas las notificaciones como le\u00eddas"
+    },
+    "bell": {
+      "ariaLabel": "Abrir notificaciones",
+      "unreadCount": "{{count}} notificaciones sin leer"
+    },
+    "events": {
+      "TASK_CREATED": "Tarea creada",
+      "TASK_ASSIGNED": "Tarea asignada a ti",
+      "TASK_STATUS_CHANGED": "Estado de tarea cambiado",
+      "TASK_DELETED": "Tarea eliminada",
+      "PROJECT_CREATED": "Proyecto creado",
+      "PROJECT_ARCHIVED": "Proyecto archivado",
+      "TEAM_ASSIGNED_TO_PROJECT": "Equipo asignado al proyecto",
+      "MEMBER_JOINED_TEAM": "Miembro uni\u00f3 al equipo",
+      "MEMBER_LEFT_TEAM": "Miembro abandon\u00f3 el equipo"
+    }
+  },
+  "sidebar": {
+    "nav": {
+      "projects": "Proyectos",
+      "teams": "Equipos",
+      "settings": "Configuraci\u00f3n"
+    },
+    "brand": {
+      "name": "EPM",
+      "subtitle": "Gesti\u00f3n de Proyectos"
+    },
+    "collapse": "Contraer",
+    "expand": "Expandir barra lateral",
+    "collapseAriaLabel": "Contraer barra lateral",
+    "expandAriaLabel": "Expandir barra lateral"
+  },
+  "ai": {
+    "chat": {
+      "emptyTitle": "Pregunta a la IA sobre este proyecto",
+      "emptyHint": "Presiona Enter para enviar \u00b7 Shift+Enter para nueva l\u00ednea",
+      "inputPlaceholder": "Pregunta algo sobre este proyecto\u2026",
+      "inputAriaLabel": "Mensaje de chat",
+      "sendAriaLabel": "Enviar mensaje",
+      "messagesAriaLabel": "Mensajes del chat de IA",
+      "typingAriaLabel": "Escribiendo\u2026"
+    }
+  },
+  "confirmDialog": {
+    "cancel": "Cancelar",
+    "confirm": "Confirmar"
+  }
+}

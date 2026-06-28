@@ -11,6 +11,7 @@ interface ProfileState {
   saving: boolean;
   error: string | null;
   saveSuccess: boolean;
+  loaded: boolean;
 }
 
 const initialState: ProfileState = {
@@ -19,6 +20,7 @@ const initialState: ProfileState = {
   saving: false,
   error: null,
   saveSuccess: false,
+  loaded: false,
 };
 
 export const ProfileStore = signalStore(
@@ -26,11 +28,12 @@ export const ProfileStore = signalStore(
   withState(initialState),
   withMethods((store, service = inject(UserService)) => ({
     loadProfile(): void {
+      if (store.loaded()) return;
       patchState(store, { loading: true, error: null });
       service.getMe().pipe(
         tapResponse({
           next: (profile) => {
-            patchState(store, { profile, loading: false });
+            patchState(store, { profile, loading: false, loaded: true });
           },
           error: (err: unknown) => {
             patchState(store, {

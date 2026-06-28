@@ -1,8 +1,10 @@
-import { Component, ChangeDetectionStrategy, OnInit, inject } from '@angular/core';
+import { Component, ChangeDetectionStrategy, OnInit, inject, effect } from '@angular/core';
 import { RouterOutlet } from '@angular/router';
 import { OAuthService } from 'angular-oauth2-oidc';
+import { TranslocoService } from '@jsverse/transloco';
 import { SidebarComponent } from './shared/components/sidebar/sidebar.component';
 import { NotificationStore } from './features/notifications/store/notification.store';
+import { ProfileStore } from './features/settings/store/profile.store';
 import { ThemeService } from './core/theme/theme.service';
 
 @Component({
@@ -28,15 +30,35 @@ import { ThemeService } from './core/theme/theme.service';
   `,
 })
 export class App implements OnInit {
-  private readonly oauth = inject(OAuthService);
-  private readonly notificationStore = inject(NotificationStore);
+  private readonly oauth              = inject(OAuthService);
+  private readonly notificationStore  = inject(NotificationStore);
+  private readonly profileStore       = inject(ProfileStore);
+  private readonly translocoService   = inject(TranslocoService);
   // Inject ThemeService at root level to force initialization on bootstrap —
   // without this, the service constructor (which applies data-theme) is deferred
   // until the first component that uses it, causing a flash of unstyled content.
   private readonly _theme = inject(ThemeService);
 
+  constructor() {
+    // Reactively sync the user's preferred language from their profile to Transloco.
+    // This runs after ProfileStore emits a loaded profile and handles the race
+    // between localStorage bootstrap (APP_INITIALIZER) and the async profile fetch.
+    effect(() => {
+      const supported = ['en', 'es', 'pt'];
+      const lang = this.profileStore.profile()?.preferences?.language;
+      if (lang && supported.includes(lang) && lang !== this.translocoService.getActiveLang()) {
+        this.translocoService.setActiveLang(lang);
+        localStorage.setItem('app.language', lang);
+      }
+    });
+  }
+
   ngOnInit(): void {
-    // Cargar notificaciones y conectar WebSocket al iniciar la app
+    // Load user profile eagerly so language preference is available before
+    // navigating to Settings. The ProfileStore has a double-load guard.
+    this.profileStore.loadProfile();
+
+    // Load notifications and connect WebSocket on app startup
     this.notificationStore.loadNotifications();
 
     const claims = this.oauth.getIdentityClaims() as Record<string, string> | null;
