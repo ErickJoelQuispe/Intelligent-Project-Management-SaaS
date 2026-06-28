@@ -17,6 +17,7 @@ import { of, throwError } from 'rxjs';
 import { UserProfile, UserPreferences } from '../../core/models/user-profile.model';
 import { UserSession } from '../../core/models/user-session.model';
 import { provideTranslocoTesting } from '../../testing/transloco-testing';
+import { TranslocoService } from '@jsverse/transloco';
 
 /**
  * Angular Material 21 renders mat-slide-toggle with the aria-label and
@@ -558,5 +559,126 @@ describe('SettingsComponent — sessions UI wiring', () => {
     // Component computes isCurrent = sessionId === sessionsStore.currentSessionId()
     // → must call revokeSession('sid-current', true)
     expect(sessionsStoreMock.revokeSession).toHaveBeenCalledWith('sid-current', true);
+  });
+});
+
+// ── Task 3.2: eventLabel() uses TranslocoService ──────────────────────────────
+
+describe('SettingsComponent — eventLabel() uses TranslocoService', () => {
+  function buildComponent(): SettingsComponent {
+    TestBed.configureTestingModule({
+      imports: [SettingsComponent],
+      providers: [
+        provideHttpClient(),
+        provideHttpClientTesting(),
+        { provide: AppPreferencesService, useValue: { compactMode: signal(false), reduceAnimations: signal(false), setCompactMode: vi.fn(), setReduceAnimations: vi.fn() } },
+        { provide: ThemeService, useValue: { theme: signal('midnight'), setTheme: vi.fn(), isDark: signal(true) } },
+        { provide: NotificationPreferencesStore, useValue: { loading: signal(false), preferences: signal([]), loadPreferences: vi.fn() } },
+        { provide: ProfileStore, useValue: { loading: signal(false), saving: signal(false), saveSuccess: signal(false), error: signal(null), profile: signal(null), loadProfile: vi.fn(), saveProfile: vi.fn() } },
+        { provide: SessionsStore, useValue: { sessions: signal([]), isLoading: signal(false), revokingSessionId: signal(null), error: signal(null), loadSessions: vi.fn(), revokeSession: vi.fn(), currentSessionId: vi.fn().mockReturnValue(null) } },
+        { provide: OAuthService, useValue: { getIdentityClaims: vi.fn().mockReturnValue({}), getAccessTokenExpiration: vi.fn().mockReturnValue(Date.now() + 3600000) } },
+        { provide: AuthService, useValue: { logout: vi.fn() } },
+        ...provideTranslocoTesting(),
+      ],
+    });
+    const fixture = TestBed.createComponent(SettingsComponent);
+    fixture.detectChanges();
+    return fixture.componentInstance;
+  }
+
+  afterEach(() => vi.restoreAllMocks());
+
+  // RED → GREEN: TASK_CREATED resolves via TranslocoService to en.json value
+  it('eventLabel("TASK_CREATED") returns the en.json translation string', () => {
+    const component = buildComponent();
+    const translocoService = TestBed.inject(TranslocoService);
+    const expected = translocoService.translate('notifications.events.TASK_CREATED');
+    expect(expected).toBe('Task created');
+    expect(component.eventLabel('TASK_CREATED')).toBe('Task created');
+  });
+
+  // TRIANGULATE: different event type resolves correctly
+  it('eventLabel("MEMBER_LEFT_TEAM") returns the en.json translation string', () => {
+    const component = buildComponent();
+    expect(component.eventLabel('MEMBER_LEFT_TEAM')).toBe('Member left team');
+  });
+});
+
+// ── Task 3.3: saveWorkspacePreferences hot-swap ───────────────────────────────
+
+describe('SettingsComponent — saveWorkspacePreferences hot-swap', () => {
+  let profileStoreMock: {
+    loading: ReturnType<typeof signal<boolean>>;
+    saving: ReturnType<typeof signal<boolean>>;
+    saveSuccess: ReturnType<typeof signal<boolean>>;
+    error: ReturnType<typeof signal<string | null>>;
+    profile: ReturnType<typeof signal<UserProfile | null>>;
+    loadProfile: ReturnType<typeof vi.fn>;
+    saveProfile: ReturnType<typeof vi.fn>;
+  };
+
+  function setup(lang = 'es') {
+    const profile: UserProfile = {
+      id: '11111111-1111-1111-1111-111111111111',
+      tenantId: '22222222-2222-2222-2222-222222222222',
+      email: 'alice@example.com',
+      firstName: 'Alice',
+      lastName: 'Smith',
+      bio: null,
+      avatarUrl: null,
+      version: 1,
+      preferences: { language: lang, timezone: 'UTC', dateFormat: 'ISO', startOfWeek: 'MONDAY' },
+    };
+    profileStoreMock = {
+      loading:     signal(false),
+      saving:      signal(false),
+      saveSuccess: signal(false),
+      error:       signal(null),
+      profile:     signal(profile),
+      loadProfile: vi.fn(),
+      saveProfile: vi.fn(),
+    };
+    TestBed.configureTestingModule({
+      imports: [SettingsComponent],
+      providers: [
+        provideHttpClient(),
+        provideHttpClientTesting(),
+        { provide: AppPreferencesService, useValue: { compactMode: signal(false), reduceAnimations: signal(false), setCompactMode: vi.fn(), setReduceAnimations: vi.fn() } },
+        { provide: ThemeService, useValue: { theme: signal('midnight'), setTheme: vi.fn(), isDark: signal(true) } },
+        { provide: NotificationPreferencesStore, useValue: { loading: signal(false), preferences: signal([]), loadPreferences: vi.fn() } },
+        { provide: ProfileStore, useValue: profileStoreMock },
+        { provide: SessionsStore, useValue: { sessions: signal([]), isLoading: signal(false), revokingSessionId: signal(null), error: signal(null), loadSessions: vi.fn(), revokeSession: vi.fn(), currentSessionId: vi.fn().mockReturnValue(null) } },
+        { provide: OAuthService, useValue: { getIdentityClaims: vi.fn().mockReturnValue({}), getAccessTokenExpiration: vi.fn().mockReturnValue(Date.now() + 3600000) } },
+        { provide: AuthService, useValue: { logout: vi.fn() } },
+        ...provideTranslocoTesting(),
+      ],
+    });
+    const fixture = TestBed.createComponent(SettingsComponent);
+    fixture.detectChanges();
+    return fixture;
+  }
+
+  afterEach(() => {
+    vi.restoreAllMocks();
+    localStorage.clear();
+  });
+
+  // RED → GREEN: setActiveLang called with selectedLanguage after save
+  it('saveWorkspacePreferences calls translocoService.setActiveLang with the selected language', () => {
+    const fixture = setup('es');
+    const translocoService = TestBed.inject(TranslocoService);
+    const setActiveLangSpy = vi.spyOn(translocoService, 'setActiveLang');
+
+    fixture.componentInstance.saveWorkspacePreferences();
+
+    expect(setActiveLangSpy).toHaveBeenCalledWith('es');
+  });
+
+  // TRIANGULATE: localStorage is also updated with the same key
+  it('saveWorkspacePreferences stores the language in localStorage under app.language', () => {
+    const fixture = setup('pt');
+    fixture.componentInstance.saveWorkspacePreferences();
+
+    expect(localStorage.getItem('app.language')).toBe('pt');
   });
 });

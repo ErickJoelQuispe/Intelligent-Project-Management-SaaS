@@ -42,7 +42,8 @@ import en from '../../../public/assets/i18n/en.json';
 export function provideTranslocoTesting(options: Partial<TranslocoTestingOptions> = {}): any[] {
   return TranslocoTestingModule.forRoot({
     langs: { en },
-    translocoConfig: { defaultLang: 'en' },
+    translocoConfig: { defaultLang: 'en', availableLangs: ['en', 'es', 'pt'] },
+    preloadLangs: true,
     ...options,
   }).providers ?? [];
 }

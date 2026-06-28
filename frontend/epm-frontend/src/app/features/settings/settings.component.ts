@@ -8,6 +8,7 @@ import {
 } from '@angular/core';
 import { DatePipe } from '@angular/common';
 import { firstValueFrom } from 'rxjs';
+import { TranslocoPipe, TranslocoService } from '@jsverse/transloco';
 import { AppPreferencesService } from '../../core/services/app-preferences.service';
 import { AuthApiService } from '../../core/services/auth-api.service';
 import { FormBuilder, ReactiveFormsModule } from '@angular/forms';
@@ -32,18 +33,6 @@ import { AvatarComponent } from '../../shared/components/avatar/avatar.component
 import { ButtonComponent } from '../../shared/components/button/button.component';
 import { ErrorBannerComponent } from '../../shared/components/error-banner/error-banner.component';
 
-const EVENT_LABELS: Record<string, string> = {
-  TASK_CREATED:             'Task created',
-  TASK_ASSIGNED:            'Task assigned to you',
-  TASK_STATUS_CHANGED:      'Task status changed',
-  TASK_DELETED:             'Task deleted',
-  PROJECT_CREATED:          'Project created',
-  PROJECT_ARCHIVED:         'Project archived',
-  TEAM_ASSIGNED_TO_PROJECT: 'Team assigned to project',
-  MEMBER_JOINED_TEAM:       'Member joined team',
-  MEMBER_LEFT_TEAM:         'Member left team',
-};
-
 const CHANNEL_VARIANT: Record<string, BadgeVariant> = {
   IN_APP: 'info',
   EMAIL:  'neutral',
@@ -66,6 +55,7 @@ interface AccentSwatch {
     ReactiveFormsModule,
     DatePipe,
     MatSlideToggleModule,
+    TranslocoPipe,
     PageHeaderComponent,
     CardComponent,
     SpinnerComponent,
@@ -76,8 +66,8 @@ interface AccentSwatch {
   ],
   template: `
     <app-page-header
-      title="Settings"
-      description="Manage your account and application preferences"
+      [title]="'settings.title' | transloco"
+      [description]="'settings.description' | transloco"
     />
 
     <div class="flex gap-0 h-full">
@@ -95,7 +85,7 @@ interface AccentSwatch {
             <span class="settings-nav-icon material-symbols-rounded text-lg">
               {{ section.icon }}
             </span>
-            {{ section.label }}
+            {{ section.label | transloco }}
           </button>
         }
       </nav>
@@ -106,7 +96,7 @@ interface AccentSwatch {
         <!-- PROFILE -->
         @if (activeSection() === 'profile') {
           <div class="flex flex-col gap-4 animate-fade-up">
-            <h2 class="settings-section-title">Profile</h2>
+            <h2 class="settings-section-title">{{ 'settings.profile.title' | transloco }}</h2>
 
             <!-- Profile info card -->
             <app-card>
@@ -136,7 +126,7 @@ interface AccentSwatch {
                       {{ profileStore.profile()!.bio }}
                     </p>
                   } @else {
-                    <p class="text-text-disabled text-xs italic">No bio yet.</p>
+                    <p class="text-text-disabled text-xs italic">{{ 'settings.profile.noBio' | transloco }}</p>
                   }
 
                   @if (profileStore.profile()?.avatarUrl) {
@@ -158,7 +148,7 @@ interface AccentSwatch {
                   <div class="flex justify-end pt-1">
                     <app-button variant="secondary" size="sm" (click)="startEdit()">
                       <span class="material-symbols-rounded text-sm">edit</span>
-                      Edit profile
+                      {{ 'settings.profile.editBtn' | transloco }}
                     </app-button>
                   </div>
                 </div>
@@ -171,12 +161,12 @@ interface AccentSwatch {
                      <!-- First name -->
                     <div class="flex flex-col gap-2">
                       <label class="settings-field-label text-sm font-semibold" for="firstName">
-                        First name
-                        <span class="settings-field-label--optional font-normal text-xs ml-1">optional</span>
+                        {{ 'settings.profile.firstName' | transloco }}
+                        <span class="settings-field-label--optional font-normal text-xs ml-1">{{ 'common.optional' | transloco }}</span>
                       </label>
                       <input
                         id="firstName" type="text" formControlName="firstName"
-                        placeholder="Jane"
+                        [placeholder]="'settings.profile.firstNamePlaceholder' | transloco"
                         class="settings-field w-full px-4 py-3 rounded-xl text-sm transition-all duration-200 focus:outline-none"
                       />
                     </div>
@@ -184,12 +174,12 @@ interface AccentSwatch {
                     <!-- Last name -->
                     <div class="flex flex-col gap-2">
                       <label class="settings-field-label text-sm font-semibold" for="lastName">
-                        Last name
-                        <span class="settings-field-label--optional font-normal text-xs ml-1">optional</span>
+                        {{ 'settings.profile.lastName' | transloco }}
+                        <span class="settings-field-label--optional font-normal text-xs ml-1">{{ 'common.optional' | transloco }}</span>
                       </label>
                       <input
                         id="lastName" type="text" formControlName="lastName"
-                        placeholder="Doe"
+                        [placeholder]="'settings.profile.lastNamePlaceholder' | transloco"
                         class="settings-field w-full px-4 py-3 rounded-xl text-sm transition-all duration-200 focus:outline-none"
                       />
                     </div>
@@ -198,12 +188,12 @@ interface AccentSwatch {
                   <!-- Bio -->
                   <div class="flex flex-col gap-2">
                       <label class="settings-field-label text-sm font-semibold" for="bio">
-                        Bio
-                        <span class="settings-field-label--optional font-normal text-xs ml-1">optional</span>
+                        {{ 'settings.profile.bio' | transloco }}
+                        <span class="settings-field-label--optional font-normal text-xs ml-1">{{ 'common.optional' | transloco }}</span>
                       </label>
                       <textarea
                         id="bio" formControlName="bio" rows="3"
-                        placeholder="Tell us a bit about yourself..."
+                        [placeholder]="'settings.profile.bioPlaceholder' | transloco"
                         maxlength="2000"
                         class="settings-field w-full px-4 py-3 rounded-xl text-sm resize-none transition-all duration-200 focus:outline-none"
                       ></textarea>
@@ -212,12 +202,12 @@ interface AccentSwatch {
                   <!-- Avatar URL -->
                   <div class="flex flex-col gap-2">
                       <label class="settings-field-label text-sm font-semibold" for="avatarUrl">
-                        Avatar URL
-                        <span class="settings-field-label--optional font-normal text-xs ml-1">optional</span>
+                        {{ 'settings.profile.avatarUrl' | transloco }}
+                        <span class="settings-field-label--optional font-normal text-xs ml-1">{{ 'common.optional' | transloco }}</span>
                       </label>
                       <input
                         id="avatarUrl" type="url" formControlName="avatarUrl"
-                        placeholder="https://example.com/avatar.png"
+                        [placeholder]="'settings.profile.avatarUrlPlaceholder' | transloco"
                         class="settings-field w-full px-4 py-3 rounded-xl text-sm transition-all duration-200 focus:outline-none"
                       />
                   </div>
@@ -234,7 +224,7 @@ interface AccentSwatch {
                       size="sm"
                       (click)="cancelEdit()"
                     >
-                      Cancel
+                      {{ 'settings.profile.cancelBtn' | transloco }}
                     </app-button>
                     <app-button
                       type="submit"
@@ -243,7 +233,7 @@ interface AccentSwatch {
                       [loading]="profileStore.saving()"
                       [disabled]="profileStore.saving()"
                     >
-                      Save changes
+                      {{ 'settings.profile.saveBtn' | transloco }}
                     </app-button>
                   </div>
                 </form>
@@ -253,14 +243,14 @@ interface AccentSwatch {
             <!-- Session card -->
             <app-card>
               <div class="flex flex-col gap-4">
-                <h3 class="text-text-primary text-sm font-semibold">Session</h3>
+                <h3 class="text-text-primary text-sm font-semibold">{{ 'settings.profile.session' | transloco }}</h3>
 
                  <div class="flex items-center justify-between py-2"
                       style="border-bottom: 1px solid color-mix(in oklch, var(--color-border) 50%, transparent);">
                    <div class="flex flex-col gap-0.5">
-                     <span class="text-text-primary text-sm">Active session</span>
+                     <span class="text-text-primary text-sm">{{ 'settings.profile.activeSession' | transloco }}</span>
                      <span class="text-text-muted text-xs">
-                       Token expires in ~{{ tokenExpiresIn() }}
+                       {{ 'settings.profile.tokenExpiry' | transloco }}{{ tokenExpiresIn() }}
                      </span>
                    </div>
                    <span class="size-2 rounded-full animate-glow-pulse"
@@ -273,8 +263,8 @@ interface AccentSwatch {
                   <button (click)="logout()"
                           class="settings-logout-btn flex items-center gap-2 px-4 py-2 rounded-lg text-sm
                                  font-medium transition-all duration-150 cursor-pointer">
-                    <span class="material-symbols-rounded text-sm">logout</span>
-                    Sign out
+                     <span class="material-symbols-rounded text-sm">logout</span>
+                     {{ 'common.signOut' | transloco }}
                   </button>
                 </div>
               </div>
@@ -285,9 +275,9 @@ interface AccentSwatch {
         <!-- NOTIFICATIONS -->
         @if (activeSection() === 'notifications') {
           <div class="flex flex-col gap-4 animate-fade-up">
-            <h2 class="settings-section-title">Notification preferences</h2>
+            <h2 class="settings-section-title">{{ 'settings.notifications.title' | transloco }}</h2>
             <p class="text-text-muted text-sm -mt-2">
-              Choose which events trigger notifications and through which channel.
+              {{ 'settings.notifications.description' | transloco }}
             </p>
 
             <app-card [noPadding]="true">
@@ -302,14 +292,14 @@ interface AccentSwatch {
               } @else {
                 <!-- Column header row -->
                 <div class="notif-table-header flex items-center px-6 py-3">
-                  <span class="flex-1 text-xs font-semibold uppercase tracking-wider" style="color: var(--color-text-muted);">Event</span>
+                  <span class="flex-1 text-xs font-semibold uppercase tracking-wider" style="color: var(--color-text-muted);">{{ 'settings.notifications.eventCol' | transloco }}</span>
                   <div class="notif-col-header flex items-center gap-1.5">
                     <span class="material-symbols-rounded text-base">notifications</span>
-                    <span class="text-xs font-semibold">In-app</span>
+                    <span class="text-xs font-semibold">{{ 'settings.notifications.inAppCol' | transloco }}</span>
                   </div>
                   <div class="notif-col-header flex items-center gap-1.5 ml-8">
                     <span class="material-symbols-rounded text-base">mail</span>
-                    <span class="text-xs font-semibold">Email</span>
+                    <span class="text-xs font-semibold">{{ 'settings.notifications.emailCol' | transloco }}</span>
                   </div>
                 </div>
 
@@ -317,17 +307,17 @@ interface AccentSwatch {
                 @for (group of notifGroups; track group.prefix) {
                   <!-- Group header with master toggles -->
                   <div class="notif-group-header flex items-center px-6 py-2.5">
-                    <span class="flex-1 text-xs font-semibold uppercase tracking-wider">{{ group.label }}</span>
+                    <span class="flex-1 text-xs font-semibold uppercase tracking-wider">{{ group.label | transloco }}</span>
                     <mat-slide-toggle
                       [checked]="isGroupAllEnabled(group.prefix, 'IN_APP')"
                       (change)="toggleGroup(group.prefix, 'IN_APP', $event.checked)"
-                      [attr.aria-label]="'Toggle all ' + group.label + ' in-app notifications'"
+                      [aria-label]="'settings.notifications.toggleAllInApp' | transloco : { label: group.label | transloco }"
                       class="notif-col-toggle"
                     />
                     <mat-slide-toggle
                       [checked]="isGroupAllEnabled(group.prefix, 'EMAIL')"
                       (change)="toggleGroup(group.prefix, 'EMAIL', $event.checked)"
-                      [attr.aria-label]="'Toggle all ' + group.label + ' email notifications'"
+                      [aria-label]="'settings.notifications.toggleAllEmail' | transloco : { label: group.label | transloco }"
                       class="notif-col-toggle ml-8"
                     />
                   </div>
@@ -339,13 +329,13 @@ interface AccentSwatch {
                       <mat-slide-toggle
                         [checked]="getPref(eventType, 'IN_APP')"
                         (change)="onToggleByType(eventType, 'IN_APP', $event)"
-                        [attr.aria-label]="eventLabel(eventType) + ' in-app'"
+                        [aria-label]="eventLabel(eventType) + ' in-app'"
                         class="notif-col-toggle"
                       />
                       <mat-slide-toggle
                         [checked]="getPref(eventType, 'EMAIL')"
                         (change)="onToggleByType(eventType, 'EMAIL', $event)"
-                        [attr.aria-label]="eventLabel(eventType) + ' email'"
+                        [aria-label]="eventLabel(eventType) + ' email'"
                         class="notif-col-toggle ml-8"
                       />
                     </div>
@@ -359,13 +349,13 @@ interface AccentSwatch {
         <!-- APPEARANCE -->
         @if (activeSection() === 'appearance') {
           <div class="flex flex-col gap-4 animate-fade-up">
-            <h2 class="settings-section-title">Appearance</h2>
+            <h2 class="settings-section-title">{{ 'settings.appearance.title' | transloco }}</h2>
 
             <!-- Theme selector card -->
             <app-card>
               <div class="flex flex-col gap-5">
                 <div class="flex flex-col gap-3">
-                  <span class="text-text-primary text-sm font-semibold">Theme</span>
+                  <span class="text-text-primary text-sm font-semibold">{{ 'settings.appearance.theme' | transloco }}</span>
                   <div class="grid grid-cols-3 gap-3 sm:grid-cols-5">
 
                     <!-- Midnight -->
@@ -373,15 +363,15 @@ interface AccentSwatch {
                       (click)="setTheme('midnight')"
                       [class.theme-card--active]="themeService.theme() === 'midnight'"
                       class="theme-card flex flex-col items-center gap-2 p-4 rounded-xl border cursor-pointer transition-all duration-200"
-                      aria-label="Midnight theme"
-                    >
-                      <div class="rounded-lg w-full h-12 flex items-end p-1.5 gap-1"
-                           style="background: #0d0d1a; border: 1px solid #1a1a2e;">
-                        <div class="h-1.5 rounded-full flex-1" style="background: #2a2a45;"></div>
-                        <div class="h-1.5 rounded-full w-1/3" style="background: #8b5cf6;"></div>
-                      </div>
-                      <div class="flex items-center gap-1.5 w-full justify-between">
-                        <span class="text-text-secondary text-xs font-medium">Midnight</span>
+                      [attr.aria-label]="'settings.appearance.themes.midnight' | transloco"
+                     >
+                       <div class="rounded-lg w-full h-12 flex items-end p-1.5 gap-1"
+                            style="background: #0d0d1a; border: 1px solid #1a1a2e;">
+                         <div class="h-1.5 rounded-full flex-1" style="background: #2a2a45;"></div>
+                         <div class="h-1.5 rounded-full w-1/3" style="background: #8b5cf6;"></div>
+                       </div>
+                       <div class="flex items-center gap-1.5 w-full justify-between">
+                         <span class="text-text-secondary text-xs font-medium">{{ 'settings.appearance.themes.midnight' | transloco }}</span>
                         @if (themeService.theme() === 'midnight') {
                           <span class="material-symbols-rounded text-sm theme-check-icon">check_circle</span>
                         }
@@ -393,15 +383,15 @@ interface AccentSwatch {
                       (click)="setTheme('amber')"
                       [class.theme-card--active]="themeService.theme() === 'amber'"
                       class="theme-card flex flex-col items-center gap-2 p-4 rounded-xl border cursor-pointer transition-all duration-200"
-                      aria-label="Amber theme"
-                    >
-                      <div class="rounded-lg w-full h-12 flex items-end p-1.5 gap-1"
-                           style="background: #fdf6e3; border: 1px solid #e8d5b0;">
-                        <div class="h-1.5 rounded-full flex-1" style="background: #e8d5b0;"></div>
-                        <div class="h-1.5 rounded-full w-1/3" style="background: #d97706;"></div>
-                      </div>
-                      <div class="flex items-center gap-1.5 w-full justify-between">
-                        <span class="text-text-secondary text-xs font-medium">Amber</span>
+                      [attr.aria-label]="'settings.appearance.themes.amber' | transloco"
+                     >
+                       <div class="rounded-lg w-full h-12 flex items-end p-1.5 gap-1"
+                            style="background: #fdf6e3; border: 1px solid #e8d5b0;">
+                         <div class="h-1.5 rounded-full flex-1" style="background: #e8d5b0;"></div>
+                         <div class="h-1.5 rounded-full w-1/3" style="background: #d97706;"></div>
+                       </div>
+                       <div class="flex items-center gap-1.5 w-full justify-between">
+                         <span class="text-text-secondary text-xs font-medium">{{ 'settings.appearance.themes.amber' | transloco }}</span>
                         @if (themeService.theme() === 'amber') {
                           <span class="material-symbols-rounded text-sm theme-check-icon">check_circle</span>
                         }
@@ -413,15 +403,15 @@ interface AccentSwatch {
                       (click)="setTheme('catppuccin')"
                       [class.theme-card--active]="themeService.theme() === 'catppuccin'"
                       class="theme-card flex flex-col items-center gap-2 p-4 rounded-xl border cursor-pointer transition-all duration-200"
-                      aria-label="Catppuccin theme"
-                    >
-                      <div class="rounded-lg w-full h-12 flex items-end p-1.5 gap-1"
-                           style="background: #1e1e2e; border: 1px solid #313244;">
-                        <div class="h-1.5 rounded-full flex-1" style="background: #313244;"></div>
-                        <div class="h-1.5 rounded-full w-1/3" style="background: #f5c2e7;"></div>
-                      </div>
-                      <div class="flex items-center gap-1.5 w-full justify-between">
-                        <span class="text-text-secondary text-xs font-medium">Catppuccin</span>
+                      [attr.aria-label]="'settings.appearance.themes.catppuccin' | transloco"
+                     >
+                       <div class="rounded-lg w-full h-12 flex items-end p-1.5 gap-1"
+                            style="background: #1e1e2e; border: 1px solid #313244;">
+                         <div class="h-1.5 rounded-full flex-1" style="background: #313244;"></div>
+                         <div class="h-1.5 rounded-full w-1/3" style="background: #f5c2e7;"></div>
+                       </div>
+                       <div class="flex items-center gap-1.5 w-full justify-between">
+                         <span class="text-text-secondary text-xs font-medium">{{ 'settings.appearance.themes.catppuccin' | transloco }}</span>
                         @if (themeService.theme() === 'catppuccin') {
                           <span class="material-symbols-rounded text-sm theme-check-icon">check_circle</span>
                         }
@@ -433,15 +423,15 @@ interface AccentSwatch {
                       (click)="setTheme('nord')"
                       [class.theme-card--active]="themeService.theme() === 'nord'"
                       class="theme-card flex flex-col items-center gap-2 p-4 rounded-xl border cursor-pointer transition-all duration-200"
-                      aria-label="Nord theme"
-                    >
-                      <div class="rounded-lg w-full h-12 flex items-end p-1.5 gap-1"
-                           style="background: #2e3440; border: 1px solid #3b4252;">
-                        <div class="h-1.5 rounded-full flex-1" style="background: #3b4252;"></div>
-                        <div class="h-1.5 rounded-full w-1/3" style="background: #88c0d0;"></div>
-                      </div>
-                      <div class="flex items-center gap-1.5 w-full justify-between">
-                        <span class="text-text-secondary text-xs font-medium">Nord</span>
+                      [attr.aria-label]="'settings.appearance.themes.nord' | transloco"
+                     >
+                       <div class="rounded-lg w-full h-12 flex items-end p-1.5 gap-1"
+                            style="background: #2e3440; border: 1px solid #3b4252;">
+                         <div class="h-1.5 rounded-full flex-1" style="background: #3b4252;"></div>
+                         <div class="h-1.5 rounded-full w-1/3" style="background: #88c0d0;"></div>
+                       </div>
+                       <div class="flex items-center gap-1.5 w-full justify-between">
+                         <span class="text-text-secondary text-xs font-medium">{{ 'settings.appearance.themes.nord' | transloco }}</span>
                         @if (themeService.theme() === 'nord') {
                           <span class="material-symbols-rounded text-sm theme-check-icon">check_circle</span>
                         }
@@ -453,15 +443,15 @@ interface AccentSwatch {
                       (click)="setTheme('rose')"
                       [class.theme-card--active]="themeService.theme() === 'rose'"
                       class="theme-card flex flex-col items-center gap-2 p-4 rounded-xl border cursor-pointer transition-all duration-200"
-                      aria-label="Rose theme"
-                    >
-                      <div class="rounded-lg w-full h-12 flex items-end p-1.5 gap-1"
-                           style="background: #fff0f3; border: 1px solid #fce7f0;">
-                        <div class="h-1.5 rounded-full flex-1" style="background: #fce7f0;"></div>
-                        <div class="h-1.5 rounded-full w-1/3" style="background: #e11d75;"></div>
-                      </div>
-                      <div class="flex items-center gap-1.5 w-full justify-between">
-                        <span class="text-text-secondary text-xs font-medium">Rose</span>
+                      [attr.aria-label]="'settings.appearance.themes.rose' | transloco"
+                     >
+                       <div class="rounded-lg w-full h-12 flex items-end p-1.5 gap-1"
+                            style="background: #fff0f3; border: 1px solid #fce7f0;">
+                         <div class="h-1.5 rounded-full flex-1" style="background: #fce7f0;"></div>
+                         <div class="h-1.5 rounded-full w-1/3" style="background: #e11d75;"></div>
+                       </div>
+                       <div class="flex items-center gap-1.5 w-full justify-between">
+                         <span class="text-text-secondary text-xs font-medium">{{ 'settings.appearance.themes.rose' | transloco }}</span>
                         @if (themeService.theme() === 'rose') {
                           <span class="material-symbols-rounded text-sm theme-check-icon">check_circle</span>
                         }
@@ -475,50 +465,50 @@ interface AccentSwatch {
 
                 <!-- Accent color palette -->
                 <div class="flex flex-col gap-3">
-                  <span class="text-text-primary text-sm font-semibold">Accent color</span>
+                  <span class="text-text-primary text-sm font-semibold">{{ 'settings.appearance.accentColor' | transloco }}</span>
                   <div class="flex items-center gap-3">
                     @for (swatch of accentSwatches; track swatch.id) {
                       <button
                         (click)="selectAccent(swatch.id)"
                         [class.accent-swatch--selected]="selectedAccent() === swatch.id"
                         class="accent-swatch size-8 rounded-full cursor-pointer transition-all duration-200 border-2"
-                        [attr.aria-label]="swatch.label"
+                        [attr.aria-label]="swatch.label | transloco"
                         [style.background]="swatch.color"
                       ></button>
                     }
                   </div>
                   <span class="text-text-muted text-xs">
-                    Selected: {{ selectedAccentLabel() }}
-                  </span>
+                     {{ 'settings.appearance.accentSelected' | transloco : { label: selectedAccentLabel() } }}
+                   </span>
                 </div>
 
                 <div class="settings-divider"></div>
 
                 <!-- Compact mode -->
-                <div class="flex items-center justify-between">
-                  <div class="flex flex-col gap-0.5">
-                    <span class="text-text-primary text-sm font-medium">Compact mode</span>
-                    <span class="text-text-muted text-xs">Reduce padding and spacing across the UI</span>
-                  </div>
-                  <mat-slide-toggle
-                    aria-label="Toggle compact mode"
-                    [checked]="appPreferencesService.compactMode()"
-                    (change)="appPreferencesService.setCompactMode($event.checked)"
-                  />
-                </div>
+                 <div class="flex items-center justify-between">
+                   <div class="flex flex-col gap-0.5">
+                     <span class="text-text-primary text-sm font-medium">{{ 'settings.appearance.compactMode' | transloco }}</span>
+                     <span class="text-text-muted text-xs">{{ 'settings.appearance.compactModeDesc' | transloco }}</span>
+                   </div>
+                   <mat-slide-toggle
+                     [aria-label]="'settings.appearance.toggleCompactMode' | transloco"
+                     [checked]="appPreferencesService.compactMode()"
+                     (change)="appPreferencesService.setCompactMode($event.checked)"
+                   />
+                 </div>
 
-                <!-- Reduce animations -->
-                <div class="flex items-center justify-between">
-                  <div class="flex flex-col gap-0.5">
-                    <span class="text-text-primary text-sm font-medium">Reduce animations</span>
-                    <span class="text-text-muted text-xs">Minimize motion for accessibility or performance</span>
-                  </div>
-                  <mat-slide-toggle
-                    aria-label="Toggle reduce animations"
-                    [checked]="appPreferencesService.reduceAnimations()"
-                    (change)="appPreferencesService.setReduceAnimations($event.checked)"
-                  />
-                </div>
+                 <!-- Reduce animations -->
+                 <div class="flex items-center justify-between">
+                   <div class="flex flex-col gap-0.5">
+                     <span class="text-text-primary text-sm font-medium">{{ 'settings.appearance.reduceAnimations' | transloco }}</span>
+                     <span class="text-text-muted text-xs">{{ 'settings.appearance.reduceAnimationsDesc' | transloco }}</span>
+                   </div>
+                   <mat-slide-toggle
+                     [aria-label]="'settings.appearance.toggleReduceAnimations' | transloco"
+                     [checked]="appPreferencesService.reduceAnimations()"
+                     (change)="appPreferencesService.setReduceAnimations($event.checked)"
+                   />
+                 </div>
 
               </div>
             </app-card>
@@ -528,7 +518,7 @@ interface AccentSwatch {
         <!-- WORKSPACE -->
         @if (activeSection() === 'workspace') {
           <div class="flex flex-col gap-4 animate-fade-up">
-            <h2 class="settings-section-title">Workspace</h2>
+            <h2 class="settings-section-title">{{ 'settings.workspace.title' | transloco }}</h2>
 
             <!-- Language & Timezone -->
             <app-card>
@@ -537,8 +527,8 @@ interface AccentSwatch {
                 <!-- Language -->
                 <div class="flex flex-col gap-2">
                   <label class="settings-field-label text-sm font-semibold" for="ws-language">
-                    Language
-                  </label>
+                     {{ 'settings.workspace.language' | transloco }}
+                   </label>
                   <div class="settings-select-wrapper">
                     <select
                       id="ws-language"
@@ -546,9 +536,9 @@ interface AccentSwatch {
                       [value]="selectedLanguage()"
                       (change)="selectedLanguage.set($any($event.target).value)"
                     >
-                      <option value="en">English</option>
-                      <option value="es">Spanish</option>
-                      <option value="pt">Portuguese</option>
+                       <option value="en">{{ 'settings.workspace.languages.en' | transloco }}</option>
+                       <option value="es">{{ 'settings.workspace.languages.es' | transloco }}</option>
+                       <option value="pt">{{ 'settings.workspace.languages.pt' | transloco }}</option>
                     </select>
                     <span class="settings-select-chevron material-symbols-rounded">expand_more</span>
                   </div>
@@ -559,8 +549,8 @@ interface AccentSwatch {
                 <!-- Timezone -->
                 <div class="flex flex-col gap-2">
                   <label class="settings-field-label text-sm font-semibold" for="ws-timezone">
-                    Timezone
-                  </label>
+                     {{ 'settings.workspace.timezone' | transloco }}
+                   </label>
                   <div class="settings-select-wrapper">
                     <select
                       id="ws-timezone"
@@ -589,7 +579,7 @@ interface AccentSwatch {
             <!-- Date format -->
             <app-card>
               <div class="flex flex-col gap-3">
-                <span class="text-text-primary text-sm font-semibold">Date format</span>
+                <span class="text-text-primary text-sm font-semibold">{{ 'settings.workspace.dateFormat' | transloco }}</span>
                 <div class="grid grid-cols-3 gap-3">
 
                   <button
@@ -626,29 +616,29 @@ interface AccentSwatch {
             <!-- Start of week -->
             <app-card>
               <div class="flex flex-col gap-3">
-                <span class="text-text-primary text-sm font-semibold">Start of week</span>
+                <span class="text-text-primary text-sm font-semibold">{{ 'settings.workspace.startOfWeek' | transloco }}</span>
                 <div class="flex gap-2">
-                  <button
-                    (click)="selectedStartOfWeek.set('SUNDAY')"
-                    [class.week-pill--active]="selectedStartOfWeek() === 'SUNDAY'"
-                    class="week-pill px-5 py-2 rounded-full text-sm font-medium cursor-pointer transition-all duration-200 border"
-                  >
-                    Sunday
-                  </button>
-                  <button
-                    (click)="selectedStartOfWeek.set('MONDAY')"
-                    [class.week-pill--active]="selectedStartOfWeek() === 'MONDAY'"
-                    class="week-pill px-5 py-2 rounded-full text-sm font-medium cursor-pointer transition-all duration-200 border"
-                  >
-                    Monday
-                  </button>
-                  <button
-                    (click)="selectedStartOfWeek.set('SATURDAY')"
-                    [class.week-pill--active]="selectedStartOfWeek() === 'SATURDAY'"
-                    class="week-pill px-5 py-2 rounded-full text-sm font-medium cursor-pointer transition-all duration-200 border"
-                  >
-                    Saturday
-                  </button>
+                   <button
+                     (click)="selectedStartOfWeek.set('SUNDAY')"
+                     [class.week-pill--active]="selectedStartOfWeek() === 'SUNDAY'"
+                     class="week-pill px-5 py-2 rounded-full text-sm font-medium cursor-pointer transition-all duration-200 border"
+                   >
+                     {{ 'settings.workspace.days.sunday' | transloco }}
+                   </button>
+                   <button
+                     (click)="selectedStartOfWeek.set('MONDAY')"
+                     [class.week-pill--active]="selectedStartOfWeek() === 'MONDAY'"
+                     class="week-pill px-5 py-2 rounded-full text-sm font-medium cursor-pointer transition-all duration-200 border"
+                   >
+                     {{ 'settings.workspace.days.monday' | transloco }}
+                   </button>
+                   <button
+                     (click)="selectedStartOfWeek.set('SATURDAY')"
+                     [class.week-pill--active]="selectedStartOfWeek() === 'SATURDAY'"
+                     class="week-pill px-5 py-2 rounded-full text-sm font-medium cursor-pointer transition-all duration-200 border"
+                   >
+                     {{ 'settings.workspace.days.saturday' | transloco }}
+                   </button>
                 </div>
               </div>
             </app-card>
@@ -662,7 +652,7 @@ interface AccentSwatch {
                 [disabled]="profileStore.saving()"
                 (click)="saveWorkspacePreferences()"
               >
-                Save workspace preferences
+                {{ 'settings.workspace.saveBtn' | transloco }}
               </app-button>
             </div>
 
@@ -673,7 +663,7 @@ interface AccentSwatch {
             <!-- Info note -->
             <div class="rounded-xl px-4 py-3 text-xs flex items-start gap-2 settings-workspace-note">
               <span class="material-symbols-rounded text-sm shrink-0 mt-0.5">info</span>
-              Workspace preferences are synced to your account and apply across all devices.
+              {{ 'settings.workspace.syncNote' | transloco }}
             </div>
           </div>
         }
@@ -681,40 +671,40 @@ interface AccentSwatch {
         <!-- SECURITY -->
         @if (activeSection() === 'security') {
           <div class="flex flex-col gap-4 animate-fade-up">
-            <h2 class="settings-section-title">Security</h2>
+            <h2 class="settings-section-title">{{ 'settings.security.title' | transloco }}</h2>
 
             <!-- Active sessions -->
             <app-card>
               <div class="flex flex-col gap-4">
-                <h3 class="text-text-primary text-sm font-semibold">Active sessions</h3>
+                <h3 class="text-text-primary text-sm font-semibold">{{ 'settings.security.activeSessions' | transloco }}</h3>
 
                 @if (sessionsStore.isLoading()) {
                   <app-spinner size="md" [full]="true" />
                 } @else if (sessionsStore.sessions().length === 0) {
-                  <p class="text-text-muted text-sm">No active sessions</p>
+                   <p class="text-text-muted text-sm">{{ 'settings.security.noActiveSessions' | transloco }}</p>
                 } @else {
                   @for (session of sessionsStore.sessions(); track session.sessionId) {
                     <div class="flex items-center gap-4 py-3"
                          style="border-bottom: 1px solid color-mix(in oklch, var(--color-border) 50%, transparent);">
                       <div class="flex flex-col gap-0.5 flex-1 min-w-0">
                         <span class="text-text-primary text-sm font-medium">{{ session.ipAddress }}</span>
-                        <span class="text-text-muted text-xs">
-                          Started: {{ session.started | date:'medium' }}
-                        </span>
-                        <span class="text-text-muted text-xs">
-                          Last seen: {{ session.lastAccess | date:'medium' }}
-                        </span>
+                         <span class="text-text-muted text-xs">
+                           {{ 'settings.security.started' | transloco }} {{ session.started | date:'medium' }}
+                         </span>
+                         <span class="text-text-muted text-xs">
+                           {{ 'settings.security.lastSeen' | transloco }} {{ session.lastAccess | date:'medium' }}
+                         </span>
                       </div>
                       <div class="flex items-center gap-2 shrink-0">
                         @if (session.sessionId === sessionsStore.currentSessionId()) {
-                          <span class="settings-session-current-badge">Current session</span>
+                           <span class="settings-session-current-badge">{{ 'settings.security.currentSession' | transloco }}</span>
                         }
                         <button
                           class="settings-revoke-btn px-3 py-1.5 rounded-lg text-xs font-medium cursor-pointer transition-all duration-150"
                           [disabled]="sessionsStore.revokingSessionId() === session.sessionId"
-                          (click)="revokeSession(session.sessionId)"
-                        >
-                          Revoke
+                           (click)="revokeSession(session.sessionId)"
+                         >
+                           {{ 'settings.security.revokeBtn' | transloco }}
                         </button>
                       </div>
                     </div>
@@ -732,25 +722,25 @@ interface AccentSwatch {
             <!-- Danger zone -->
             <app-card>
               <div class="flex flex-col gap-4">
-                <h3 class="settings-danger-title text-sm font-semibold">Danger Zone</h3>
+                <h3 class="settings-danger-title text-sm font-semibold">{{ 'settings.security.dangerZone' | transloco }}</h3>
 
                 <div class="flex items-center justify-between gap-4">
                   <div class="flex flex-col gap-0.5">
-                    <span class="text-text-primary text-sm font-medium">Delete account</span>
-                    <span class="text-text-muted text-xs">
-                      Permanently delete your account and all data. This cannot be undone.
-                    </span>
+                     <span class="text-text-primary text-sm font-medium">{{ 'settings.security.deleteAccount' | transloco }}</span>
+                     <span class="text-text-muted text-xs">
+                       {{ 'settings.security.deleteAccountDesc' | transloco }}
+                     </span>
                   </div>
                   <button
                     (click)="confirmDeleteAccount()"
                     [disabled]="isDeletingAccount()"
                     class="settings-danger-btn px-4 py-2 rounded-lg text-sm font-medium cursor-pointer transition-all duration-150 shrink-0"
                   >
-                    @if (isDeletingAccount()) {
-                      Deleting...
-                    } @else {
-                      Delete account
-                    }
+                     @if (isDeletingAccount()) {
+                       {{ 'settings.security.deletingAccount' | transloco }}
+                     } @else {
+                       {{ 'settings.security.deleteAccount' | transloco }}
+                     }
                   </button>
                 </div>
 
@@ -1046,17 +1036,18 @@ interface AccentSwatch {
   `,
 })
 export class SettingsComponent implements OnInit {
-  private readonly oauth            = inject(OAuthService);
-  private readonly authService      = inject(AuthService);
-  private readonly authApiService   = inject(AuthApiService);
-  private readonly userService      = inject(UserService);
-  private readonly dialog           = inject(MatDialog);
-  private readonly fb               = inject(FormBuilder);
-  readonly themeService             = inject(ThemeService);
-  readonly prefStore                = inject(NotificationPreferencesStore);
-  readonly profileStore             = inject(ProfileStore);
-  readonly sessionsStore            = inject(SessionsStore);
-  readonly appPreferencesService    = inject(AppPreferencesService);
+  private readonly oauth                = inject(OAuthService);
+  private readonly authService          = inject(AuthService);
+  private readonly authApiService       = inject(AuthApiService);
+  private readonly userService          = inject(UserService);
+  private readonly dialog               = inject(MatDialog);
+  private readonly fb                   = inject(FormBuilder);
+  private readonly translocoService     = inject(TranslocoService);
+  readonly themeService                 = inject(ThemeService);
+  readonly prefStore                    = inject(NotificationPreferencesStore);
+  readonly profileStore                 = inject(ProfileStore);
+  readonly sessionsStore                = inject(SessionsStore);
+  readonly appPreferencesService        = inject(AppPreferencesService);
 
   activeSection = signal<SettingsSection>('profile');
   isEditing     = signal(false);
@@ -1075,20 +1066,20 @@ export class SettingsComponent implements OnInit {
   selectedStartOfWeek = signal<string>(DEFAULT_PREFERENCES.startOfWeek);
 
   readonly sections = [
-    { id: 'profile'       as SettingsSection, label: 'Profile',       icon: 'person' },
-    { id: 'notifications' as SettingsSection, label: 'Notifications', icon: 'notifications' },
-    { id: 'appearance'    as SettingsSection, label: 'Appearance',    icon: 'palette' },
-    { id: 'workspace'     as SettingsSection, label: 'Workspace',     icon: 'tune' },
-    { id: 'security'      as SettingsSection, label: 'Security',      icon: 'shield' },
+    { id: 'profile'       as SettingsSection, label: 'settings.nav.profile',       icon: 'person' },
+    { id: 'notifications' as SettingsSection, label: 'settings.nav.notifications', icon: 'notifications' },
+    { id: 'appearance'    as SettingsSection, label: 'settings.nav.appearance',    icon: 'palette' },
+    { id: 'workspace'     as SettingsSection, label: 'settings.nav.workspace',     icon: 'tune' },
+    { id: 'security'      as SettingsSection, label: 'settings.nav.security',      icon: 'shield' },
   ];
 
   readonly accentSwatches: AccentSwatch[] = [
-    { id: 'violet',   label: 'Violet (default)',  color: 'var(--color-accent)',  isToken: true },
-    { id: 'cyan',     label: 'Cyan',              color: 'var(--color-cyan)',    isToken: true },
-    { id: 'fuchsia',  label: 'Fuchsia',           color: '#e879f9',              isToken: false },
-    { id: 'amber',    label: 'Amber',             color: '#f59e0b',              isToken: false },
-    { id: 'emerald',  label: 'Emerald',           color: '#22c55e',              isToken: false },
-    { id: 'rose',     label: 'Rose',              color: '#ef4444',              isToken: false },
+    { id: 'violet',   label: 'settings.appearance.accents.violet',   color: 'var(--color-accent)',  isToken: true },
+    { id: 'cyan',     label: 'settings.appearance.accents.cyan',     color: 'var(--color-cyan)',    isToken: true },
+    { id: 'fuchsia',  label: 'settings.appearance.accents.fuchsia',  color: '#e879f9',              isToken: false },
+    { id: 'amber',    label: 'settings.appearance.accents.amber',    color: '#f59e0b',              isToken: false },
+    { id: 'emerald',  label: 'settings.appearance.accents.emerald',  color: '#22c55e',              isToken: false },
+    { id: 'rose',     label: 'settings.appearance.accents.rose',     color: '#ef4444',              isToken: false },
   ];
 
   readonly notifGroups: Array<{
@@ -1097,17 +1088,17 @@ export class SettingsComponent implements OnInit {
     events: NotificationType[];
   }> = [
     {
-      label: 'Tasks',
+      label: 'settings.notifications.groups.tasks',
       prefix: 'TASK',
       events: ['TASK_CREATED', 'TASK_ASSIGNED', 'TASK_STATUS_CHANGED', 'TASK_DELETED'],
     },
     {
-      label: 'Projects',
+      label: 'settings.notifications.groups.projects',
       prefix: 'PROJECT',
       events: ['PROJECT_CREATED', 'PROJECT_ARCHIVED', 'TEAM_ASSIGNED_TO_PROJECT'],
     },
     {
-      label: 'Team',
+      label: 'settings.notifications.groups.team',
       prefix: 'MEMBER',
       events: ['MEMBER_JOINED_TEAM', 'MEMBER_LEFT_TEAM'],
     },
@@ -1219,6 +1210,10 @@ export class SettingsComponent implements OnInit {
     };
 
     this.profileStore.saveProfile(req);
+
+    // Task 3.3: hot-swap language immediately without page reload
+    this.translocoService.setActiveLang(this.selectedLanguage());
+    localStorage.setItem('app.language', this.selectedLanguage());
   }
 
   // ─── Appearance methods ────────────────────────────────────────────────────
@@ -1232,7 +1227,8 @@ export class SettingsComponent implements OnInit {
   }
 
   selectedAccentLabel(): string {
-    return this.accentSwatches.find(s => s.id === this.selectedAccent())?.label ?? '';
+    const key = this.accentSwatches.find(s => s.id === this.selectedAccent())?.label;
+    return key ? this.translocoService.translate(key) : '';
   }
 
   // ─── Security methods ──────────────────────────────────────────────────────
@@ -1287,7 +1283,7 @@ export class SettingsComponent implements OnInit {
   }
 
   eventLabel(eventType: string): string {
-    return EVENT_LABELS[eventType] ?? eventType.toLowerCase().replace(/_/g, ' ');
+    return this.translocoService.translate(`notifications.events.${eventType}`);
   }
 
   channelVariant(channel: string): BadgeVariant {
