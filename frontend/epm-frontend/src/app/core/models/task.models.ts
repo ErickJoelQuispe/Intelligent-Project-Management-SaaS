@@ -76,10 +76,15 @@ export const TASK_STATUS_ORDER: TaskStatus[] = [
   'CANCELLED',
 ];
 
-export const TASK_STATUS_LABELS: Record<TaskStatus, string> = {
-  TODO: 'To Do',
-  IN_PROGRESS: 'In Progress',
-  IN_REVIEW: 'In Review',
-  DONE: 'Done',
-  CANCELLED: 'Cancelled',
+/**
+ * Maps each TaskStatus to its i18n key for use with the Transloco pipe.
+ * Usage: {{ TASK_STATUS_KEYS[status] | transloco }}
+ */
+export const TASK_STATUS_KEYS: Record<TaskStatus, string> = {
+  TODO:        'tasks.status.todo',
+  IN_PROGRESS: 'tasks.status.inProgress',
+  IN_REVIEW:   'tasks.status.inReview',
+  DONE:        'tasks.status.done',
+  CANCELLED:   'tasks.status.cancelled',
 };
+

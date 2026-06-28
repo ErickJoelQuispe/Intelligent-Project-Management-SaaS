@@ -1,40 +1,40 @@
 <app-page-header
-  title="Projects"
-  description="Manage and track your team's work"
+  [title]="'projects.list.title' | transloco"
+  [description]="'projects.list.description' | transloco"
 >
   <app-button page-action variant="ghost" (click)="toggleArchived()">
     <span class="material-symbols-rounded" aria-hidden="true">
       {{ showArchived() ? 'visibility_off' : 'inventory_2' }}
     </span>
-    {{ showArchived() ? 'Hide archived' : 'Archived' }}
+    {{ showArchived() ? ('projects.list.hideArchived' | transloco) : ('projects.list.showArchived' | transloco) }}
   </app-button>
   <app-button page-action variant="primary" (click)="goToCreate()">
     <span class="material-symbols-rounded" aria-hidden="true">add</span>
-    New project
+    {{ 'projects.list.newProject' | transloco }}
   </app-button>
 </app-page-header>
 
 <div class="project-list-content">
 
   @if (loading()) {
-    <app-spinner size="lg" [full]="true" label="Loading projects..." />
+    <app-spinner size="lg" [full]="true" [label]="'common.loading' | transloco" />
 
   } @else if (error()) {
     <app-error-banner
       [message]="error()!"
-      retryLabel="Try again"
+      [retryLabel]="'common.retry' | transloco"
       (retry)="loadProjects()"
     />
 
   } @else if (allProjects().length === 0) {
     <app-empty-state
       icon="folder"
-      title="No projects yet"
-      description="Create your first project and start managing your work."
+      [title]="'projects.list.empty' | transloco"
+      [description]="'projects.list.emptyDesc' | transloco"
     >
       <app-button action variant="primary" (click)="goToCreate()">
         <span class="material-symbols-rounded" aria-hidden="true">add</span>
-        New project
+        {{ 'projects.list.newProject' | transloco }}
       </app-button>
     </app-empty-state>
 
@@ -45,19 +45,19 @@
 
       <div class="stat-pill">
         <span class="stat-pill__value">{{ allProjects().length }}</span>
-        <span class="stat-pill__label">{{ allProjects().length === 1 ? 'project' : 'projects' }}</span>
+        <span class="stat-pill__label">{{ allProjects().length === 1 ? ('projects.list.statProject' | transloco) : ('projects.list.statProjects' | transloco) }}</span>
       </div>
 
       <div class="stat-pill stat-pill--active">
         <span class="stat-dot" aria-hidden="true"></span>
         <span class="stat-pill__value">{{ activeCount() }}</span>
-        <span class="stat-pill__label">active</span>
+        <span class="stat-pill__label">{{ 'projects.list.statActive' | transloco }}</span>
       </div>
 
       <div class="stat-pill stat-pill--archived">
         <span class="material-symbols-rounded stat-pill__icon" aria-hidden="true">inventory_2</span>
         <span class="stat-pill__value">{{ archivedCount() }}</span>
-        <span class="stat-pill__label">archived</span>
+        <span class="stat-pill__label">{{ 'projects.list.statArchived' | transloco }}</span>
       </div>
 
     </div>
@@ -66,7 +66,7 @@
     <div
       class="project-grid"
       role="list"
-      aria-label="Projects"
+      [attr.aria-label]="'projects.list.title' | transloco"
     >
       @for (project of projects(); track project.id; let i = $index) {
         <div role="listitem" [class]="'stagger-' + ((i % 6) + 1)">

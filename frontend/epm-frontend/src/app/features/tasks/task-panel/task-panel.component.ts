@@ -10,13 +10,14 @@ import {
 import { DatePipe } from '@angular/common';
 import { RouterLink } from '@angular/router';
 import { FormBuilder, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
+import { TranslocoService, TranslocoPipe } from '@jsverse/transloco';
 import { TaskService } from '../task.service';
 import {
   Task,
   TaskStatus,
   TaskPriority,
   TASK_STATUS_ORDER,
-  TASK_STATUS_LABELS,
+  TASK_STATUS_KEYS,
 } from '../../../core/models/task.models';
 import { ButtonComponent } from '../../../shared/components/button/button.component';
 import { SpinnerComponent } from '../../../shared/components/spinner/spinner.component';
@@ -41,6 +42,7 @@ interface StatusGroup {
     DatePipe,
     RouterLink,
     ReactiveFormsModule,
+    TranslocoPipe,
     ButtonComponent,
     SpinnerComponent,
     ErrorBannerComponent,
@@ -53,25 +55,25 @@ interface StatusGroup {
     <div class="task-panel-content">
 
       @if (loading()) {
-        <app-spinner size="lg" [full]="true" label="Loading tasks..." />
+        <app-spinner size="lg" [full]="true" [label]="'common.loading' | transloco" />
 
       } @else if (error()) {
         <app-error-banner
           [message]="error()!"
-          retryLabel="Try again"
+          [retryLabel]="'common.retry' | transloco"
           (retry)="loadTasks()"
         />
 
       } @else if (tasks().length === 0) {
         <app-empty-state
           icon="task"
-          title="No tasks yet"
-          description="Create the first task for this project."
+          [title]="'tasks.panel.noTasks' | transloco"
+          [description]="'tasks.panel.noTasksDesc' | transloco"
         >
           <app-button action variant="primary"
                       (click)="openTaskDrawer('TODO')">
             <span class="material-symbols-rounded" aria-hidden="true">add</span>
-            New task
+            {{ 'tasks.panel.newTask' | transloco }}
           </app-button>
         </app-empty-state>
 
@@ -193,7 +195,7 @@ interface StatusGroup {
                         @if (task.description) {
                           <p class="task-description-text">{{ task.description }}</p>
                         } @else {
-                          <p class="task-description-empty">No description</p>
+                          <p class="task-description-empty">{{ 'tasks.panel.noDescription' | transloco }}</p>
                         }
                       </div>
 
@@ -206,12 +208,12 @@ interface StatusGroup {
                         <div class="task-subtasks-section">
                           <span class="task-subtasks-label">
                             <span class="material-symbols-rounded" aria-hidden="true">subdirectory_arrow_right</span>
-                            Subtasks
+                            {{ 'tasks.panel.subtasks' | transloco }}
                           </span>
 
                           @if (loadingSubtasks().has(task.id)) {
                             <div class="task-subtasks-loading">
-                              <app-spinner size="sm" label="Loading subtasks..." />
+                              <app-spinner size="sm" [label]="'common.loading' | transloco" />
                             </div>
                           } @else if (subtaskMap().get(task.id)) {
                             <div class="task-subtasks-list">
@@ -235,7 +237,7 @@ interface StatusGroup {
                             <div class="subtask-inline-row">
                               <input
                                 formControlName="title"
-                                placeholder="Subtask title..."
+                                [placeholder]="'tasks.panel.subtaskPlaceholder' | transloco"
                                 class="subtask-inline-input"
                               />
                               <div class="subtask-priority-group">
@@ -250,12 +252,12 @@ interface StatusGroup {
                                   </label>
                                 }
                               </div>
-                              <app-button type="submit" variant="primary" size="sm" [loading]="subtaskFormLoading()">Add</app-button>
+                              <app-button type="submit" variant="primary" size="sm" [loading]="subtaskFormLoading()">{{ 'tasks.panel.addSubtask' | transloco }}</app-button>
                               <button
                                 type="button"
                                 class="subtask-cancel-btn"
                                 (click)="closeSubtaskForm()"
-                                aria-label="Cancel"
+                                [attr.aria-label]="'common.cancel' | transloco"
                               >
                                 <span class="material-symbols-rounded">close</span>
                               </button>
@@ -273,7 +275,7 @@ interface StatusGroup {
                           aria-label="Add subtask"
                         >
                           <span class="material-symbols-rounded" aria-hidden="true">add</span>
-                          Add subtask
+                          {{ 'tasks.panel.addSubtask' | transloco }}
                         </button>
                       }
 
@@ -741,9 +743,10 @@ interface StatusGroup {
   `],
 })
 export class TaskPanelComponent implements OnInit {
-  private readonly taskService   = inject(TaskService);
-  private readonly fb            = inject(FormBuilder);
-  private readonly confirmDialog = inject(ConfirmDialogService);
+  private readonly taskService      = inject(TaskService);
+  private readonly fb               = inject(FormBuilder);
+  private readonly confirmDialog    = inject(ConfirmDialogService);
+  private readonly translocoService = inject(TranslocoService);
 
   projectId = input.required<string>();
 
@@ -767,11 +770,11 @@ export class TaskPanelComponent implements OnInit {
   subtaskFormError    = signal<string | null>(null);
   subtaskForm: FormGroup;
 
-  // ── Priority options (for subtask form) ─────────────────
+  // ── Priority options (for subtask form) — icons only, no labels displayed
   readonly priorities: { value: TaskPriority; label: string; icon: string }[] = [
-    { value: 'HIGH',   label: 'High',   icon: 'keyboard_double_arrow_up' },
-    { value: 'MEDIUM', label: 'Medium', icon: 'drag_handle' },
-    { value: 'LOW',    label: 'Low',    icon: 'keyboard_double_arrow_down' },
+    { value: 'HIGH',   label: 'tasks.priority.high',   icon: 'keyboard_double_arrow_up' },
+    { value: 'MEDIUM', label: 'tasks.priority.medium', icon: 'drag_handle' },
+    { value: 'LOW',    label: 'tasks.priority.low',    icon: 'keyboard_double_arrow_down' },
   ];
 
   groupedTasks = computed<StatusGroup[]>(() => {
@@ -779,7 +782,7 @@ export class TaskPanelComponent implements OnInit {
     return TASK_STATUS_ORDER
       .map(status => ({
         status,
-        label: TASK_STATUS_LABELS[status],
+        label: this.translocoService.translate(TASK_STATUS_KEYS[status]),
         tasks: all.filter(t => t.status === status),
       }))
       .filter(g => g.tasks.length > 0);
@@ -801,7 +804,7 @@ export class TaskPanelComponent implements OnInit {
     this.error.set(null);
     this.taskService.list(this.projectId(), 0, 100).subscribe({
       next:  (page) => { this.tasks.set(page.content); this.loading.set(false); },
-      error: ()     => { this.error.set('Failed to load tasks.'); this.loading.set(false); },
+      error: ()     => { this.error.set(this.translocoService.translate('tasks.panel.loadError')); this.loading.set(false); },
     });
   }
 
@@ -868,7 +871,7 @@ export class TaskPanelComponent implements OnInit {
       if (!confirmed) return;
       this.taskService.delete(taskId).subscribe({
         next:  () => this.loadTasks(),
-        error: () => this.error.set('Failed to delete task.'),
+        error: () => this.error.set(this.translocoService.translate('tasks.panel.deleteError')),
       });
     });
   }
@@ -935,7 +938,7 @@ export class TaskPanelComponent implements OnInit {
         });
       },
       error: () => {
-        this.subtaskFormError.set('Failed to create subtask. Please try again.');
+        this.subtaskFormError.set(this.translocoService.translate('tasks.panel.subtaskCreateError'));
         this.subtaskFormLoading.set(false);
       },
     });

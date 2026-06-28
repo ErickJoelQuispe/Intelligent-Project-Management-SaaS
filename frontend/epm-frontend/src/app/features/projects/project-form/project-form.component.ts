@@ -7,6 +7,7 @@ import {
 } from '@angular/core';
 import { Router, ActivatedRoute } from '@angular/router';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
+import { TranslocoService, TranslocoPipe } from '@jsverse/transloco';
 import { ProjectService } from '../project.service';
 import { ProjectVisibility } from '../../../core/models/project.model';
 import { PageHeaderComponent } from '../../../shared/components/page-header/page-header.component';
@@ -20,6 +21,7 @@ import { SpinnerComponent } from '../../../shared/components/spinner/spinner.com
   changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [
     ReactiveFormsModule,
+    TranslocoPipe,
     PageHeaderComponent,
     ButtonComponent,
     ErrorBannerComponent,
@@ -28,10 +30,11 @@ import { SpinnerComponent } from '../../../shared/components/spinner/spinner.com
   templateUrl: './project-form.component.html',
 })
 export class ProjectFormComponent implements OnInit {
-  private readonly fb             = inject(FormBuilder);
-  private readonly projectService = inject(ProjectService);
-  private readonly router         = inject(Router);
-  private readonly route          = inject(ActivatedRoute);
+  private readonly fb               = inject(FormBuilder);
+  private readonly projectService   = inject(ProjectService);
+  private readonly router           = inject(Router);
+  private readonly route            = inject(ActivatedRoute);
+  private readonly translocoService = inject(TranslocoService);
 
   projectId   = signal<string | null>(null);
   isEditMode  = signal(false);
@@ -40,9 +43,9 @@ export class ProjectFormComponent implements OnInit {
   error       = signal<string | null>(null);
 
   readonly visibilityOptions = [
-    { value: ProjectVisibility.PRIVATE, label: 'Private — only you' },
-    { value: ProjectVisibility.TEAM,    label: 'Team — members only' },
-    { value: ProjectVisibility.PUBLIC,  label: 'Public — everyone' },
+    { value: ProjectVisibility.PRIVATE, label: 'projects.form.visibility.private' },
+    { value: ProjectVisibility.TEAM,    label: 'projects.form.visibility.team' },
+    { value: ProjectVisibility.PUBLIC,  label: 'projects.form.visibility.public' },
   ];
 
   form = this.fb.nonNullable.group({
@@ -72,7 +75,7 @@ export class ProjectFormComponent implements OnInit {
         this.loading.set(false);
       },
       error: () => {
-        this.error.set('Failed to load project.');
+        this.error.set(this.translocoService.translate('projects.form.loadError'));
         this.loading.set(false);
       },
     });
@@ -91,14 +94,14 @@ export class ProjectFormComponent implements OnInit {
         .update(id, { name, description: description || undefined, visibility })
         .subscribe({
           next:  (p) => { this.submitting.set(false); this.router.navigate(['/projects', p.id]); },
-          error: ()  => { this.error.set('Failed to update project. Please try again.'); this.submitting.set(false); },
+          error: ()  => { this.error.set(this.translocoService.translate('projects.form.updateError')); this.submitting.set(false); },
         });
     } else {
       this.projectService
         .create({ name, description: description || undefined, visibility })
         .subscribe({
           next:  () => { this.submitting.set(false); this.router.navigate(['/projects']); },
-          error: () => { this.error.set('Failed to create project. Please try again.'); this.submitting.set(false); },
+          error: () => { this.error.set(this.translocoService.translate('projects.form.createError')); this.submitting.set(false); },
         });
     }
   }

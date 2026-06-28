@@ -8,11 +8,12 @@ import {
   signal,
 } from '@angular/core';
 import { FormBuilder, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
+import { TranslocoService, TranslocoPipe } from '@jsverse/transloco';
 import { TaskService } from '../task.service';
 import {
   TaskStatus,
   TaskPriority,
-  TASK_STATUS_LABELS,
+  TASK_STATUS_KEYS,
 } from '../../../core/models/task.models';
 import { ButtonComponent } from '../../../shared/components/button/button.component';
 import { ErrorBannerComponent } from '../../../shared/components/error-banner/error-banner.component';
@@ -26,6 +27,7 @@ import { ErrorBannerComponent } from '../../../shared/components/error-banner/er
     ReactiveFormsModule,
     ButtonComponent,
     ErrorBannerComponent,
+    TranslocoPipe,
   ],
   template: `
     <!-- Backdrop -->
@@ -40,12 +42,12 @@ import { ErrorBannerComponent } from '../../../shared/components/error-banner/er
            [class.task-drawer--open]="open()"
            role="dialog"
            aria-modal="true"
-           aria-label="New task">
+           [attr.aria-label]="'tasks.drawer.newTask' | transloco">
 
       <div class="task-drawer-header">
-        <h2 class="task-drawer-title">New task</h2>
-        <span class="task-drawer-status-chip">{{ TASK_STATUS_LABELS[taskStatus()] }}</span>
-        <button class="task-drawer-close" (click)="close()" aria-label="Close">
+        <h2 class="task-drawer-title">{{ 'tasks.drawer.newTask' | transloco }}</h2>
+        <span class="task-drawer-status-chip">{{ TASK_STATUS_KEYS[taskStatus()] | transloco }}</span>
+        <button class="task-drawer-close" (click)="close()" [attr.aria-label]="'tasks.drawer.close' | transloco">
           <span class="material-symbols-rounded">close</span>
         </button>
       </div>
@@ -53,22 +55,22 @@ import { ErrorBannerComponent } from '../../../shared/components/error-banner/er
       <form [formGroup]="drawerForm" (ngSubmit)="submit()" class="task-drawer-form" novalidate>
 
         <div class="td-field">
-          <label class="td-label" for="td-title">Title <span class="td-required">*</span></label>
+          <label class="td-label" for="td-title">{{ 'tasks.form.titleLabel' | transloco }} <span class="td-required">*</span></label>
           <input id="td-title" type="text" formControlName="title"
-                 placeholder="What needs to be done?" class="td-input" />
+                 [placeholder]="'tasks.form.titlePlaceholder' | transloco" class="td-input" />
           @if (drawerForm.controls['title'].hasError('required') && drawerForm.controls['title'].touched) {
-            <span class="td-error">Title is required.</span>
+            <span class="td-error">{{ 'tasks.form.titleRequired' | transloco }}</span>
           }
         </div>
 
         <div class="td-field">
-          <label class="td-label" for="td-description">Description <span class="td-optional">optional</span></label>
+          <label class="td-label" for="td-description">{{ 'tasks.form.descriptionLabel' | transloco }} <span class="td-optional">{{ 'common.optional' | transloco }}</span></label>
           <textarea id="td-description" formControlName="description" rows="3"
-                    placeholder="Add context or notes..." class="td-input td-textarea"></textarea>
+                    [placeholder]="'tasks.form.descriptionPlaceholder' | transloco" class="td-input td-textarea"></textarea>
         </div>
 
         <div class="td-field">
-          <label class="td-label">Priority</label>
+          <label class="td-label">{{ 'tasks.form.priorityLabel' | transloco }}</label>
           <div class="td-priority-group">
             @for (p of priorities; track p.value) {
               <label class="td-priority-btn"
@@ -78,14 +80,14 @@ import { ErrorBannerComponent } from '../../../shared/components/error-banner/er
                      [class.td-priority-btn--low]="p.value === 'LOW' && drawerForm.controls['priority'].value === 'LOW'">
                 <input type="radio" formControlName="priority" [value]="p.value" class="sr-only" />
                 <span class="material-symbols-rounded td-priority-icon">{{ p.icon }}</span>
-                <span>{{ p.label }}</span>
+                <span>{{ p.label | transloco }}</span>
               </label>
             }
           </div>
         </div>
 
         <div class="td-field">
-          <label class="td-label" for="td-deadline">Deadline <span class="td-optional">optional</span></label>
+          <label class="td-label" for="td-deadline">{{ 'tasks.form.deadlineLabel' | transloco }} <span class="td-optional">{{ 'common.optional' | transloco }}</span></label>
           <input id="td-deadline" type="date" formControlName="deadline" class="td-input" />
         </div>
 
@@ -94,8 +96,8 @@ import { ErrorBannerComponent } from '../../../shared/components/error-banner/er
         }
 
         <div class="task-drawer-actions">
-          <app-button type="button" variant="secondary" size="sm" (click)="close()">Cancel</app-button>
-          <app-button type="submit" variant="primary" size="sm" [loading]="loading()">Create task</app-button>
+          <app-button type="button" variant="secondary" size="sm" (click)="close()">{{ 'tasks.form.cancelBtn' | transloco }}</app-button>
+          <app-button type="submit" variant="primary" size="sm" [loading]="loading()">{{ 'tasks.form.submitBtn' | transloco }}</app-button>
         </div>
 
       </form>
@@ -273,8 +275,9 @@ import { ErrorBannerComponent } from '../../../shared/components/error-banner/er
   `],
 })
 export class TaskDrawerComponent {
-  private readonly taskService = inject(TaskService);
-  private readonly fb          = inject(FormBuilder);
+  private readonly taskService      = inject(TaskService);
+  private readonly fb               = inject(FormBuilder);
+  private readonly translocoService = inject(TranslocoService);
 
   // Inputs
   open      = input<boolean>(false);
@@ -292,15 +295,15 @@ export class TaskDrawerComponent {
   // Form
   drawerForm: FormGroup;
 
-  // Priority options
+  // Priority options — labels are i18n keys resolved via the transloco pipe
   readonly priorities: { value: TaskPriority; label: string; icon: string }[] = [
-    { value: 'HIGH',   label: 'High',   icon: 'keyboard_double_arrow_up' },
-    { value: 'MEDIUM', label: 'Medium', icon: 'drag_handle' },
-    { value: 'LOW',    label: 'Low',    icon: 'keyboard_double_arrow_down' },
+    { value: 'HIGH',   label: 'tasks.priority.high',   icon: 'keyboard_double_arrow_up' },
+    { value: 'MEDIUM', label: 'tasks.priority.medium', icon: 'drag_handle' },
+    { value: 'LOW',    label: 'tasks.priority.low',    icon: 'keyboard_double_arrow_down' },
   ];
 
-  // Expose status labels for template
-  readonly TASK_STATUS_LABELS = TASK_STATUS_LABELS;
+  // Expose status keys for template
+  readonly TASK_STATUS_KEYS = TASK_STATUS_KEYS;
 
   constructor() {
     this.drawerForm = this.fb.nonNullable.group({
@@ -346,7 +349,7 @@ export class TaskDrawerComponent {
         this.close();
       },
       error: () => {
-        this.error.set('Failed to create task. Please try again.');
+        this.error.set(this.translocoService.translate('tasks.form.createError'));
         this.loading.set(false);
       },
     });

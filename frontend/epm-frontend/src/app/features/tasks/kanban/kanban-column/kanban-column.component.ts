@@ -7,7 +7,8 @@ import {
   inject,
   signal,
 } from '@angular/core';
-import { TaskStatus, TaskSummary, TASK_STATUS_LABELS } from '../../../../core/models/task.models';
+import { TranslocoService, TranslocoPipe } from '@jsverse/transloco';
+import { TaskStatus, TaskSummary, TASK_STATUS_KEYS } from '../../../../core/models/task.models';
 import { TenantUser } from '../../../../core/models/user-profile.model';
 import { TaskCardComponent } from '../task-card/task-card.component';
 import { DragStateService } from '../drag/drag-state.service';
@@ -16,7 +17,7 @@ import { DragStateService } from '../drag/drag-state.service';
   selector: 'app-kanban-column',
   standalone: true,
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [TaskCardComponent],
+  imports: [TaskCardComponent, TranslocoPipe],
   templateUrl: './kanban-column.component.html',
   styleUrl: './kanban-column.component.scss',
 })
@@ -31,9 +32,11 @@ export class KanbanColumnComponent {
   /** Emits taskId when the user confirms deletion of a card */
   taskDeleted  = output<string>();
 
-  private readonly dragState = inject(DragStateService);
+  private readonly dragState      = inject(DragStateService);
+  private readonly translocoService = inject(TranslocoService);
 
-  statusLabel = computed(() => TASK_STATUS_LABELS[this.status()]);
+  readonly statusKey   = computed(() => TASK_STATUS_KEYS[this.status()]);
+  readonly statusLabel = computed(() => this.translocoService.translate(TASK_STATUS_KEYS[this.status()]));
   taskCount   = computed(() => this.tasks().length);
 
   /** Visual state — true while a draggable hovers over this column */

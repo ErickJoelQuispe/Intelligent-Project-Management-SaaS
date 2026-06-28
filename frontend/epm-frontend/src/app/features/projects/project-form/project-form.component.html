@@ -1,9 +1,9 @@
 <app-page-header
-  [title]="isEditMode() ? 'Edit project' : 'New project'"
-  [description]="isEditMode() ? 'Update the project details' : 'Fill in the details to create a new project'"
+  [title]="isEditMode() ? ('projects.form.editTitle' | transloco) : ('projects.form.createTitle' | transloco)"
+  [description]="isEditMode() ? ('projects.form.updateDescription' | transloco) : ('projects.form.createDescription' | transloco)"
 >
   <app-button page-action variant="ghost" size="sm" (click)="onCancel()">
-    Cancel
+    {{ 'projects.form.cancelBtn' | transloco }}
   </app-button>
 </app-page-header>
 
@@ -11,7 +11,7 @@
   <div class="pf-wrap">
 
     @if (loading()) {
-      <app-spinner size="lg" [full]="true" label="Loading project..." />
+      <app-spinner size="lg" [full]="true" [label]="'common.loading' | transloco" />
     } @else {
 
       @if (error()) {
@@ -23,30 +23,30 @@
         <!-- ── Name ────────────────────────────────────────── -->
         <div class="pf-field">
           <label class="pf-label" for="name">
-            Project name <span class="pf-required">*</span>
+            {{ 'projects.form.nameLabel' | transloco }} <span class="pf-required">*</span>
           </label>
           <input
             id="name" type="text" formControlName="name"
-            placeholder="e.g. Customer portal v2"
+            [placeholder]="'projects.form.namePlaceholder' | transloco"
             maxlength="100" data-testid="name-input"
             class="pf-input"
           />
           @if (form.controls.name.hasError('required') && form.controls.name.touched) {
-            <span class="pf-error">Project name is required.</span>
+            <span class="pf-error">{{ 'projects.form.nameRequired' | transloco }}</span>
           }
           @if (form.controls.name.hasError('maxlength') && form.controls.name.touched) {
-            <span class="pf-error">Maximum 100 characters.</span>
+            <span class="pf-error">{{ 'projects.form.nameMaxLength' | transloco }}</span>
           }
         </div>
 
         <!-- ── Description ─────────────────────────────────── -->
         <div class="pf-field">
           <label class="pf-label" for="description">
-            Description <span class="pf-optional">optional</span>
+            {{ 'projects.form.descriptionLabel' | transloco }} <span class="pf-optional">{{ 'common.optional' | transloco }}</span>
           </label>
           <textarea
             id="description" formControlName="description" rows="3"
-            placeholder="What is this project about? What's the goal?"
+            [placeholder]="'projects.form.descriptionPlaceholder' | transloco"
             data-testid="description-input"
             class="pf-input pf-textarea"
           ></textarea>
@@ -54,7 +54,7 @@
 
         <!-- ── Visibility ──────────────────────────────────── -->
         <div class="pf-field">
-          <label class="pf-label">Visibility</label>
+          <label class="pf-label">{{ 'projects.form.visibilityLabel' | transloco }}</label>
           <div class="pf-vis-group">
             @for (opt of visibilityOptions; track opt.value) {
               <label
@@ -63,7 +63,7 @@
               >
                 <input type="radio" formControlName="visibility" [value]="opt.value" class="sr-only" />
                 <span class="pf-vis-dot" aria-hidden="true"></span>
-                <span class="pf-vis-text">{{ opt.label }}</span>
+                <span class="pf-vis-text">{{ opt.label | transloco }}</span>
               </label>
             }
           </div>
@@ -74,28 +74,28 @@
           <div class="pf-context">
             <p class="pf-context-title">
               <span class="material-symbols-rounded">info</span>
-              Visibility guide
+              {{ 'projects.form.visibilityGuide' | transloco }}
             </p>
             <div class="pf-context-pills">
               <span class="pf-cpill">
                 <span class="material-symbols-rounded">lock</span>
-                <strong>Private</strong> — only you
+                <strong>{{ 'projects.form.visibility.private' | transloco }}</strong>
               </span>
               <span class="pf-cpill">
                 <span class="material-symbols-rounded">group</span>
-                <strong>Team</strong> — members you invite
+                <strong>{{ 'projects.form.visibility.team' | transloco }}</strong>
               </span>
               <span class="pf-cpill">
                 <span class="material-symbols-rounded">public</span>
-                <strong>Public</strong> — your whole org
+                <strong>{{ 'projects.form.visibility.public' | transloco }}</strong>
               </span>
             </div>
           </div>
         } @else {
           <div class="pf-context pf-context--status">
             <span class="pf-status-dot"></span>
-            <span class="pf-status-label">Active</span>
-            <span class="pf-context-hint">To archive this project, use the project detail page.</span>
+            <span class="pf-status-label">{{ 'projects.form.statusActive' | transloco }}</span>
+            <span class="pf-context-hint">{{ 'projects.form.statusHint' | transloco }}</span>
           </div>
         }
 
@@ -104,9 +104,9 @@
 
         <!-- ── Actions ─────────────────────────────────────── -->
         <div class="pf-actions">
-          <app-button type="button" variant="secondary" (click)="onCancel()">Cancel</app-button>
+          <app-button type="button" variant="secondary" (click)="onCancel()">{{ 'projects.form.cancelBtn' | transloco }}</app-button>
           <app-button type="submit" variant="primary" [loading]="submitting()" data-testid="submit-button">
-            {{ isEditMode() ? 'Save changes' : 'Create project' }}
+            {{ isEditMode() ? ('projects.form.updateBtn' | transloco) : ('projects.form.submitBtn' | transloco) }}
           </app-button>
         </div>
 

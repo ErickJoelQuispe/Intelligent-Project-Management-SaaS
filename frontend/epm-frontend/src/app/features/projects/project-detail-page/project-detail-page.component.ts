@@ -8,6 +8,7 @@ import {
 } from '@angular/core';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { forkJoin, of, catchError } from 'rxjs';
+import { TranslocoService, TranslocoPipe } from '@jsverse/transloco';
 import { ProjectService } from '../project.service';
 import { AiService, TaskDraft } from '../../ai/ai.service';
 import { TaskService } from '../../tasks/task.service';
@@ -51,6 +52,7 @@ interface SummaryData {
     RouterLink,
     FormsModule,
     DatePipe,
+    TranslocoPipe,
     ButtonComponent,
     SpinnerComponent,
     ErrorBannerComponent,
@@ -79,26 +81,26 @@ interface SummaryData {
 
           <!-- Back link + archive/restore action -->
           <div class="pdp-top-bar">
-            <a class="pdp-back-link" routerLink="/projects" aria-label="Back to projects">
+            <a class="pdp-back-link" routerLink="/projects" [attr.aria-label]="'projects.detail.backToProjects' | transloco">
               <span class="material-symbols-rounded" aria-hidden="true">arrow_back</span>
-              Projects
+              {{ 'projects.detail.backToProjects' | transloco }}
             </a>
 
             @if (p.status === 'ARCHIVED') {
               <app-button variant="ghost" size="sm"
-                          [loading]="restoring()"
-                          (click)="restoreProject()"
-                          aria-label="Restore project"
-                          title="Restore project"
+                           [loading]="restoring()"
+                           (click)="restoreProject()"
+                           [attr.aria-label]="'projects.detail.restoreProject' | transloco"
+                           [attr.title]="'projects.detail.restoreProject' | transloco"
                           style="color: var(--color-accent);">
                 <span class="material-symbols-rounded" aria-hidden="true">settings_backup_restore</span>
               </app-button>
             } @else {
               <app-button variant="danger" size="sm"
-                          [loading]="archiving()"
-                          (click)="archiveProject()"
-                          aria-label="Archive project"
-                          title="Archive project">
+                           [loading]="archiving()"
+                           (click)="archiveProject()"
+                           [attr.aria-label]="'projects.detail.archiveProject' | transloco"
+                           [attr.title]="'projects.detail.archiveProject' | transloco">
                 <span class="material-symbols-rounded" aria-hidden="true">inventory_2</span>
               </app-button>
             }
@@ -131,7 +133,7 @@ interface SummaryData {
                 (keydown.enter)="startEditName()"
                 (keydown.space)="startEditName()"
                 role="button"
-                aria-label="Project name — click to edit"
+                 [attr.aria-label]="'projects.detail.editProjectName' | transloco"
               >
                 {{ p.name }}
                 <span class="pdp-edit-hint material-symbols-rounded" aria-hidden="true">edit</span>
@@ -186,9 +188,9 @@ interface SummaryData {
               (keydown.enter)="startEditDesc()"
               (keydown.space)="startEditDesc()"
               role="button"
-              aria-label="Project description — click to edit"
+              [attr.aria-label]="'projects.detail.editDescription' | transloco"
             >
-              {{ p.description || 'Add a description…' }}
+              {{ p.description || ('projects.detail.noDescription' | transloco) }}
               <span class="pdp-edit-hint material-symbols-rounded" aria-hidden="true">edit</span>
             </p>
           }
@@ -196,7 +198,7 @@ interface SummaryData {
           <!-- Created date -->
           <div class="pdp-date">
             <span class="material-symbols-rounded" aria-hidden="true">calendar_today</span>
-            <span>Created {{ p.createdAt | date: 'MMM d, yyyy' }}</span>
+            <span>{{ 'projects.detail.createdAt' | transloco }} {{ p.createdAt | date: 'MMM d, yyyy' }}</span>
           </div>
 
           <div class="pdp-divider" aria-hidden="true"></div>
@@ -219,13 +221,13 @@ interface SummaryData {
               @if (teams().length === 0) {
                 <!-- No teams at all -->
                 <span class="pdp-team-row-empty">
-                  No teams yet — <a routerLink="/teams/new" class="pdp-link">create one</a>
+                  {{ 'projects.detail.noTeamsYet' | transloco }} <a routerLink="/teams/new" class="pdp-link">{{ 'projects.detail.createTeam' | transloco }}</a>
                 </span>
 
               } @else if (!selectingTeam()) {
                 <!-- No team assigned, not yet clicked — invite to click -->
                 <button class="pdp-team-unassigned" (click)="selectingTeam.set(true)">
-                  No team assigned
+                  {{ 'projects.detail.noTeam' | transloco }}
                 </button>
 
               } @else {
@@ -233,9 +235,9 @@ interface SummaryData {
                 <select class="pdp-team-select"
                         [ngModel]="selectedTeamId()"
                         (ngModelChange)="onTeamSelectChange($event)"
-                        aria-label="Select a team"
+                         [attr.aria-label]="'projects.detail.selectTeam' | transloco"
                         [disabled]="assigningTeam()">
-                  <option value="">Select a team…</option>
+                  <option value="">{{ 'projects.detail.selectTeam' | transloco }}</option>
                   @for (t of teams(); track t.id) {
                     <option [value]="t.id">{{ t.name }}</option>
                   }
@@ -270,19 +272,19 @@ interface SummaryData {
         <main class="pdp-right" aria-label="Tasks">
 
           <div class="pdp-right-header">
-            <h2 class="pdp-tasks-title">Tasks</h2>
+            <h2 class="pdp-tasks-title">{{ 'projects.detail.tasks' | transloco }}</h2>
             <div class="pdp-right-header-spacer" aria-hidden="true"></div>
             <app-button variant="ghost" size="sm"
                         [routerLink]="['/projects', p.id, 'board']"
-                        aria-label="Open board view">
+                        [attr.aria-label]="'tasks.kanban.openBoardView' | transloco">
               <span class="material-symbols-rounded" aria-hidden="true">view_kanban</span>
-              Board
+              {{ 'projects.detail.board' | transloco }}
             </app-button>
             <app-button variant="primary" size="sm"
                         (click)="taskPanel()?.openTaskDrawer('TODO')"
-                        aria-label="Create new task">
+                        [attr.aria-label]="'projects.detail.newTask' | transloco">
               <span class="material-symbols-rounded" aria-hidden="true">add</span>
-              New task
+              {{ 'projects.detail.newTask' | transloco }}
             </app-button>
           </div>
 
@@ -297,7 +299,7 @@ interface SummaryData {
               class="pdp-fab"
               [class.pdp-fab--active]="aiPanelOpen()"
               (click)="toggleAiPanel()"
-              aria-label="AI Assistant"
+              [attr.aria-label]="'projects.ai.aiAssistant' | transloco"
               [attr.aria-expanded]="aiPanelOpen()"
             >
               <span class="material-symbols-rounded" aria-hidden="true">auto_awesome</span>
@@ -313,27 +315,27 @@ interface SummaryData {
             <!-- Panel header with mode tabs -->
             <div class="pdp-ai-panel-header">
               <span class="material-symbols-rounded pdp-ai-panel-icon" aria-hidden="true">auto_awesome</span>
-              <div class="pdp-ai-panel-tabs" role="tablist" aria-label="AI mode">
+              <div class="pdp-ai-panel-tabs" role="tablist" [attr.aria-label]="'projects.ai.aiAssistant' | transloco">
                 <button class="pdp-ai-tab" [class.pdp-ai-tab--active]="aiMode() === 'generate'"
                         role="tab" [attr.aria-selected]="aiMode() === 'generate'"
                         (click)="aiMode.set('generate')">
                   <span class="material-symbols-rounded" aria-hidden="true">task_alt</span>
-                  Generate
+                  {{ 'projects.ai.generate' | transloco }}
                 </button>
                 <button class="pdp-ai-tab" [class.pdp-ai-tab--active]="aiMode() === 'summarize'"
                         role="tab" [attr.aria-selected]="aiMode() === 'summarize'"
                         (click)="aiMode.set('summarize')">
                   <span class="material-symbols-rounded" aria-hidden="true">summarize</span>
-                  Summarize
+                  {{ 'projects.ai.summarize' | transloco }}
                 </button>
                 <button class="pdp-ai-tab" [class.pdp-ai-tab--active]="aiMode() === 'chat'"
                         role="tab" [attr.aria-selected]="aiMode() === 'chat'"
                         (click)="aiMode.set('chat')">
                   <span class="material-symbols-rounded" aria-hidden="true">chat</span>
-                  Chat
+                  {{ 'projects.ai.chat' | transloco }}
                 </button>
               </div>
-              <button class="pdp-ai-panel-close" (click)="closeAiPanel()" aria-label="Close AI panel">
+              <button class="pdp-ai-panel-close" (click)="closeAiPanel()" [attr.aria-label]="'projects.ai.closePanel' | transloco">
                 <span class="material-symbols-rounded" aria-hidden="true">close</span>
               </button>
             </div>
@@ -350,7 +352,7 @@ interface SummaryData {
                             [loading]="generating()"
                             (click)="generateTasks()">
                   <span class="material-symbols-rounded" aria-hidden="true">auto_awesome</span>
-                  {{ generating() ? 'Generating…' : 'Generate tasks' }}
+                  {{ generating() ? ('projects.ai.generating' | transloco) : ('projects.ai.generateTasks' | transloco) }}
                 </app-button>
 
                 @if (draftTasks().length > 0) {
@@ -358,34 +360,34 @@ interface SummaryData {
                     <div class="pdp-drafts-header">
                       <span class="pdp-drafts-label">
                         <span class="material-symbols-rounded" aria-hidden="true">auto_awesome</span>
-                        {{ draftTasks().length }} suggested tasks
+                        {{ 'projects.ai.suggestedTasks' | transloco: { count: draftTasks().length } }}
                       </span>
                       <app-button variant="primary" size="sm"
                                   [loading]="savingTasks()"
                                   [disabled]="savingTasks()"
                                   (click)="saveSelectedTasks()">
                         <span class="material-symbols-rounded" aria-hidden="true">save</span>
-                        {{ savingTasks() ? 'Saving…' : selectedDraftCount() > 0 ? 'Save ' + selectedDraftCount() : 'Save all' }}
+                        {{ savingTasks() ? ('projects.ai.saving' | transloco) : selectedDraftCount() > 0 ? ('projects.ai.selected' | transloco: { count: selectedDraftCount() }) : ('projects.ai.saveAll' | transloco) }}
                       </app-button>
                     </div>
                     <div class="pdp-drafts-select-all">
                       @if (selectedDraftCount() === draftTasks().length) {
                         <button class="pdp-drafts-select-btn" (click)="clearDraftSelection()">
-                          Clear selection
+                          {{ 'projects.ai.clearSelection' | transloco }}
                         </button>
                       } @else {
                         <button class="pdp-drafts-select-btn" (click)="selectAllDrafts()">
-                          Select all
+                          {{ 'projects.ai.selectAll' | transloco }}
                         </button>
                       }
                       @if (selectedDraftCount() > 0) {
-                        <span class="pdp-drafts-select-count">{{ selectedDraftCount() }} selected</span>
+                        <span class="pdp-drafts-select-count">{{ 'projects.ai.selected' | transloco: { count: selectedDraftCount() } }}</span>
                       }
                     </div>
                     @if (saveSuccess()) {
                       <div class="pdp-success-banner" role="status">
                         <span class="material-symbols-rounded" aria-hidden="true">check_circle</span>
-                        Tasks saved.
+                        {{ 'projects.ai.tasksSaved' | transloco }}
                       </div>
                     }
                     <div class="pdp-drafts-list">
@@ -406,7 +408,7 @@ interface SummaryData {
                             [loading]="summarizing()"
                             (click)="summarizeProject()">
                   <span class="material-symbols-rounded" aria-hidden="true">summarize</span>
-                  {{ summarizing() ? 'Summarizing…' : 'Summarize project' }}
+                  {{ summarizing() ? ('projects.ai.summarizing' | transloco) : ('projects.ai.summarizeProject' | transloco) }}
                 </app-button>
                 @if (summaryData(); as sd) {
                   <div class="pdp-summary-card">
@@ -422,7 +424,7 @@ interface SummaryData {
                       <div class="pdp-summary-section">
                         <div class="pdp-summary-section-header pdp-summary-section-header--risk">
                           <span class="material-symbols-rounded" aria-hidden="true">warning</span>
-                          Risks
+                          {{ 'projects.ai.risks' | transloco }}
                         </div>
                         <ul class="pdp-summary-list">
                           @for (risk of sd.risks; track risk) {
@@ -437,7 +439,7 @@ interface SummaryData {
                       <div class="pdp-summary-section">
                         <div class="pdp-summary-section-header pdp-summary-section-header--milestone">
                           <span class="material-symbols-rounded" aria-hidden="true">flag</span>
-                          Next milestones
+                          {{ 'projects.ai.nextMilestones' | transloco }}
                         </div>
                         <ul class="pdp-summary-list">
                           @for (ms of sd.milestones; track ms; let i = $index) {
@@ -454,7 +456,7 @@ interface SummaryData {
                     <div class="pdp-summary-actions">
                       <app-button variant="secondary" size="sm" (click)="applysummaryAsDescription(sd.status)">
                         <span class="material-symbols-rounded" aria-hidden="true">edit_note</span>
-                        Use as description
+                        {{ 'projects.ai.useAsDescription' | transloco }}
                       </app-button>
                     </div>
 
@@ -1387,13 +1389,14 @@ interface SummaryData {
   `,
 })
 export class ProjectDetailPageComponent {
-  private readonly route          = inject(ActivatedRoute);
-  private readonly router         = inject(Router);
-  private readonly projectService = inject(ProjectService);
-  private readonly aiService      = inject(AiService);
-  private readonly taskService    = inject(TaskService);
-  private readonly teamService    = inject(TeamService);
-  private readonly confirmDialog  = inject(ConfirmDialogService);
+  private readonly route            = inject(ActivatedRoute);
+  private readonly router           = inject(Router);
+  private readonly projectService   = inject(ProjectService);
+  private readonly aiService        = inject(AiService);
+  private readonly taskService      = inject(TaskService);
+  private readonly teamService      = inject(TeamService);
+  private readonly confirmDialog    = inject(ConfirmDialogService);
+  private readonly translocoService = inject(TranslocoService);
 
   readonly taskPanel        = viewChild(TaskPanelComponent);
 
@@ -1544,7 +1547,7 @@ export class ProjectDetailPageComponent {
     this.projectService
       .update(p.id, payload as { name: string; description?: string; visibility: string })
       .pipe(catchError(() => {
-        this.inlineSaveError.set('Could not save. Please try again.');
+        this.inlineSaveError.set(this.translocoService.translate('projects.detail.saveError'));
         return of(null);
       }))
       .subscribe(updated => {
@@ -1592,16 +1595,16 @@ export class ProjectDetailPageComponent {
 
   visibilityLabel = computed(() => {
     switch (this.optimisticVisibility() ?? this.project()?.visibility) {
-      case 'PUBLIC': return 'Public';
-      case 'TEAM':   return 'Team';
-      default:       return 'Private';
+      case 'PUBLIC': return this.translocoService.translate('projects.detail.visibilityPublic');
+      case 'TEAM':   return this.translocoService.translate('projects.detail.visibilityTeam');
+      default:       return this.translocoService.translate('projects.detail.visibilityPrivate');
     }
   });
 
   constructor() {
     const projectId = this.route.snapshot.paramMap.get('projectId');
     if (!projectId) {
-      this.error.set('Project ID not found.');
+      this.error.set(this.translocoService.translate('projects.detail.notFound'));
       this.loading.set(false);
       return;
     }
@@ -1612,7 +1615,7 @@ export class ProjectDetailPageComponent {
   private loadProject(id: string): void {
     this.projectService.getById(id).subscribe({
       next:  (p) => { this.project.set(p); this.loading.set(false); },
-      error: ()  => { this.error.set('Failed to load project.'); this.loading.set(false); },
+      error: ()  => { this.error.set(this.translocoService.translate('projects.form.loadError')); this.loading.set(false); },
     });
   }
 
@@ -1665,7 +1668,7 @@ export class ProjectDetailPageComponent {
         setTimeout(() => this.assignTeamSuccess.set(false), 3000);
       },
       error: () => {
-        this.assignTeamError.set('Failed to assign team. Please try again.');
+        this.assignTeamError.set(this.translocoService.translate('projects.detail.assignTeamError'));
         this.assigningTeam.set(false);
       },
     });
@@ -1684,8 +1687,8 @@ export class ProjectDetailPageComponent {
       next:  (res) => { this.draftTasks.set(res.tasks); this.generating.set(false); },
       error: (err) => {
         this.aiError.set(err.status === 503
-          ? 'AI service is temporarily unavailable.'
-          : 'Failed to generate tasks. Please try again.');
+          ? this.translocoService.translate('projects.ai.unavailable')
+          : this.translocoService.translate('projects.ai.generateError'));
         this.generating.set(false);
       },
     });
@@ -1747,7 +1750,7 @@ export class ProjectDetailPageComponent {
         setTimeout(() => this.saveSuccess.set(false), 2000);
       },
       error: () => {
-        this.aiError.set('Failed to save some tasks. Please try again.');
+        this.aiError.set(this.translocoService.translate('projects.ai.saveTasksError'));
         this.savingTasks.set(false);
       },
     });
@@ -1761,7 +1764,7 @@ export class ProjectDetailPageComponent {
     this.summary.set(null);
     this.aiService.getProjectSummary(p.id).subscribe({
       next:  (res) => { this.summary.set(res.summary); this.summarizing.set(false); },
-      error: ()    => { this.aiError.set('Failed to summarize project.'); this.summarizing.set(false); },
+      error: ()    => { this.aiError.set(this.translocoService.translate('projects.ai.summarizeError')); this.summarizing.set(false); },
     });
   }
 
@@ -1774,9 +1777,9 @@ export class ProjectDetailPageComponent {
     const p = this.project();
     if (!p) return;
     this.confirmDialog.open({
-      title: `Archive "${p.name}"?`,
-      message: 'It will be hidden from the project list. You can restore it later.',
-      confirmLabel: 'Archive',
+      title: this.translocoService.translate('projects.archive.confirmTitle', { name: p.name }),
+      message: this.translocoService.translate('projects.archive.confirmMessage'),
+      confirmLabel: this.translocoService.translate('projects.archive.confirmBtn'),
       variant: 'warning',
     }).subscribe(confirmed => {
       if (!confirmed) return;
@@ -1784,7 +1787,7 @@ export class ProjectDetailPageComponent {
       this.projectService.archive(p.id).subscribe({
         next:  () => this.router.navigate(['/projects']),
         error: () => {
-          this.error.set('Failed to archive project. Please try again.');
+          this.error.set(this.translocoService.translate('projects.list.archiveError'));
           this.archiving.set(false);
         },
       });
@@ -1801,7 +1804,7 @@ export class ProjectDetailPageComponent {
         this.restoring.set(false);
       },
       error: () => {
-        this.error.set('Failed to restore project. Please try again.');
+        this.error.set(this.translocoService.translate('projects.list.restoreError'));
         this.restoring.set(false);
       },
     });

@@ -16,16 +16,16 @@
   <header class="kanban-col-header">
     <div class="kanban-col-title-row">
       <span class="kanban-col-dot" aria-hidden="true"></span>
-      <h2 class="kanban-col-title">{{ statusLabel() }}</h2>
+      <h2 class="kanban-col-title">{{ statusKey() | transloco }}</h2>
     </div>
     <span class="kanban-col-count" [attr.aria-label]="taskCount() + ' tasks'">{{ taskCount() }}</span>
   </header>
 
   <!-- Drop zone indicator -->
   @if (isDragOver()) {
-    <div class="kanban-drop-zone" role="status" aria-live="polite" aria-label="Drop here to move task">
+    <div class="kanban-drop-zone" role="status" aria-live="polite" [attr.aria-label]="'tasks.kanban.dropHere' | transloco">
       <span class="material-symbols-rounded kanban-drop-zone-icon" aria-hidden="true">file_download</span>
-      <span class="kanban-drop-zone-label">Drop here</span>
+      <span class="kanban-drop-zone-label">{{ 'tasks.kanban.dropHere' | transloco }}</span>
     </div>
   }
 
@@ -34,7 +34,7 @@
     @if (taskCount() === 0 && !isDragOver()) {
       <div class="kanban-col-empty" role="listitem">
         <span class="material-symbols-rounded kanban-col-empty-icon" aria-hidden="true">inbox</span>
-        <span class="kanban-col-empty-text">No tasks</span>
+        <span class="kanban-col-empty-text">{{ 'tasks.kanban.noTasks' | transloco }}</span>
       </div>
     } @else {
       @for (task of tasks(); track task.taskId; let i = $index) {

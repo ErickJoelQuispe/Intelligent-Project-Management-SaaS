@@ -155,7 +155,8 @@
       "descriptionPlaceholder": "Agrega contexto o notas...",
       "submitBtn": "Crear tarea",
       "cancelBtn": "Cancelar",
-      "closeBtn": "Cerrar"
+      "closeBtn": "Cerrar",
+      "createError": "Error al crear la tarea. Inténtalo de nuevo."
     },
     "drawer": {
       "newTask": "Nueva tarea",
@@ -163,9 +164,15 @@
     },
     "panel": {
       "newTask": "Nueva tarea",
-      "noTasks": "Sin tareas a\u00fan",
+      "noTasks": "Sin tareas aún",
       "noTasksDesc": "Crea tu primera tarea para comenzar.",
-      "loadError": "Error al cargar las tareas."
+      "loadError": "Error al cargar las tareas.",
+      "deleteError": "Error al eliminar la tarea.",
+      "noDescription": "Sin descripción",
+      "subtasks": "Subtareas",
+      "addSubtask": "Agregar subtarea",
+      "subtaskPlaceholder": "Título de la subtarea...",
+      "subtaskCreateError": "Error al crear la subtarea. Inténtalo de nuevo."
     },
     "list": {
       "title": "Tareas",
@@ -176,7 +183,9 @@
     "kanban": {
       "board": "Tablero",
       "newTask": "Nueva tarea",
-      "openBoardView": "Abrir vista de tablero"
+      "openBoardView": "Abrir vista de tablero",
+      "dropHere": "Suelta aquí para mover la tarea",
+      "noTasks": "Sin tareas"
     }
   },
   "projects": {
@@ -184,13 +193,17 @@
       "title": "Proyectos",
       "description": "Administra tus proyectos",
       "newProject": "Nuevo proyecto",
-      "empty": "Sin proyectos a\u00fan",
+      "empty": "Sin proyectos aún",
       "emptyDesc": "Crea tu primer proyecto para comenzar.",
       "loadError": "Error al cargar los proyectos.",
-      "archiveError": "Error al archivar el proyecto. Int\u00e9ntalo de nuevo.",
-      "restoreError": "Error al restaurar el proyecto. Int\u00e9ntalo de nuevo.",
+      "archiveError": "Error al archivar el proyecto. Inténtalo de nuevo.",
+      "restoreError": "Error al restaurar el proyecto. Inténtalo de nuevo.",
       "showArchived": "Mostrar archivados",
-      "hideArchived": "Ocultar archivados"
+      "hideArchived": "Ocultar archivados",
+      "statProject": "proyecto",
+      "statProjects": "proyectos",
+      "statActive": "activo",
+      "statArchived": "archivado"
     },
     "detail": {
       "backToProjects": "Proyectos",
@@ -214,21 +227,28 @@
     "form": {
       "createTitle": "Crear proyecto",
       "editTitle": "Editar proyecto",
+      "createDescription": "Completa los detalles para crear un nuevo proyecto",
+      "updateDescription": "Actualiza los detalles del proyecto",
       "nameLabel": "Nombre del proyecto",
-      "descriptionLabel": "Descripci\u00f3n",
+      "descriptionLabel": "Descripción",
       "visibilityLabel": "Visibilidad",
-      "namePlaceholder": "Mi proyecto increible",
+      "visibilityGuide": "Guía de visibilidad",
+      "namePlaceholder": "Mi proyecto increíble",
       "descriptionPlaceholder": "Describe el proyecto...",
+      "nameRequired": "El nombre del proyecto es obligatorio.",
+      "nameMaxLength": "Máximo 100 caracteres.",
       "submitBtn": "Crear proyecto",
-      "updateBtn": "Actualizar proyecto",
+      "updateBtn": "Guardar cambios",
       "cancelBtn": "Cancelar",
       "loadError": "Error al cargar el proyecto.",
-      "createError": "Error al crear el proyecto. Int\u00e9ntalo de nuevo.",
-      "updateError": "Error al actualizar el proyecto. Int\u00e9ntalo de nuevo.",
+      "createError": "Error al crear el proyecto. Inténtalo de nuevo.",
+      "updateError": "Error al actualizar el proyecto. Inténtalo de nuevo.",
+      "statusActive": "Activo",
+      "statusHint": "Para archivar este proyecto, usa la página de detalle del proyecto.",
       "visibility": {
-        "private": "Privado \u2014 solo t\u00fa",
-        "team": "Equipo \u2014 solo miembros",
-        "public": "P\u00fablico \u2014 todos"
+        "private": "Privado — solo tú",
+        "team": "Equipo — solo miembros",
+        "public": "Público — todos"
       }
     },
     "archive": {

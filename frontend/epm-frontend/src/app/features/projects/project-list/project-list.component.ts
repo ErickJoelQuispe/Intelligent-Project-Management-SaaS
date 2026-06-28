@@ -7,6 +7,7 @@ import {
   computed,
 } from '@angular/core';
 import { Router } from '@angular/router';
+import { TranslocoService, TranslocoPipe } from '@jsverse/transloco';
 import { ProjectStatus } from '../../../core/models/project.model';
 import { ProjectService } from '../project.service';
 import { Project } from '../../../core/models/project.model';
@@ -23,6 +24,7 @@ import { ConfirmDialogService } from '../../../shared/components/confirm-dialog/
   standalone: true,
   changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [
+    TranslocoPipe,
     PageHeaderComponent,
     ButtonComponent,
     SpinnerComponent,
@@ -34,9 +36,10 @@ import { ConfirmDialogService } from '../../../shared/components/confirm-dialog/
   styleUrl: './project-list.component.scss',
 })
 export class ProjectListComponent implements OnInit {
-  private readonly projectService = inject(ProjectService);
-  private readonly router         = inject(Router);
-  private readonly confirmDialog  = inject(ConfirmDialogService);
+  private readonly projectService   = inject(ProjectService);
+  private readonly router           = inject(Router);
+  private readonly confirmDialog    = inject(ConfirmDialogService);
+  private readonly translocoService = inject(TranslocoService);
 
   allProjects     = signal<Project[]>([]);
   loading         = signal(false);
@@ -65,7 +68,7 @@ export class ProjectListComponent implements OnInit {
     this.error.set(null);
     this.projectService.list(true).subscribe({
       next:  (p) => { this.allProjects.set(p); this.loading.set(false); },
-      error: ()  => { this.error.set('Failed to load projects.'); this.loading.set(false); },
+      error: ()  => { this.error.set(this.translocoService.translate('projects.list.loadError')); this.loading.set(false); },
     });
   }
 
@@ -79,15 +82,15 @@ export class ProjectListComponent implements OnInit {
 
   onProjectArchived(project: Project): void {
     this.confirmDialog.open({
-      title: `Archive "${project.name}"?`,
-      message: 'It will be hidden from the project list. You can restore it later.',
-      confirmLabel: 'Archive',
+      title: this.translocoService.translate('projects.archive.confirmTitle', { name: project.name }),
+      message: this.translocoService.translate('projects.archive.confirmMessage'),
+      confirmLabel: this.translocoService.translate('projects.archive.confirmBtn'),
       variant: 'warning',
     }).subscribe(confirmed => {
       if (!confirmed) return;
       this.projectService.archive(project.id).subscribe({
         next:  () => this.loadProjects(),
-        error: () => this.error.set('Failed to archive project. Please try again.'),
+        error: () => this.error.set(this.translocoService.translate('projects.list.archiveError')),
       });
     });
   }
@@ -95,7 +98,7 @@ export class ProjectListComponent implements OnInit {
   onProjectRestored(project: Project): void {
     this.projectService.restore(project.id).subscribe({
       next:  () => this.loadProjects(),
-      error: () => this.error.set('Failed to restore project. Please try again.'),
+      error: () => this.error.set(this.translocoService.translate('projects.list.restoreError')),
     });
   }
 }
