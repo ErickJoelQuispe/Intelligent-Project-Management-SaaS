@@ -21,6 +21,8 @@ import org.slf4j.LoggerFactory;
 import org.springframework.kafka.annotation.KafkaListener;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 /**
  * Kafka consumer for {@code task.events} topic.
@@ -126,7 +128,7 @@ public class TaskEventConsumer {
                     Notification notification = notificationService.create(tenantId, assigneeId,
                             NotificationType.TASK_ASSIGNED, taskId,
                             "Task was assigned to you");
-                    notificationPushPort.pushToUser(assigneeId, NotificationResponse.from(notification));
+                    pushAfterCommit(assigneeId, NotificationResponse.from(notification));
                 }
             }
             case "TaskStatusChanged" -> {
@@ -137,7 +139,7 @@ public class TaskEventConsumer {
                     Notification notification = notificationService.create(tenantId, assigneeId,
                             NotificationType.TASK_STATUS_CHANGED, taskId,
                             "Task status changed to " + newStatus);
-                    notificationPushPort.pushToUser(assigneeId, NotificationResponse.from(notification));
+                    pushAfterCommit(assigneeId, NotificationResponse.from(notification));
                 }
             }
             case "TaskDeleted" -> {
@@ -146,7 +148,7 @@ public class TaskEventConsumer {
                     Notification notification = notificationService.create(tenantId, assigneeId,
                             NotificationType.TASK_DELETED, taskId,
                             "A task you were assigned to was deleted");
-                    notificationPushPort.pushToUser(assigneeId, NotificationResponse.from(notification));
+                    pushAfterCommit(assigneeId, NotificationResponse.from(notification));
                 }
             }
             case "TaskCreated" -> {
@@ -155,10 +157,30 @@ public class TaskEventConsumer {
                     Notification notification = notificationService.create(tenantId, actorId,
                             NotificationType.TASK_CREATED, taskId,
                             "Task '" + titleOrDefault(payload) + "' was created");
-                    notificationPushPort.pushToUser(actorId, NotificationResponse.from(notification));
+                    pushAfterCommit(actorId, NotificationResponse.from(notification));
                 }
             }
             default -> log.warn("Ignoring unknown task event type: {}", eventType);
+        }
+    }
+
+    /**
+     * Pushes the notification to the user after the current transaction commits.
+     *
+     * <p>If no transaction synchronization is active (e.g. in unit tests), the push is
+     * executed immediately as a fallback. In production the consumer method is always
+     * {@code @Transactional}, so the push always fires after commit.
+     */
+    private void pushAfterCommit(UUID recipientId, NotificationResponse response) {
+        if (TransactionSynchronizationManager.isSynchronizationActive()) {
+            TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+                @Override
+                public void afterCommit() {
+                    notificationPushPort.pushToUser(recipientId, response);
+                }
+            });
+        } else {
+            notificationPushPort.pushToUser(recipientId, response);
         }
     }
 

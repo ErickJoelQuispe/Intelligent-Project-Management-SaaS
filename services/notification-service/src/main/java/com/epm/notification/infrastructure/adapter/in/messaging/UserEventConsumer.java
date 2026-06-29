@@ -4,8 +4,11 @@ import java.time.Instant;
 import java.util.UUID;
 
 import com.epm.notification.application.usecase.NotificationApplicationService;
+import com.epm.notification.domain.model.Notification;
 import com.epm.notification.domain.model.NotificationType;
 import com.epm.notification.domain.port.in.CacheUserEmailUseCase;
+import com.epm.notification.domain.port.out.NotificationPushPort;
+import com.epm.notification.infrastructure.adapter.in.web.NotificationResponse;
 import com.epm.notification.infrastructure.adapter.out.persistence.ProcessedEventJpaRepository;
 import com.epm.notification.infrastructure.messaging.tracing.KafkaTracingSupport;
 import com.fasterxml.jackson.core.JsonProcessingException;
@@ -19,6 +22,8 @@ import org.slf4j.LoggerFactory;
 import org.springframework.kafka.annotation.KafkaListener;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 /**
  * Kafka consumer for user domain event topics.
@@ -66,15 +71,18 @@ public class UserEventConsumer {
     private final NotificationApplicationService notificationService;
     private final ProcessedEventJpaRepository processedEventRepository;
     private final CacheUserEmailUseCase cacheUserEmailUseCase;
+    private final NotificationPushPort notificationPushPort;
     private final ObjectMapper objectMapper;
 
     public UserEventConsumer(NotificationApplicationService notificationService,
             ProcessedEventJpaRepository processedEventRepository,
             CacheUserEmailUseCase cacheUserEmailUseCase,
+            NotificationPushPort notificationPushPort,
             ObjectMapper objectMapper) {
         this.notificationService = notificationService;
         this.processedEventRepository = processedEventRepository;
         this.cacheUserEmailUseCase = cacheUserEmailUseCase;
+        this.notificationPushPort = notificationPushPort;
         this.objectMapper = objectMapper;
     }
 
@@ -143,15 +151,21 @@ public class UserEventConsumer {
                 if (memberEmail != null) {
                     cacheUserEmailUseCase.cacheUserEmail(userId, tenantId, memberEmail);
                 }
-                notificationService.create(tenantId, userId,
+                Notification notification = notificationService.create(tenantId, userId,
                         NotificationType.MEMBER_JOINED_TEAM, userId,
                         "You joined " + teamName);
+                final UUID recipientId = userId;
+                final NotificationResponse response = NotificationResponse.from(notification);
+                pushAfterCommit(recipientId, response);
             }
             case "TeamMemberLeft" -> {
                 String teamName = textOrDefault(payload, "teamName", "a team");
-                notificationService.create(tenantId, userId,
+                Notification notification = notificationService.create(tenantId, userId,
                         NotificationType.MEMBER_LEFT_TEAM, userId,
                         "You left " + teamName);
+                final UUID recipientId = userId;
+                final NotificationResponse response = NotificationResponse.from(notification);
+                pushAfterCommit(recipientId, response);
             }
             case "ProfileUpdated" -> {
                 String email = textOrNull(payload, "email");
@@ -160,8 +174,29 @@ public class UserEventConsumer {
                 } else {
                     log.debug("ProfileUpdated event has no email field — skipping cache update: userId={}", userId);
                 }
+                // ProfileUpdated does not create a notification — no push
             }
             default -> log.warn("Unknown user event type — skipping: eventType={}", eventType);
+        }
+    }
+
+    /**
+     * Pushes the notification to the user after the current transaction commits.
+     *
+     * <p>If no transaction synchronization is active (e.g. in unit tests), the push is
+     * executed immediately as a fallback. In production the consumer method is always
+     * {@code @Transactional}, so the push always fires after commit.
+     */
+    private void pushAfterCommit(UUID recipientId, NotificationResponse response) {
+        if (TransactionSynchronizationManager.isSynchronizationActive()) {
+            TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+                @Override
+                public void afterCommit() {
+                    notificationPushPort.pushToUser(recipientId, response);
+                }
+            });
+        } else {
+            notificationPushPort.pushToUser(recipientId, response);
         }
     }
 
