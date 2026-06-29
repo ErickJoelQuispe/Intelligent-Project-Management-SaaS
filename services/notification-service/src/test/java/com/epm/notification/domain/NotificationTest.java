@@ -107,6 +107,7 @@ class NotificationTest {
     void notificationType_hasAllRequiredValues() {
         // Phase 6 WU-B added MEMBER_JOINED_TEAM, MEMBER_LEFT_TEAM.
         // Phase 6 WU-C added PROJECT_CREATED, PROJECT_ARCHIVED, TEAM_ASSIGNED_TO_PROJECT.
+        // User registration added INVITATION_SENT.
         assertThat(NotificationType.values()).containsExactlyInAnyOrder(
                 NotificationType.TASK_CREATED,
                 NotificationType.TASK_ASSIGNED,
@@ -116,6 +117,7 @@ class NotificationTest {
                 NotificationType.MEMBER_LEFT_TEAM,
                 NotificationType.PROJECT_CREATED,
                 NotificationType.PROJECT_ARCHIVED,
-                NotificationType.TEAM_ASSIGNED_TO_PROJECT);
+                NotificationType.TEAM_ASSIGNED_TO_PROJECT,
+                NotificationType.INVITATION_SENT);
     }
 }

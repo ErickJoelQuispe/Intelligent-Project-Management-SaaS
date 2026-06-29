@@ -195,6 +195,7 @@ public class NotificationApplicationService
             case PROJECT_CREATED -> "New Project Created";
             case PROJECT_ARCHIVED -> "Project Archived";
             case TEAM_ASSIGNED_TO_PROJECT -> "Team Assigned to Project";
+            case INVITATION_SENT -> "You've been invited to join a workspace";
         };
     }
 }
