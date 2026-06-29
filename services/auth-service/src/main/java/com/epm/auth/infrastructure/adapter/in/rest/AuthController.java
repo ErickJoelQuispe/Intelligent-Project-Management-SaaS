@@ -5,11 +5,13 @@ import java.util.List;
 import java.util.UUID;
 
 import com.epm.auth.domain.model.UserSession;
+import com.epm.auth.domain.port.in.AcceptInvitationUseCase;
 import com.epm.auth.domain.port.in.DisableOwnAccountUseCase;
 import com.epm.auth.domain.port.in.GetUserSessionsUseCase;
 import com.epm.auth.domain.port.in.LogoutAccountUseCase;
 import com.epm.auth.domain.port.in.RegisterAccountUseCase;
 import com.epm.auth.domain.port.in.RevokeSessionUseCase;
+import com.epm.auth.domain.port.in.command.AcceptInvitationCommand;
 import com.epm.auth.domain.port.in.command.RegisterAccountCommand;
 import com.epm.auth.domain.port.in.result.RegisterAccountResult;
 import jakarta.validation.Valid;
@@ -42,18 +44,21 @@ public class AuthController {
     private final DisableOwnAccountUseCase disableOwnAccountUseCase;
     private final GetUserSessionsUseCase getUserSessionsUseCase;
     private final RevokeSessionUseCase revokeSessionUseCase;
+    private final AcceptInvitationUseCase acceptInvitationUseCase;
 
     public AuthController(
             RegisterAccountUseCase registerUseCase,
             LogoutAccountUseCase logoutUseCase,
             DisableOwnAccountUseCase disableOwnAccountUseCase,
             GetUserSessionsUseCase getUserSessionsUseCase,
-            RevokeSessionUseCase revokeSessionUseCase) {
+            RevokeSessionUseCase revokeSessionUseCase,
+            AcceptInvitationUseCase acceptInvitationUseCase) {
         this.registerUseCase = registerUseCase;
         this.logoutUseCase = logoutUseCase;
         this.disableOwnAccountUseCase = disableOwnAccountUseCase;
         this.getUserSessionsUseCase = getUserSessionsUseCase;
         this.revokeSessionUseCase = revokeSessionUseCase;
+        this.acceptInvitationUseCase = acceptInvitationUseCase;
     }
 
     /**
@@ -145,5 +150,25 @@ public class AuthController {
             @PathVariable String sessionId,
             @AuthenticationPrincipal Jwt jwt) {
         revokeSessionUseCase.execute(sessionId);
+    }
+
+    /**
+     * Accepts an invitation and creates the invited user's account.
+     *
+     * <p>Public endpoint — no authentication header required.
+     * The invitation token carries identity; the user proves they received the email.
+     *
+     * @param request validated accept-invitation request
+     * @return 201 on success
+     */
+    @PostMapping("/accept-invitation")
+    @ResponseStatus(HttpStatus.CREATED)
+    public void acceptInvitation(@Valid @RequestBody AcceptInvitationRequest request) {
+        AcceptInvitationCommand command = new AcceptInvitationCommand(
+                request.token(),
+                request.firstName(),
+                request.lastName(),
+                request.password());
+        acceptInvitationUseCase.accept(command);
     }
 }

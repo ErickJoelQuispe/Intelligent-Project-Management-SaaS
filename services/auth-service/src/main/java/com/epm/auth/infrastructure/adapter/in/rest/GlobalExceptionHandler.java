@@ -4,6 +4,9 @@ import java.net.URI;
 
 import com.epm.auth.domain.exception.DuplicateEmailException;
 import com.epm.auth.domain.exception.IdentityProviderException;
+import com.epm.auth.domain.exception.InvitationTokenAlreadyUsedException;
+import com.epm.auth.domain.exception.InvitationTokenExpiredException;
+import com.epm.auth.domain.exception.InvitationTokenInvalidException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ProblemDetail;
 import org.springframework.http.ResponseEntity;
@@ -41,6 +44,36 @@ public class GlobalExceptionHandler {
                 .status(HttpStatus.SERVICE_UNAVAILABLE)
                 .header("Retry-After", String.valueOf(ex.getRetryAfterSeconds()))
                 .body(problem);
+    }
+
+    /** 404 Not Found — invitation token does not exist. */
+    @ExceptionHandler(InvitationTokenInvalidException.class)
+    public ProblemDetail handleInvitationTokenInvalid(InvitationTokenInvalidException ex) {
+        ProblemDetail problem = ProblemDetail.forStatus(HttpStatus.NOT_FOUND);
+        problem.setType(URI.create("https://api.epm.com/errors/invitation-not-found"));
+        problem.setTitle("Invitation Not Found");
+        problem.setDetail(ex.getMessage());
+        return problem;
+    }
+
+    /** 410 Gone — invitation token has expired. */
+    @ExceptionHandler(InvitationTokenExpiredException.class)
+    public ProblemDetail handleInvitationTokenExpired(InvitationTokenExpiredException ex) {
+        ProblemDetail problem = ProblemDetail.forStatus(HttpStatus.GONE);
+        problem.setType(URI.create("https://api.epm.com/errors/invitation-expired"));
+        problem.setTitle("Invitation Expired");
+        problem.setDetail(ex.getMessage());
+        return problem;
+    }
+
+    /** 409 Conflict — invitation token already used. */
+    @ExceptionHandler(InvitationTokenAlreadyUsedException.class)
+    public ProblemDetail handleInvitationTokenAlreadyUsed(InvitationTokenAlreadyUsedException ex) {
+        ProblemDetail problem = ProblemDetail.forStatus(HttpStatus.CONFLICT);
+        problem.setType(URI.create("https://api.epm.com/errors/invitation-already-used"));
+        problem.setTitle("Invitation Already Used");
+        problem.setDetail(ex.getMessage());
+        return problem;
     }
 
     /** 400 Bad Request — bean validation failure. */
