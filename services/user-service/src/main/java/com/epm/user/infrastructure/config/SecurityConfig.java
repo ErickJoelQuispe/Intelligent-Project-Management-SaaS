@@ -38,6 +38,9 @@ public class SecurityConfig {
                 .csrf(AbstractHttpConfigurer::disable)
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers("/actuator/**").permitAll()
+                        // Internal endpoints — not exposed externally by the gateway
+                        .requestMatchers("/api/v1/invitations/validate").permitAll()
+                        .requestMatchers("/api/v1/invitations/*/use").permitAll()
                         .anyRequest().authenticated()
                 )
                 .oauth2ResourceServer(oauth2 -> oauth2

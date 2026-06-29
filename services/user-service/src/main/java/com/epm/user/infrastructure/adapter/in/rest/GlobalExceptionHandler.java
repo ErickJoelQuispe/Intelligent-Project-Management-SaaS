@@ -2,9 +2,13 @@ package com.epm.user.infrastructure.adapter.in.rest;
 
 import java.net.URI;
 
+import com.epm.user.domain.exception.ActiveInvitationExistsException;
 import com.epm.user.domain.exception.DuplicateMemberException;
 import com.epm.user.domain.exception.InvalidPreferencesException;
 import com.epm.user.domain.exception.InvalidTeamNameException;
+import com.epm.user.domain.exception.InvitationAlreadyUsedException;
+import com.epm.user.domain.exception.InvitationExpiredException;
+import com.epm.user.domain.exception.InvitationNotFoundException;
 import com.epm.user.domain.exception.LastOwnerException;
 import com.epm.user.domain.exception.OptimisticLockException;
 import com.epm.user.domain.exception.ProfileNotFoundException;
@@ -199,6 +203,46 @@ public class GlobalExceptionHandler {
                 .findFirst()
                 .orElse("Validation failed");
         problem.setDetail(detail);
+        return problem;
+    }
+
+    /** 409 Conflict — active invitation already exists for this email/tenant pair. */
+    @ExceptionHandler(ActiveInvitationExistsException.class)
+    public ProblemDetail handleActiveInvitationExists(ActiveInvitationExistsException ex) {
+        ProblemDetail problem = ProblemDetail.forStatus(HttpStatus.CONFLICT);
+        problem.setType(URI.create("https://api.epm.com/errors/active-invitation-exists"));
+        problem.setTitle("Active Invitation Exists");
+        problem.setDetail(ex.getMessage());
+        return problem;
+    }
+
+    /** 404 Not Found — invitation not found by token or ID. */
+    @ExceptionHandler(InvitationNotFoundException.class)
+    public ProblemDetail handleInvitationNotFound(InvitationNotFoundException ex) {
+        ProblemDetail problem = ProblemDetail.forStatus(HttpStatus.NOT_FOUND);
+        problem.setType(URI.create("https://api.epm.com/errors/invitation-not-found"));
+        problem.setTitle("Invitation Not Found");
+        problem.setDetail(ex.getMessage());
+        return problem;
+    }
+
+    /** 410 Gone — invitation token has expired. */
+    @ExceptionHandler(InvitationExpiredException.class)
+    public ProblemDetail handleInvitationExpired(InvitationExpiredException ex) {
+        ProblemDetail problem = ProblemDetail.forStatus(HttpStatus.GONE);
+        problem.setType(URI.create("https://api.epm.com/errors/invitation-expired"));
+        problem.setTitle("Invitation Expired");
+        problem.setDetail(ex.getMessage());
+        return problem;
+    }
+
+    /** 409 Conflict — invitation has already been used. */
+    @ExceptionHandler(InvitationAlreadyUsedException.class)
+    public ProblemDetail handleInvitationAlreadyUsed(InvitationAlreadyUsedException ex) {
+        ProblemDetail problem = ProblemDetail.forStatus(HttpStatus.CONFLICT);
+        problem.setType(URI.create("https://api.epm.com/errors/invitation-already-used"));
+        problem.setTitle("Invitation Already Used");
+        problem.setDetail(ex.getMessage());
         return problem;
     }
 
