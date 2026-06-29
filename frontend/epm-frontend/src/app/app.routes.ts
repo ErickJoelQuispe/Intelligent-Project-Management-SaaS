@@ -108,4 +108,11 @@ export const routes: Routes = [
         (m) => m.RegistrationComponent,
       ),
   },
+  {
+    path: 'accept-invitation',
+    loadComponent: () =>
+      import('./features/accept-invitation/accept-invitation.component').then(
+        (m) => m.AcceptInvitationComponent,
+      ),
+  },
 ];
