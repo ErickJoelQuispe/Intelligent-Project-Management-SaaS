@@ -152,12 +152,14 @@ public class TaskEventConsumer {
                 }
             }
             case "TaskCreated" -> {
+                UUID assigneeId = uuidOrNull(payload, "assigneeId");
                 UUID actorId = uuidOrNull(payload, "actorId");
-                if (actorId != null) {
-                    Notification notification = notificationService.create(tenantId, actorId,
+                // Skip if no assignee (unassigned task) or self-assignment (creator == assignee)
+                if (assigneeId != null && !assigneeId.equals(actorId)) {
+                    Notification notification = notificationService.create(tenantId, assigneeId,
                             NotificationType.TASK_CREATED, taskId,
-                            "Task '" + titleOrDefault(payload) + "' was created");
-                    pushAfterCommit(actorId, NotificationResponse.from(notification));
+                            "Task '" + titleOrDefault(payload) + "' has been assigned to you");
+                    pushAfterCommit(assigneeId, NotificationResponse.from(notification));
                 }
             }
             default -> log.warn("Ignoring unknown task event type: {}", eventType);
