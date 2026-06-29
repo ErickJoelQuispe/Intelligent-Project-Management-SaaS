@@ -100,4 +100,12 @@ export const routes: Routes = [
       ),
     canActivate: [authGuard],
   },
+  // Public routes — no authGuard; auth.init.ts skips initCodeFlow() for these paths
+  {
+    path: 'register',
+    loadComponent: () =>
+      import('./features/registration/registration.component').then(
+        (m) => m.RegistrationComponent,
+      ),
+  },
 ];
