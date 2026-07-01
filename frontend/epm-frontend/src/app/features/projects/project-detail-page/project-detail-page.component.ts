@@ -5,6 +5,8 @@ import {
   signal,
   computed,
   viewChild,
+  HostListener,
+  ElementRef,
 } from '@angular/core';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { forkJoin, of, catchError } from 'rxjs';
@@ -37,6 +39,13 @@ function nameToHue(name: string): number {
   const raw = hash % 320;
   return raw < 30 ? raw + 90 : raw + 60;
 }
+
+const PROJECT_COLOR_PALETTE = [
+  '#ef4444', '#f97316', '#eab308', '#22c55e',
+  '#14b8a6', '#3b82f6', '#8b5cf6', '#ec4899',
+  '#64748b', '#0ea5e9', '#a855f7', '#f43f5e',
+  '#10b981', '#6366f1', '#f59e0b', '#84cc16',
+];
 
 interface SummaryData {
   status: string;
@@ -108,12 +117,54 @@ interface SummaryData {
 
           <!-- Project name + dot (inline editable) -->
           <div class="pdp-project-title-row">
-            <span
-              class="pdp-project-dot"
-              [style.background]="accentColor()"
-              [style.box-shadow]="accentShadow()"
-              aria-hidden="true"
-            ></span>
+            <div class="pdp-dot-wrap">
+              <button
+                class="pdp-project-dot pdp-project-dot--btn"
+                [style.background]="accentColor()"
+                [style.box-shadow]="accentShadow()"
+                (click)="toggleColorPicker($event)"
+                [attr.aria-label]="'Change project color'"
+                title="Change color"
+                type="button"
+              ></button>
+              @if (colorPickerOpen()) {
+                <div class="pdp-color-picker" role="dialog" aria-label="Pick project color">
+                  <div class="pdp-color-palette">
+                    @for (c of palette; track c) {
+                      <button
+                        class="pdp-palette-swatch"
+                        [class.pdp-palette-swatch--active]="customColor() === c"
+                        [style.background]="c"
+                        (click)="pickColor(c)"
+                        [attr.aria-label]="'Select color ' + c"
+                        type="button"
+                      ></button>
+                    }
+                  </div>
+                  <div class="pdp-color-hex-row">
+                    <span class="pdp-color-preview" [style.background]="hexInputValue()"></span>
+                    <input
+                      class="pdp-color-hex-input"
+                      type="text"
+                      [value]="hexInputValue()"
+                      (input)="onHexInput($event)"
+                      maxlength="7"
+                      placeholder="#000000"
+                      aria-label="Hex color value"
+                      spellcheck="false"
+                    />
+                    <input
+                      class="pdp-color-native"
+                      type="color"
+                      [value]="hexInputValue()"
+                      (input)="onNativeColorInput($event)"
+                      aria-label="Open color wheel"
+                      title="Open color wheel"
+                    />
+                  </div>
+                </div>
+              }
+            </div>
             @if (editingName()) {
               <input
                 class="pdp-name-input"
@@ -593,12 +644,133 @@ interface SummaryData {
         min-width: 0;
       }
 
+      .pdp-dot-wrap {
+        position: relative;
+        flex-shrink: 0;
+        display: flex;
+        align-items: center;
+      }
+
       .pdp-project-dot {
         width: 10px;
         height: 10px;
         border-radius: 50%;
         flex-shrink: 0;
       }
+
+      .pdp-project-dot--btn {
+        border: none;
+        padding: 0;
+        cursor: pointer;
+        transition: transform 0.15s ease, box-shadow 0.15s ease;
+        outline-offset: 3px;
+      }
+      .pdp-project-dot--btn:hover {
+        transform: scale(1.45);
+      }
+      .pdp-project-dot--btn:focus-visible {
+        outline: 2px solid var(--color-accent);
+      }
+
+      /* ── Color picker popover ────────────────────── */
+      .pdp-color-picker {
+        position: absolute;
+        top: calc(100% + 10px);
+        left: -4px;
+        z-index: 100;
+        background: var(--color-bg-elevated);
+        border: 1px solid var(--color-border);
+        border-radius: 0.75rem;
+        padding: 0.75rem;
+        box-shadow: 0 8px 32px color-mix(in oklch, var(--color-border) 80%, transparent),
+                    0 2px 8px color-mix(in oklch, var(--color-border) 40%, transparent);
+        display: flex;
+        flex-direction: column;
+        gap: 0.625rem;
+        width: 220px;
+        animation: pdp-picker-in 0.15s cubic-bezier(0.2, 0, 0, 1) both;
+      }
+
+      @keyframes pdp-picker-in {
+        from { opacity: 0; transform: translateY(-6px) scale(0.97); }
+        to   { opacity: 1; transform: translateY(0) scale(1); }
+      }
+
+      .pdp-color-palette {
+        display: grid;
+        grid-template-columns: repeat(8, 1fr);
+        gap: 0.375rem;
+      }
+
+      .pdp-palette-swatch {
+        width: 100%;
+        aspect-ratio: 1;
+        border-radius: 50%;
+        border: 2px solid transparent;
+        cursor: pointer;
+        padding: 0;
+        transition: transform 0.12s ease, border-color 0.12s ease;
+      }
+      .pdp-palette-swatch:hover {
+        transform: scale(1.2);
+      }
+      .pdp-palette-swatch--active {
+        border-color: var(--color-bg-elevated);
+        outline: 2px solid currentColor;
+        outline-offset: 1px;
+        transform: scale(1.15);
+      }
+
+      .pdp-color-hex-row {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        padding-top: 0.375rem;
+        border-top: 1px solid color-mix(in oklch, var(--color-border) 60%, transparent);
+      }
+
+      .pdp-color-preview {
+        width: 1.25rem;
+        height: 1.25rem;
+        border-radius: 50%;
+        flex-shrink: 0;
+        border: 1px solid color-mix(in oklch, var(--color-border) 80%, transparent);
+        transition: background 0.1s;
+      }
+
+      .pdp-color-hex-input {
+        flex: 1;
+        min-width: 0;
+        font-family: 'JetBrains Mono', monospace;
+        font-size: 0.75rem;
+        color: var(--color-text-primary);
+        background: var(--color-bg-surface);
+        border: 1px solid var(--color-border);
+        border-radius: 0.375rem;
+        padding: 0.25rem 0.5rem;
+        outline: none;
+        transition: border-color 0.15s;
+      }
+      .pdp-color-hex-input:focus {
+        border-color: var(--color-accent);
+        box-shadow: 0 0 0 2px var(--color-accent-subtle);
+      }
+
+      .pdp-color-native {
+        width: 1.75rem;
+        height: 1.75rem;
+        border-radius: 50%;
+        border: 1px solid var(--color-border);
+        cursor: pointer;
+        padding: 0;
+        background: none;
+        flex-shrink: 0;
+        appearance: none;
+        overflow: hidden;
+      }
+      .pdp-color-native::-webkit-color-swatch-wrapper { padding: 0; }
+      .pdp-color-native::-webkit-color-swatch { border: none; border-radius: 50%; }
+      .pdp-color-native::-moz-color-swatch { border: none; border-radius: 50%; }
 
       .pdp-project-name {
         font-family: 'Outfit', sans-serif;
@@ -1397,6 +1569,7 @@ export class ProjectDetailPageComponent {
   private readonly teamService      = inject(TeamService);
   private readonly confirmDialog    = inject(ConfirmDialogService);
   private readonly translocoService = inject(TranslocoService);
+  private readonly elRef            = inject(ElementRef);
 
   readonly taskPanel        = viewChild(TaskPanelComponent);
 
@@ -1577,13 +1750,104 @@ export class ProjectDetailPageComponent {
     // in-flight request completes, picking up the merged pending patch.
   }
 
+  // ── Color picker ──────────────────────────────────────────────────────
+  readonly palette = PROJECT_COLOR_PALETTE;
+  readonly colorPickerOpen = signal(false);
+  readonly customColor     = signal<string | null>(null);
+  readonly hexInputValue   = signal<string>('#000000');
+
+  private loadStoredColor(projectId: string): void {
+    const stored = localStorage.getItem(`project-color:${projectId}`);
+    if (stored) {
+      this.customColor.set(stored);
+      this.hexInputValue.set(stored);
+    } else {
+      // Derive a default hex from the name-based hue so the input shows something
+      this.customColor.set(null);
+      this.hexInputValue.set(this.hue2hex(nameToHue(this.project()?.name ?? '')));
+    }
+  }
+
+  private hue2hex(hue: number): string {
+    // Convert oklch(0.68 0.20 hue) -> rough hex via canvas (simple approximation)
+    // We just return a reasonable fallback using HSL since oklch→hex requires a full conversion
+    const l = Math.round(68 / 100 * 100);
+    const s = 70;
+    return this.hslToHex(hue, s, l);
+  }
+
+  private hslToHex(h: number, s: number, l: number): string {
+    s /= 100; l /= 100;
+    const k = (n: number) => (n + h / 30) % 12;
+    const a = s * Math.min(l, 1 - l);
+    const f = (n: number) => l - a * Math.max(-1, Math.min(k(n) - 3, Math.min(9 - k(n), 1)));
+    const toHex = (x: number) => Math.round(x * 255).toString(16).padStart(2, '0');
+    return `#${toHex(f(0))}${toHex(f(8))}${toHex(f(4))}`;
+  }
+
+  toggleColorPicker(event: MouseEvent): void {
+    event.stopPropagation();
+    this.colorPickerOpen.update(v => !v);
+  }
+
+  pickColor(hex: string): void {
+    const id = this.project()?.id;
+    if (!id) return;
+    this.customColor.set(hex);
+    this.hexInputValue.set(hex);
+    localStorage.setItem(`project-color:${id}`, hex);
+    this.colorPickerOpen.set(false);
+  }
+
+  onHexInput(event: Event): void {
+    const raw = (event.target as HTMLInputElement).value;
+    this.hexInputValue.set(raw);
+    if (/^#[0-9a-fA-F]{6}$/.test(raw)) {
+      const id = this.project()?.id;
+      if (id) {
+        this.customColor.set(raw);
+        localStorage.setItem(`project-color:${id}`, raw);
+      }
+    }
+  }
+
+  onNativeColorInput(event: Event): void {
+    const hex = (event.target as HTMLInputElement).value;
+    this.hexInputValue.set(hex);
+    const id = this.project()?.id;
+    if (id) {
+      this.customColor.set(hex);
+      localStorage.setItem(`project-color:${id}`, hex);
+    }
+  }
+
+  @HostListener('document:click', ['$event'])
+  onDocumentClick(event: MouseEvent): void {
+    if (!this.colorPickerOpen()) return;
+    const picker = (this.elRef.nativeElement as HTMLElement).querySelector('.pdp-color-picker');
+    const dotBtn = (this.elRef.nativeElement as HTMLElement).querySelector('.pdp-project-dot--btn');
+    if (
+      picker && !picker.contains(event.target as Node) &&
+      dotBtn && !dotBtn.contains(event.target as Node)
+    ) {
+      this.colorPickerOpen.set(false);
+    }
+  }
+
   // Accent color computeds
   private readonly hue = computed(() => {
     const name = this.project()?.name ?? '';
     return nameToHue(name);
   });
-  accentColor  = computed(() => `oklch(0.68 0.20 ${this.hue()})`);
-  accentShadow = computed(() => `0 0 10px oklch(0.68 0.20 ${this.hue()} / 0.5)`);
+  accentColor  = computed(() => {
+    const custom = this.customColor();
+    return custom ?? `oklch(0.68 0.20 ${this.hue()})`;
+  });
+  accentShadow = computed(() => {
+    const color = this.accentColor();
+    // Use color-mix for shadow if it's a hex; fallback to oklch
+    return `0 0 10px ${color}80`;
+  });
 
   visibilityIcon = computed(() => {
     switch (this.optimisticVisibility() ?? this.project()?.visibility) {
@@ -1614,7 +1878,11 @@ export class ProjectDetailPageComponent {
 
   private loadProject(id: string): void {
     this.projectService.getById(id).subscribe({
-      next:  (p) => { this.project.set(p); this.loading.set(false); },
+      next:  (p) => {
+        this.project.set(p);
+        this.loadStoredColor(p.id);
+        this.loading.set(false);
+      },
       error: ()  => { this.error.set(this.translocoService.translate('projects.form.loadError')); this.loading.set(false); },
     });
   }

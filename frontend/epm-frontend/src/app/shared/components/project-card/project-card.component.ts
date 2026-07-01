@@ -338,17 +338,31 @@ export class ProjectCardComponent {
 
   isArchived = computed(() => this.project().status === ProjectStatus.ARCHIVED);
 
-  /** Deterministic hue derived from project name */
+  /** Stored color from localStorage (set via the detail-page color picker) */
+  private storedColor = computed(() => {
+    const id = this.project().id;
+    return localStorage.getItem(`project-color:${id}`);
+  });
+
+  /** Deterministic hue derived from project name (fallback) */
   private readonly hue = computed(() => nameToHue(this.project().name));
 
-  accentColor   = computed(() => `oklch(0.68 0.20 ${this.hue()})`);
-  accentGradient = computed(() =>
-    `linear-gradient(90deg, oklch(0.62 0.22 ${this.hue()}) 0%, oklch(0.72 0.18 ${this.hue() + 30}) 100%)`
-  );
-  accentShadow  = computed(() => `0 0 8px oklch(0.68 0.20 ${this.hue()} / 0.6)`);
-  hoverGlow     = computed(() =>
-    `radial-gradient(ellipse, oklch(0.68 0.20 ${this.hue()} / 0.12) 0%, transparent 70%)`
-  );
+  accentColor   = computed(() => this.storedColor() ?? `oklch(0.68 0.20 ${this.hue()})`);
+  accentGradient = computed(() => {
+    const stored = this.storedColor();
+    if (stored) return `linear-gradient(90deg, ${stored} 0%, ${stored} 100%)`;
+    return `linear-gradient(90deg, oklch(0.62 0.22 ${this.hue()}) 0%, oklch(0.72 0.18 ${this.hue() + 30}) 100%)`;
+  });
+  accentShadow  = computed(() => {
+    const stored = this.storedColor();
+    return stored ? `0 0 8px ${stored}99` : `0 0 8px oklch(0.68 0.20 ${this.hue()} / 0.6)`;
+  });
+  hoverGlow     = computed(() => {
+    const stored = this.storedColor();
+    return stored
+      ? `radial-gradient(ellipse, ${stored}1f 0%, transparent 70%)`
+      : `radial-gradient(ellipse, oklch(0.68 0.20 ${this.hue()} / 0.12) 0%, transparent 70%)`;
+  });
 
   visibilityIcon = computed(() => {
     switch (this.project().visibility) {
