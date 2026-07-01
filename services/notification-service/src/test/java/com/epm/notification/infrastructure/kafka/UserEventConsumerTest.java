@@ -15,6 +15,7 @@ import com.epm.notification.domain.port.in.CacheUserEmailUseCase;
 import com.epm.notification.application.usecase.NotificationApplicationService;
 import com.epm.notification.domain.model.Notification;
 import com.epm.notification.domain.model.NotificationType;
+import com.epm.notification.domain.port.out.NotificationPushPort;
 import com.epm.notification.infrastructure.adapter.in.messaging.UserEventConsumer;
 import com.epm.notification.infrastructure.adapter.out.persistence.ProcessedEventJpaRepository;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -54,6 +55,9 @@ class UserEventConsumerTest {
     @Mock
     private CacheUserEmailUseCase cacheUserEmailUseCase;
 
+    @Mock
+    private NotificationPushPort notificationPushPort;
+
     private UserEventConsumer consumer;
     private ObjectMapper objectMapper;
 
@@ -62,7 +66,7 @@ class UserEventConsumerTest {
         objectMapper = new ObjectMapper();
         objectMapper.findAndRegisterModules();
         consumer = new UserEventConsumer(notificationService, processedEventRepository,
-                cacheUserEmailUseCase, objectMapper);
+                cacheUserEmailUseCase, notificationPushPort, objectMapper);
     }
 
     // ── TeamMemberJoined → MEMBER_JOINED_TEAM notification ────────────────
@@ -311,6 +315,94 @@ class UserEventConsumerTest {
         consumer.consume(toRecord("user.profile.updated", message));
 
         verify(cacheUserEmailUseCase, never()).cacheUserEmail(any(), any(), any());
+    }
+
+    // ── Bug 1 fix: pushToUser called after TeamMemberJoined ──────────────────
+
+    @Test
+    void consume_teamMemberJoined_pushesToUserAfterPersist() {
+        UUID eventId = UUID.randomUUID();
+        UUID userId = UUID.randomUUID();
+        UUID tenantId = UUID.randomUUID();
+
+        String message = buildUserEvent(eventId.toString(), "TeamMemberJoined", tenantId.toString(),
+                userId.toString(), "Backend Team", null);
+
+        when(processedEventRepository.claimEvent(
+                eq(eventId.toString()), eq("user.team.member-joined"), any(Instant.class)))
+                .thenReturn(1);
+        Notification mockNotif = Notification.create(tenantId, userId,
+                NotificationType.MEMBER_JOINED_TEAM, userId, "You joined Backend Team");
+        when(notificationService.create(any(), any(), eq(NotificationType.MEMBER_JOINED_TEAM), any(), any()))
+                .thenReturn(mockNotif);
+
+        consumer.consume(toRecord("user.team.member-joined", message));
+
+        verify(notificationPushPort).pushToUser(eq(userId), any());
+    }
+
+    // ── Bug 1 fix: pushToUser called after TeamMemberLeft ────────────────────
+
+    @Test
+    void consume_teamMemberLeft_pushesToUserAfterPersist() {
+        UUID eventId = UUID.randomUUID();
+        UUID userId = UUID.randomUUID();
+        UUID tenantId = UUID.randomUUID();
+
+        String message = buildUserEvent(eventId.toString(), "TeamMemberLeft", tenantId.toString(),
+                userId.toString(), "Backend Team", null);
+
+        when(processedEventRepository.claimEvent(
+                eq(eventId.toString()), eq("user.team.member-left"), any(Instant.class)))
+                .thenReturn(1);
+        Notification mockNotif = Notification.create(tenantId, userId,
+                NotificationType.MEMBER_LEFT_TEAM, userId, "You left Backend Team");
+        when(notificationService.create(any(), any(), eq(NotificationType.MEMBER_LEFT_TEAM), any(), any()))
+                .thenReturn(mockNotif);
+
+        consumer.consume(toRecord("user.team.member-left", message));
+
+        verify(notificationPushPort).pushToUser(eq(userId), any());
+    }
+
+    // ── Bug 1 fix: duplicate event → pushToUser never called ─────────────────
+
+    @Test
+    void consume_duplicateEvent_doesNotPushToUser() {
+        UUID eventId = UUID.randomUUID();
+        UUID userId = UUID.randomUUID();
+        UUID tenantId = UUID.randomUUID();
+
+        String message = buildUserEvent(eventId.toString(), "TeamMemberJoined", tenantId.toString(),
+                userId.toString(), "Backend Team", null);
+
+        when(processedEventRepository.claimEvent(
+                eq(eventId.toString()), eq("user.team.member-joined"), any(Instant.class)))
+                .thenReturn(0);
+
+        consumer.consume(toRecord("user.team.member-joined", message));
+
+        verify(notificationPushPort, never()).pushToUser(any(), any());
+    }
+
+    // ── ProfileUpdated never pushes (no notification created) ────────────────
+
+    @Test
+    void consume_profileUpdated_doesNotPushToUser() {
+        UUID eventId = UUID.randomUUID();
+        UUID userId = UUID.randomUUID();
+        UUID tenantId = UUID.randomUUID();
+
+        String message = buildProfileUpdatedEvent(eventId.toString(), tenantId.toString(),
+                userId.toString(), "new@example.com");
+
+        when(processedEventRepository.claimEvent(
+                eq(eventId.toString()), eq("user.profile.updated"), any(Instant.class)))
+                .thenReturn(1);
+
+        consumer.consume(toRecord("user.profile.updated", message));
+
+        verify(notificationPushPort, never()).pushToUser(any(), any());
     }
 
     // ── Helper ────────────────────────────────────────────────────────────────

@@ -1,10 +1,12 @@
 package com.epm.auth.infrastructure.config;
 
+import com.epm.auth.application.usecase.AcceptInvitationUseCaseImpl;
 import com.epm.auth.application.usecase.DisableOwnAccountUseCaseImpl;
 import com.epm.auth.application.usecase.GetUserSessionsUseCaseImpl;
 import com.epm.auth.application.usecase.LogoutAccountUseCaseImpl;
 import com.epm.auth.application.usecase.RegisterAccountUseCaseImpl;
 import com.epm.auth.application.usecase.RevokeSessionUseCaseImpl;
+import com.epm.auth.domain.port.in.AcceptInvitationUseCase;
 import com.epm.auth.domain.port.in.DisableOwnAccountUseCase;
 import com.epm.auth.domain.port.in.GetUserSessionsUseCase;
 import com.epm.auth.domain.port.in.LogoutAccountUseCase;
@@ -13,6 +15,7 @@ import com.epm.auth.domain.port.in.RevokeSessionUseCase;
 import com.epm.auth.domain.port.out.AccountRegistrationTransaction;
 import com.epm.auth.domain.port.out.AccountRepository;
 import com.epm.auth.domain.port.out.IdentityProviderPort;
+import com.epm.auth.domain.port.out.InvitationValidationPort;
 import com.epm.auth.domain.port.out.SecurityEventRepository;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -57,5 +60,15 @@ class UseCaseConfig {
     @Bean
     RevokeSessionUseCase revokeSessionUseCase(IdentityProviderPort identityProvider) {
         return new RevokeSessionUseCaseImpl(identityProvider);
+    }
+
+    @Bean
+    AcceptInvitationUseCase acceptInvitationUseCase(
+            InvitationValidationPort invitationValidationPort,
+            IdentityProviderPort identityProvider,
+            AccountRepository accountRepository,
+            AccountRegistrationTransaction registrationTransaction) {
+        return new AcceptInvitationUseCaseImpl(
+                invitationValidationPort, identityProvider, accountRepository, registrationTransaction);
     }
 }

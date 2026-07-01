@@ -17,6 +17,7 @@ import java.util.UUID;
 import com.epm.auth.domain.exception.DuplicateEmailException;
 import com.epm.auth.domain.exception.IdentityProviderException;
 import com.epm.auth.domain.model.UserSession;
+import com.epm.auth.domain.port.in.AcceptInvitationUseCase;
 import com.epm.auth.domain.port.in.DisableOwnAccountUseCase;
 import com.epm.auth.domain.port.in.GetUserSessionsUseCase;
 import com.epm.auth.domain.port.in.LogoutAccountUseCase;
@@ -86,6 +87,9 @@ class AuthControllerTest {
 
     @MockitoBean
     private RevokeSessionUseCase revokeSessionUseCase;
+
+    @MockitoBean
+    private AcceptInvitationUseCase acceptInvitationUseCase;
 
     // Required: provides a mock JwtDecoder so the SecurityConfig (OAuth2 resource server)
     // can initialize without trying to fetch Keycloak's JWKS from the network.

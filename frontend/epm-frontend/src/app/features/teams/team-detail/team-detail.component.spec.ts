@@ -10,6 +10,7 @@ import { OAuthService } from 'angular-oauth2-oidc';
 import { TeamDetailComponent } from './team-detail.component';
 import { TeamService } from '../team.service';
 import { UserService } from '../../settings/services/user.service';
+import { InvitationService } from '../../registration/invitation.service';
 import { Team } from '../../../core/models/team.model';
 import { provideTranslocoTesting } from '../../../testing/transloco-testing';
 
@@ -69,9 +70,17 @@ function buildOAuthMock(sub: string) {
 async function createFixture(
   teamServiceMock: ReturnType<typeof buildTeamServiceMock>,
   oauthMock: ReturnType<typeof buildOAuthMock>,
+  options: {
+    tenantUsers?: { id: string; email: string; firstName: string | null; lastName: string | null }[];
+    invitationServiceMock?: { inviteMember: ReturnType<typeof vi.fn> };
+  } = {},
 ): Promise<ComponentFixture<TeamDetailComponent>> {
   const userServiceMock = {
-    listTenantUsers: vi.fn().mockReturnValue(of([])),
+    listTenantUsers: vi.fn().mockReturnValue(of(options.tenantUsers ?? [])),
+  };
+
+  const defaultInvitationServiceMock = {
+    inviteMember: vi.fn().mockReturnValue(of({ invitationId: 'inv-1', email: 'new@example.com', expiresAt: '2026-07-02T00:00:00Z' })),
   };
 
   await TestBed.configureTestingModule({
@@ -84,6 +93,7 @@ async function createFixture(
       { provide: TeamService, useValue: teamServiceMock },
       { provide: UserService, useValue: userServiceMock },
       { provide: OAuthService, useValue: oauthMock },
+      { provide: InvitationService, useValue: options.invitationServiceMock ?? defaultInvitationServiceMock },
       {
         provide: ActivatedRoute,
         useValue: { snapshot: { paramMap: { get: () => 'team-001' } } },
@@ -293,6 +303,107 @@ describe('TeamDetailComponent', () => {
       fixture.detectChanges();
 
       expect(component.inlineSaveError()).toBe('Could not save. Please try again.');
+    });
+  });
+
+  // ── Invite flow (PR-6) ─────────────────────────────────────────────────────
+
+  describe('onAddMember() — email found in tenant → add-member flow', () => {
+    it('calls teamService.addMember (not inviteMember) when email resolves to a known userId', async () => {
+      const tenantUsers = [
+        { id: 'user-existing-001', email: 'existing@example.com', firstName: 'Existing', lastName: 'User' },
+      ];
+      const invitationSvcMock = { inviteMember: vi.fn() };
+      const teamSvc = buildTeamServiceMock({
+        addMember: vi.fn().mockReturnValue(of(void 0)),
+      });
+
+      const fixture = await createFixture(teamSvc, buildOAuthMock(OWNER_ID), {
+        tenantUsers,
+        invitationServiceMock: invitationSvcMock,
+      });
+      const component = fixture.componentInstance;
+
+      component.addMemberForm.setValue({ email: 'existing@example.com', role: 'MEMBER' });
+      component.onAddMember();
+
+      expect(teamSvc.addMember).toHaveBeenCalledWith('team-001', { userId: 'user-existing-001', role: 'MEMBER' });
+      expect(invitationSvcMock.inviteMember).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('onAddMember() — email NOT found in tenant → invite flow', () => {
+    it('calls inviteMember when email is not in tenant user list', async () => {
+      const invitationSvcMock = {
+        inviteMember: vi.fn().mockReturnValue(of({ invitationId: 'inv-1', email: 'new@example.com', expiresAt: '2026-07-02T00:00:00Z' })),
+      };
+      const teamSvc = buildTeamServiceMock();
+
+      const fixture = await createFixture(teamSvc, buildOAuthMock(OWNER_ID), {
+        tenantUsers: [],
+        invitationServiceMock: invitationSvcMock,
+      });
+      const component = fixture.componentInstance;
+
+      component.addMemberForm.setValue({ email: 'new@example.com', role: 'MEMBER' });
+      component.onAddMember();
+
+      expect(invitationSvcMock.inviteMember).toHaveBeenCalledWith('team-001', 'new@example.com');
+    });
+
+    it('sets memberError with success message after 201 invite response', async () => {
+      const invitationSvcMock = {
+        inviteMember: vi.fn().mockReturnValue(of({ invitationId: 'inv-1', email: 'new@example.com', expiresAt: '2026-07-02T00:00:00Z' })),
+      };
+      const teamSvc = buildTeamServiceMock();
+
+      const fixture = await createFixture(teamSvc, buildOAuthMock(OWNER_ID), {
+        tenantUsers: [],
+        invitationServiceMock: invitationSvcMock,
+      });
+      const component = fixture.componentInstance;
+
+      component.addMemberForm.setValue({ email: 'new@example.com', role: 'MEMBER' });
+      component.onAddMember();
+
+      // After success, we show a toast/success message in memberError
+      expect(component.inviteSuccess()).toContain('new@example.com');
+    });
+
+    it('sets memberError to "already pending" message on 409 invite response', async () => {
+      const invitationSvcMock = {
+        inviteMember: vi.fn().mockReturnValue(throwError(() => ({ status: 409 }))),
+      };
+      const teamSvc = buildTeamServiceMock();
+
+      const fixture = await createFixture(teamSvc, buildOAuthMock(OWNER_ID), {
+        tenantUsers: [],
+        invitationServiceMock: invitationSvcMock,
+      });
+      const component = fixture.componentInstance;
+
+      component.addMemberForm.setValue({ email: 'dup@example.com', role: 'MEMBER' });
+      component.onAddMember();
+
+      expect(component.memberError()).toContain('pending');
+    });
+
+    it('sets memberError to "admins can invite" message on 403 invite response', async () => {
+      const invitationSvcMock = {
+        inviteMember: vi.fn().mockReturnValue(throwError(() => ({ status: 403 }))),
+      };
+      const teamSvc = buildTeamServiceMock();
+
+      const fixture = await createFixture(teamSvc, buildOAuthMock(OWNER_ID), {
+        tenantUsers: [],
+        invitationServiceMock: invitationSvcMock,
+      });
+      const component = fixture.componentInstance;
+
+      component.addMemberForm.setValue({ email: 'nonadmin@example.com', role: 'MEMBER' });
+      component.onAddMember();
+
+      expect(component.memberError()).toContain('admin');
     });
   });
 

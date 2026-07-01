@@ -13,6 +13,7 @@ import java.util.UUID;
 import com.epm.notification.application.usecase.NotificationApplicationService;
 import com.epm.notification.domain.model.Notification;
 import com.epm.notification.domain.model.NotificationType;
+import com.epm.notification.domain.port.out.NotificationPushPort;
 import com.epm.notification.infrastructure.adapter.in.messaging.ProjectEventConsumer;
 import com.epm.notification.infrastructure.adapter.out.persistence.ProcessedEventJpaRepository;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -59,6 +60,9 @@ class ProjectEventConsumerTest {
     @Mock
     private ProcessedEventJpaRepository processedEventRepository;
 
+    @Mock
+    private NotificationPushPort notificationPushPort;
+
     private ProjectEventConsumer consumer;
     private ObjectMapper objectMapper;
 
@@ -66,7 +70,8 @@ class ProjectEventConsumerTest {
     void setUp() {
         objectMapper = new ObjectMapper();
         objectMapper.findAndRegisterModules();
-        consumer = new ProjectEventConsumer(notificationService, processedEventRepository, objectMapper);
+        consumer = new ProjectEventConsumer(notificationService, processedEventRepository,
+                notificationPushPort, objectMapper);
     }
 
     // ── ProjectCreated on project.project.created ─────────────────────────
@@ -343,6 +348,110 @@ class ProjectEventConsumerTest {
 
         verify(processedEventRepository).claimEvent(eq(eventId), any(), any());
         verify(notificationService, never()).create(any(), any(), any(), any(), any());
+    }
+
+    // ── Bug 1 fix: pushToUser called after ProjectCreated ────────────────────
+
+    @Test
+    void consume_projectCreated_pushesToOwnerAfterPersist() {
+        UUID eventId = UUID.randomUUID();
+        UUID tenantId = UUID.randomUUID();
+        UUID ownerId = UUID.randomUUID();
+        UUID projectId = UUID.randomUUID();
+
+        String message = buildProjectEvent(eventId.toString(), "ProjectCreated",
+                tenantId.toString(), projectId.toString(),
+                ownerId.toString(), null, null, "Push Project");
+
+        when(processedEventRepository.claimEvent(
+                eq(eventId.toString()), eq(TOPIC_PROJECT_CREATED), any(Instant.class)))
+                .thenReturn(1);
+        Notification mockNotif = Notification.create(tenantId, ownerId,
+                NotificationType.PROJECT_CREATED, projectId, "Project 'Push Project' was created");
+        when(notificationService.create(any(), eq(ownerId),
+                eq(NotificationType.PROJECT_CREATED), any(), any()))
+                .thenReturn(mockNotif);
+
+        consumer.consume(toRecord(TOPIC_PROJECT_CREATED, message));
+
+        verify(notificationPushPort).pushToUser(eq(ownerId), any());
+    }
+
+    // ── Bug 1 fix: pushToUser called after ProjectArchived ───────────────────
+
+    @Test
+    void consume_projectArchived_pushesToOwnerAfterPersist() {
+        UUID eventId = UUID.randomUUID();
+        UUID tenantId = UUID.randomUUID();
+        UUID ownerId = UUID.randomUUID();
+        UUID projectId = UUID.randomUUID();
+
+        String message = buildProjectEvent(eventId.toString(), "ProjectArchived",
+                tenantId.toString(), projectId.toString(),
+                ownerId.toString(), null, null, "Archived Project");
+
+        when(processedEventRepository.claimEvent(
+                eq(eventId.toString()), eq(TOPIC_PROJECT_ARCHIVED), any(Instant.class)))
+                .thenReturn(1);
+        Notification mockNotif = Notification.create(tenantId, ownerId,
+                NotificationType.PROJECT_ARCHIVED, projectId, "Project 'Archived Project' was archived");
+        when(notificationService.create(any(), eq(ownerId),
+                eq(NotificationType.PROJECT_ARCHIVED), any(), any()))
+                .thenReturn(mockNotif);
+
+        consumer.consume(toRecord(TOPIC_PROJECT_ARCHIVED, message));
+
+        verify(notificationPushPort).pushToUser(eq(ownerId), any());
+    }
+
+    // ── Bug 1 fix: pushToUser called for each member in TeamAssignedToProject ─
+
+    @Test
+    void consume_teamAssignedToProject_pushesToEachMemberAfterPersist() {
+        UUID eventId = UUID.randomUUID();
+        UUID tenantId = UUID.randomUUID();
+        UUID projectId = UUID.randomUUID();
+        UUID member1 = UUID.randomUUID();
+        UUID member2 = UUID.randomUUID();
+
+        String memberIds = "[\"" + member1 + "\",\"" + member2 + "\"]";
+        String message = buildTeamAssignedEvent(eventId.toString(), tenantId.toString(),
+                projectId.toString(), memberIds);
+
+        when(processedEventRepository.claimEvent(
+                eq(eventId.toString()), eq(TOPIC_TEAM_ASSIGNED), any(Instant.class)))
+                .thenReturn(1);
+        Notification mockNotif = Notification.create(tenantId, member1,
+                NotificationType.TEAM_ASSIGNED_TO_PROJECT, projectId, "You have been assigned to a project");
+        when(notificationService.create(any(), any(),
+                eq(NotificationType.TEAM_ASSIGNED_TO_PROJECT), any(), any()))
+                .thenReturn(mockNotif);
+
+        consumer.consume(toRecord(TOPIC_TEAM_ASSIGNED, message));
+
+        verify(notificationPushPort, times(2)).pushToUser(any(UUID.class), any());
+    }
+
+    // ── Bug 1 fix: duplicate event → pushToUser never called ─────────────────
+
+    @Test
+    void consume_duplicateEvent_doesNotPushToUser() {
+        UUID eventId = UUID.randomUUID();
+        UUID tenantId = UUID.randomUUID();
+        UUID ownerId = UUID.randomUUID();
+        UUID projectId = UUID.randomUUID();
+
+        String message = buildProjectEvent(eventId.toString(), "ProjectCreated",
+                tenantId.toString(), projectId.toString(),
+                ownerId.toString(), null, null, "Dup Push Project");
+
+        when(processedEventRepository.claimEvent(
+                eq(eventId.toString()), eq(TOPIC_PROJECT_CREATED), any(Instant.class)))
+                .thenReturn(0);
+
+        consumer.consume(toRecord(TOPIC_PROJECT_CREATED, message));
+
+        verify(notificationPushPort, never()).pushToUser(any(), any());
     }
 
     // ── Helpers ───────────────────────────────────────────────────────────────

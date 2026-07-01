@@ -1,6 +1,7 @@
 package com.epm.user.application.config;
 
 import com.epm.user.application.usecase.AddTeamMemberUseCaseImpl;
+import com.epm.user.application.usecase.CreateInvitationUseCaseImpl;
 import com.epm.user.application.usecase.CreateTeamUseCaseImpl;
 import com.epm.user.application.usecase.DeleteOwnProfileUseCaseImpl;
 import com.epm.user.application.usecase.DeleteTeamUseCaseImpl;
@@ -8,13 +9,17 @@ import com.epm.user.application.usecase.GetOwnProfileUseCaseImpl;
 import com.epm.user.application.usecase.GetTeamUseCaseImpl;
 import com.epm.user.application.usecase.ListTeamsUseCaseImpl;
 import com.epm.user.application.usecase.ListTenantUsersUseCaseImpl;
+import com.epm.user.application.usecase.MarkInvitationUsedUseCaseImpl;
 import com.epm.user.application.usecase.RemoveTeamMemberUseCaseImpl;
 import com.epm.user.application.usecase.UpdateOwnProfileUseCaseImpl;
 import com.epm.user.application.usecase.UpdateTeamMemberRoleUseCaseImpl;
 import com.epm.user.application.usecase.UpdateTeamUseCaseImpl;
+import com.epm.user.application.usecase.ValidateInvitationUseCaseImpl;
 import com.epm.user.domain.port.in.DeleteOwnProfileUseCase;
 import com.epm.user.domain.port.in.UpdateTeamMemberRoleUseCase;
 import com.epm.user.domain.port.in.UpdateTeamUseCase;
+import com.epm.user.domain.port.out.DomainEventPublisher;
+import com.epm.user.domain.port.out.InvitationRepository;
 import com.epm.user.domain.port.out.TeamRepository;
 import com.epm.user.domain.port.out.TransactionalOutboxWriter;
 import com.epm.user.domain.port.out.UserProfileRepository;
@@ -99,5 +104,21 @@ public class UseCaseConfig {
             UserProfileRepository profileRepository,
             TransactionalOutboxWriter outboxWriter) {
         return new UpdateTeamMemberRoleUseCaseImpl(teamRepository, profileRepository, outboxWriter);
+    }
+
+    @Bean
+    CreateInvitationUseCaseImpl createInvitationUseCase(InvitationRepository invitationRepository,
+            DomainEventPublisher domainEventPublisher) {
+        return new CreateInvitationUseCaseImpl(invitationRepository, domainEventPublisher);
+    }
+
+    @Bean
+    ValidateInvitationUseCaseImpl validateInvitationUseCase(InvitationRepository invitationRepository) {
+        return new ValidateInvitationUseCaseImpl(invitationRepository);
+    }
+
+    @Bean
+    MarkInvitationUsedUseCaseImpl markInvitationUsedUseCase(InvitationRepository invitationRepository) {
+        return new MarkInvitationUsedUseCaseImpl(invitationRepository);
     }
 }

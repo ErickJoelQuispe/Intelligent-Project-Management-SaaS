@@ -6,7 +6,10 @@ import java.util.List;
 import java.util.UUID;
 
 import com.epm.notification.application.usecase.NotificationApplicationService;
+import com.epm.notification.domain.model.Notification;
 import com.epm.notification.domain.model.NotificationType;
+import com.epm.notification.domain.port.out.NotificationPushPort;
+import com.epm.notification.infrastructure.adapter.in.web.NotificationResponse;
 import com.epm.notification.infrastructure.adapter.out.persistence.ProcessedEventJpaRepository;
 import com.epm.notification.infrastructure.messaging.tracing.KafkaTracingSupport;
 import com.fasterxml.jackson.core.JsonProcessingException;
@@ -20,6 +23,8 @@ import org.slf4j.LoggerFactory;
 import org.springframework.kafka.annotation.KafkaListener;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 /**
  * Kafka consumer for project domain event topics.
@@ -66,13 +71,16 @@ public class ProjectEventConsumer {
 
     private final NotificationApplicationService notificationService;
     private final ProcessedEventJpaRepository processedEventRepository;
+    private final NotificationPushPort notificationPushPort;
     private final ObjectMapper objectMapper;
 
     public ProjectEventConsumer(NotificationApplicationService notificationService,
             ProcessedEventJpaRepository processedEventRepository,
+            NotificationPushPort notificationPushPort,
             ObjectMapper objectMapper) {
         this.notificationService = notificationService;
         this.processedEventRepository = processedEventRepository;
+        this.notificationPushPort = notificationPushPort;
         this.objectMapper = objectMapper;
     }
 
@@ -138,29 +146,58 @@ public class ProjectEventConsumer {
                 UUID ownerId = uuidOrNull(payload, "ownerId");
                 if (ownerId != null) {
                     String name = textOrDefault(payload, "name", "project");
-                    notificationService.create(tenantId, ownerId,
+                    Notification notification = notificationService.create(tenantId, ownerId,
                             NotificationType.PROJECT_CREATED, projectId,
                             "Project '" + name + "' was created");
+                    final UUID recipientId = ownerId;
+                    final NotificationResponse response = NotificationResponse.from(notification);
+                    pushAfterCommit(recipientId, response);
                 }
             }
             case "ProjectArchived" -> {
                 UUID ownerId = uuidOrNull(payload, "ownerId");
                 if (ownerId != null) {
                     String name = textOrDefault(payload, "name", "project");
-                    notificationService.create(tenantId, ownerId,
+                    Notification notification = notificationService.create(tenantId, ownerId,
                             NotificationType.PROJECT_ARCHIVED, projectId,
                             "Project '" + name + "' was archived");
+                    final UUID recipientId = ownerId;
+                    final NotificationResponse response = NotificationResponse.from(notification);
+                    pushAfterCommit(recipientId, response);
                 }
             }
             case "TeamAssignedToProject" -> {
                 List<UUID> memberIds = parseMemberIds(payload);
                 for (UUID memberId : memberIds) {
-                    notificationService.create(tenantId, memberId,
+                    Notification notification = notificationService.create(tenantId, memberId,
                             NotificationType.TEAM_ASSIGNED_TO_PROJECT, projectId,
                             "You have been assigned to a project");
+                    final UUID recipientId = memberId;
+                    final NotificationResponse response = NotificationResponse.from(notification);
+                    pushAfterCommit(recipientId, response);
                 }
             }
             default -> log.warn("Unknown project event type — skipping: eventType={}", eventType);
+        }
+    }
+
+    /**
+     * Pushes the notification to the user after the current transaction commits.
+     *
+     * <p>If no transaction synchronization is active (e.g. in unit tests), the push is
+     * executed immediately as a fallback. In production the consumer method is always
+     * {@code @Transactional}, so the push always fires after commit.
+     */
+    private void pushAfterCommit(UUID recipientId, NotificationResponse response) {
+        if (TransactionSynchronizationManager.isSynchronizationActive()) {
+            TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+                @Override
+                public void afterCommit() {
+                    notificationPushPort.pushToUser(recipientId, response);
+                }
+            });
+        } else {
+            notificationPushPort.pushToUser(recipientId, response);
         }
     }
 

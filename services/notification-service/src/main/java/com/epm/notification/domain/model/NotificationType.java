@@ -5,6 +5,7 @@ package com.epm.notification.domain.model;
  *
  * <p>Phase 6 WU-B added: MEMBER_JOINED_TEAM, MEMBER_LEFT_TEAM.
  * Phase 6 WU-C adds: PROJECT_CREATED, PROJECT_ARCHIVED, TEAM_ASSIGNED_TO_PROJECT.
+ * User registration adds: INVITATION_SENT.
  */
 public enum NotificationType {
     TASK_CREATED,
@@ -15,5 +16,6 @@ public enum NotificationType {
     MEMBER_LEFT_TEAM,
     PROJECT_CREATED,
     PROJECT_ARCHIVED,
-    TEAM_ASSIGNED_TO_PROJECT
+    TEAM_ASSIGNED_TO_PROJECT,
+    INVITATION_SENT
 }

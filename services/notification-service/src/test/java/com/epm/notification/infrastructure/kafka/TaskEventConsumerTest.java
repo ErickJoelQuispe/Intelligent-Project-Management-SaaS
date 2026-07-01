@@ -223,6 +223,71 @@ class TaskEventConsumerTest {
         verify(notificationService, never()).create(any(), any(), any(), any(), any());
     }
 
+    // ── Bug 5: TaskCreated should notify assignee, not creator ────────────────
+
+    @Test
+    void consume_taskCreated_withAssignee_createsNotificationForAssignee() throws Exception {
+        UUID eventId = UUID.randomUUID();
+        UUID tenantId = UUID.randomUUID();
+        UUID taskId = UUID.randomUUID();
+        UUID assigneeId = UUID.randomUUID();
+        UUID actorId = UUID.randomUUID(); // creator — must NOT be the recipient
+
+        String message = buildEvent(eventId.toString(), "TaskCreated", tenantId.toString(),
+                taskId.toString(), null, assigneeId.toString(), actorId.toString(), null);
+
+        when(processedEventRepository.claimEvent(eq(eventId.toString()), eq("task.events"), any(Instant.class))).thenReturn(1);
+        Notification mockNotif = Notification.create(tenantId, assigneeId,
+                NotificationType.TASK_CREATED, taskId, "Task 'Fix the login bug' has been assigned to you");
+        when(notificationService.create(any(), any(), any(), any(), any())).thenReturn(mockNotif);
+
+        consumer.consume(toRecord(message));
+
+        // Must notify the assignee, not the actor/creator
+        verify(notificationService).create(tenantId, assigneeId,
+                NotificationType.TASK_CREATED, taskId, "Task 'Fix the login bug' has been assigned to you");
+        verify(notificationPushPort).pushToUser(eq(assigneeId), any());
+    }
+
+    @Test
+    void consume_taskCreated_withoutAssignee_createsNoNotification() throws Exception {
+        UUID eventId = UUID.randomUUID();
+        UUID tenantId = UUID.randomUUID();
+        UUID taskId = UUID.randomUUID();
+        UUID actorId = UUID.randomUUID();
+
+        // No assigneeId in the event — task is unassigned
+        String message = buildEvent(eventId.toString(), "TaskCreated", tenantId.toString(),
+                taskId.toString(), null, null, actorId.toString(), null);
+
+        when(processedEventRepository.claimEvent(eq(eventId.toString()), eq("task.events"), any(Instant.class))).thenReturn(1);
+
+        consumer.consume(toRecord(message));
+
+        // No notification for unassigned task creation
+        verify(notificationService, never()).create(any(), any(), any(), any(), any());
+        verify(notificationPushPort, never()).pushToUser(any(), any());
+    }
+
+    @Test
+    void consume_taskCreated_selfAssignment_createsNoNotification() throws Exception {
+        UUID eventId = UUID.randomUUID();
+        UUID tenantId = UUID.randomUUID();
+        UUID taskId = UUID.randomUUID();
+        UUID actorId = UUID.randomUUID(); // actor == assignee (creator assigned to themselves)
+
+        String message = buildEvent(eventId.toString(), "TaskCreated", tenantId.toString(),
+                taskId.toString(), null, actorId.toString(), actorId.toString(), null);
+
+        when(processedEventRepository.claimEvent(eq(eventId.toString()), eq("task.events"), any(Instant.class))).thenReturn(1);
+
+        consumer.consume(toRecord(message));
+
+        // Self-assignment on creation: skip notification to avoid noise
+        verify(notificationService, never()).create(any(), any(), any(), any(), any());
+        verify(notificationPushPort, never()).pushToUser(any(), any());
+    }
+
     // ── Helpers ────────────────────────────────────────────────────────────────
 
     private ConsumerRecord<String, String> toRecord(String value) {

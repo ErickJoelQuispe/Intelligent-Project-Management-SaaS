@@ -28,11 +28,14 @@ describe('NotificationStore', () => {
     connect: ReturnType<typeof vi.fn>;
     disconnect: ReturnType<typeof vi.fn>;
     getNotificationStream: ReturnType<typeof vi.fn>;
+    connected$: Subject<void>;
   };
 
   let oauthMock: { getAccessToken: ReturnType<typeof vi.fn> };
 
   beforeEach(() => {
+    const connectedSubject = new Subject<void>();
+
     serviceMock = {
       getNotifications: vi.fn(),
       getUnreadCount: vi.fn(),
@@ -41,6 +44,7 @@ describe('NotificationStore', () => {
       connect: vi.fn(),
       disconnect: vi.fn(),
       getNotificationStream: vi.fn(),
+      connected$: connectedSubject,
     };
 
     oauthMock = {
@@ -98,6 +102,29 @@ describe('NotificationStore', () => {
     expect(store.loading()).toBe(false);
   });
 
+  it('loadNotifications() called twice cancels the first request (switchMap)', () => {
+    // Bug 4 regression: concurrent calls must not race — switchMap cancels in-flight
+    const firstSubject = new Subject<Notification[]>();
+    const secondSubject = new Subject<Notification[]>();
+
+    serviceMock.getNotifications
+      .mockReturnValueOnce(firstSubject.asObservable())
+      .mockReturnValueOnce(secondSubject.asObservable());
+
+    TestBed.runInInjectionContext(() => {
+      store.loadNotifications(); // first call — in-flight
+      store.loadNotifications(); // second call — should cancel the first
+    });
+
+    // Complete the second request — first was cancelled by switchMap
+    secondSubject.next([mockNotification({ id: 'n-second' })]);
+    secondSubject.complete();
+
+    // Only the second result should be in the store
+    expect(store.notifications().length).toBe(1);
+    expect(store.notifications()[0].id).toBe('n-second');
+  });
+
   it('markAsRead() updates the notification to read and decrements unreadCount', () => {
     const unread = mockNotification({ id: 'n1', read: false });
     serviceMock.getNotifications.mockReturnValue(of([unread]));
@@ -139,7 +166,7 @@ describe('NotificationStore', () => {
   });
 
   it('connectWebSocket() calls service.connect with userId and token', () => {
-    const messageSubject = new Subject();
+    const messageSubject = new Subject<{ body: string }>();
     serviceMock.getUnreadCount.mockReturnValue(of({ count: 0 }));
     serviceMock.getNotificationStream.mockReturnValue(messageSubject.asObservable());
 
@@ -151,14 +178,34 @@ describe('NotificationStore', () => {
     expect(serviceMock.getNotificationStream).toHaveBeenCalledWith('user-42');
   });
 
-  it('connectWebSocket() sets wsConnected to true', () => {
-    const messageSubject = new Subject();
+  // Bug 3 — wsConnected timing tests
+  it('connectWebSocket() does NOT set wsConnected to true immediately (before STOMP handshake)', () => {
+    const messageSubject = new Subject<{ body: string }>();
+    serviceMock.getUnreadCount.mockReturnValue(of({ count: 0 }));
+    serviceMock.getNotificationStream.mockReturnValue(messageSubject.asObservable());
+    // connected$ is a Subject — it will NOT emit immediately
+
+    TestBed.runInInjectionContext(() => {
+      store.connectWebSocket('user-42', 'jwt-token');
+    });
+
+    // Before connected$ emits, wsConnected must still be false
+    expect(store.wsConnected()).toBe(false);
+  });
+
+  it('connectWebSocket() sets wsConnected to true only after connected$ emits', () => {
+    const messageSubject = new Subject<{ body: string }>();
     serviceMock.getUnreadCount.mockReturnValue(of({ count: 0 }));
     serviceMock.getNotificationStream.mockReturnValue(messageSubject.asObservable());
 
     TestBed.runInInjectionContext(() => {
       store.connectWebSocket('user-42', 'jwt-token');
     });
+
+    expect(store.wsConnected()).toBe(false); // not yet connected
+
+    // Simulate STOMP CONNECTED frame
+    serviceMock.connected$.next();
 
     expect(store.wsConnected()).toBe(true);
   });
@@ -167,6 +214,8 @@ describe('NotificationStore', () => {
     const messageSubject = new Subject<{ body: string }>();
     serviceMock.getUnreadCount.mockReturnValue(of({ count: 0 }));
     serviceMock.getNotificationStream.mockReturnValue(messageSubject.asObservable());
+    // Emit connected so state is ready
+    serviceMock.connected$ = new Subject<void>();
 
     TestBed.runInInjectionContext(() => {
       store.connectWebSocket('user-42', 'jwt-token');
@@ -212,6 +261,14 @@ describe('NotificationStore', () => {
 
     TestBed.runInInjectionContext(() => {
       store.connectWebSocket('user-42', 'old-token');
+    });
+
+    // Simulate STOMP handshake completing so wsConnected becomes true —
+    // the disconnect guard only fires when the store knows it's connected.
+    serviceMock.connected$.next();
+    expect(store.wsConnected()).toBe(true);
+
+    TestBed.runInInjectionContext(() => {
       store.connectWebSocket('user-42', 'new-token');
     });
 

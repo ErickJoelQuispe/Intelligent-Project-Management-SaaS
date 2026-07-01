@@ -1,7 +1,7 @@
 import { inject } from '@angular/core';
 import { signalStore, withState, withMethods, patchState } from '@ngrx/signals';
 import { rxMethod } from '@ngrx/signals/rxjs-interop';
-import { pipe, switchMap } from 'rxjs';
+import { pipe, switchMap, take } from 'rxjs';
 import { tapResponse } from '@ngrx/operators';
 import { Notification } from '../models/notification.model';
 import { NotificationService } from '../services/notification.service';
@@ -28,22 +28,26 @@ export const NotificationStore = signalStore(
   { providedIn: 'root' },
   withState(initialState),
   withMethods((store, service = inject(NotificationService)) => ({
-    loadNotifications(): void {
-      patchState(store, { loading: true, error: null });
-      service.getNotifications().pipe(
-        tapResponse({
-          next: (notifications) => {
-            const unreadCount = notifications.filter((n) => !n.read).length;
-            patchState(store, { notifications, unreadCount, loading: false });
-          },
-          error: (err: unknown) =>
-            patchState(store, {
-              loading: false,
-              error: err instanceof Error ? err.message : 'Failed to load notifications',
+    loadNotifications: rxMethod<void>(
+      pipe(
+        switchMap(() => {
+          patchState(store, { loading: true, error: null });
+          return service.getNotifications().pipe(
+            tapResponse({
+              next: (notifications) => {
+                const unreadCount = notifications.filter((n) => !n.read).length;
+                patchState(store, { notifications, unreadCount, loading: false });
+              },
+              error: (err: unknown) =>
+                patchState(store, {
+                  loading: false,
+                  error: err instanceof Error ? err.message : 'Failed to load notifications',
+                }),
             }),
+          );
         }),
-      ).subscribe();
-    },
+      ),
+    ),
 
     markAsRead: rxMethod<string>(
       pipe(
@@ -101,10 +105,16 @@ export const NotificationStore = signalStore(
       // Disconnect any existing connection before reconnecting
       if (store.wsConnected()) {
         service.disconnect();
+        patchState(store, { wsConnected: false });
       }
 
       service.connect(userId, token);
-      patchState(store, { wsConnected: true });
+
+      // Set wsConnected only after the STOMP CONNECTED frame is confirmed —
+      // avoids reporting connected before the handshake completes (Bug 3).
+      service.connected$.pipe(take(1)).subscribe(() => {
+        patchState(store, { wsConnected: true });
+      });
 
       // Sync unread count from server immediately — avoids stale 0 on app load
       service.getUnreadCount().subscribe({

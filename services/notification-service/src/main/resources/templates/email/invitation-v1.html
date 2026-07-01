@@ -1,0 +1,19 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <title>You've Been Invited</title>
+</head>
+<body>
+    <h1>You've been invited to join a workspace</h1>
+    <p>Hi <span th:text="${email}">user@example.com</span>,</p>
+    <p>
+        You have been invited to join a workspace. Click the button below to create your account.
+    </p>
+    <p>
+        <a th:href="${acceptUrl}">Accept Invitation</a>
+    </p>
+    <hr />
+    <p>This is an automated notification from your project management system.</p>
+</body>
+</html>

@@ -1,6 +1,7 @@
 import { Injectable, inject } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
-import { Observable } from 'rxjs';
+import { EMPTY, Observable, Subject } from 'rxjs';
+import { map } from 'rxjs/operators';
 import { RxStomp, RxStompConfig } from '@stomp/rx-stomp';
 import { IMessage } from '@stomp/stompjs';
 import { OAuthService } from 'angular-oauth2-oidc';
@@ -35,6 +36,16 @@ export class NotificationService {
   }
 
   // ─── WebSocket methods ───────────────────────────────────────────────────────
+
+  /**
+   * Observable that emits once when the STOMP CONNECTED frame is received.
+   * Consumers should use take(1) — the observable completes after the first emission.
+   */
+  get connected$(): Observable<void> {
+    return this._rxStomp
+      ? this._rxStomp.connected$.pipe(map(() => void 0))
+      : EMPTY;
+  }
 
   connect(userId: string, token: string): void {
     this._rxStomp = new RxStomp();

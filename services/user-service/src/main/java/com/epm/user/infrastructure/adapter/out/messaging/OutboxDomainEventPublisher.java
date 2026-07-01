@@ -4,6 +4,7 @@ import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
 
+import com.epm.user.domain.event.InvitationCreatedEvent;
 import com.epm.user.domain.event.ProfileUpdated;
 import com.epm.user.domain.event.TeamCreated;
 import com.epm.user.domain.event.TeamDeleted;
@@ -32,6 +33,7 @@ public class OutboxDomainEventPublisher implements DomainEventPublisher {
     private static final String TOPIC_TEAM_DELETED = "user.team.deleted";
     private static final String TOPIC_TEAM_MEMBER_JOINED = "user.team.member-joined";
     private static final String TOPIC_TEAM_MEMBER_LEFT = "user.team.member-left";
+    private static final String TOPIC_INVITATION_SENT = "user.invitation.sent";
 
     private final OutboxEventJpaRepository outboxRepo;
     private final ApplicationEventPublisher appEventPublisher;
@@ -64,6 +66,9 @@ public class OutboxDomainEventPublisher implements DomainEventPublisher {
             } else if (event instanceof TeamMemberLeft e) {
                 entity = buildEntity(e.teamId(), "Team", "TeamMemberLeft",
                         TOPIC_TEAM_MEMBER_LEFT, buildTeamMemberLeftPayload(e));
+            } else if (event instanceof InvitationCreatedEvent e) {
+                entity = buildEntity(e.invitationId(), "Invitation", "InvitationCreated",
+                        TOPIC_INVITATION_SENT, buildInvitationCreatedPayload(e));
             }
 
             if (entity != null) {
@@ -183,6 +188,28 @@ public class OutboxDomainEventPublisher implements DomainEventPublisher {
             return objectMapper.writeValueAsString(envelope);
         } catch (JsonProcessingException e) {
             throw new IllegalStateException("Failed to serialize TeamMemberLeft event", e);
+        }
+    }
+
+    private String buildInvitationCreatedPayload(InvitationCreatedEvent event) {
+        try {
+            ObjectNode envelope = objectMapper.createObjectNode();
+            envelope.put("eventId", event.eventId().toString());
+            envelope.put("eventType", "InvitationCreated");
+            envelope.put("eventVersion", 1);
+            envelope.put("tenantId", event.tenantId().toString());
+            envelope.put("occurredAt", event.occurredAt().toString());
+            ObjectNode payload = objectMapper.createObjectNode();
+            payload.put("invitationId", event.invitationId().toString());
+            payload.put("teamId", event.teamId().toString());
+            payload.put("email", event.email());
+            payload.put("token", event.token());
+            payload.put("role", event.role());
+            payload.put("expiresAt", event.expiresAt().toString());
+            envelope.set("payload", payload);
+            return objectMapper.writeValueAsString(envelope);
+        } catch (JsonProcessingException e) {
+            throw new IllegalStateException("Failed to serialize InvitationCreatedEvent", e);
         }
     }
 }

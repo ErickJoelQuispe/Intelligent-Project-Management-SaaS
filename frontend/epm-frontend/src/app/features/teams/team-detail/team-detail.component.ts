@@ -11,6 +11,7 @@ import { OAuthService } from 'angular-oauth2-oidc';
 import { TranslocoService, TranslocoPipe } from '@jsverse/transloco';
 import { TeamService } from '../team.service';
 import { UserService } from '../../settings/services/user.service';
+import { InvitationService } from '../../registration/invitation.service';
 import {
   Team,
   TeamMember,
@@ -44,14 +45,15 @@ import { ConfirmDialogService } from '../../../shared/components/confirm-dialog/
   templateUrl: './team-detail.component.html',
 })
 export class TeamDetailComponent {
-  private readonly route            = inject(ActivatedRoute);
-  private readonly router           = inject(Router);
-  private readonly teamService      = inject(TeamService);
-  private readonly userService      = inject(UserService);
-  private readonly oauth            = inject(OAuthService);
-  private readonly fb               = inject(FormBuilder);
-  private readonly confirmDialog    = inject(ConfirmDialogService);
-  private readonly translocoService = inject(TranslocoService);
+  private readonly route             = inject(ActivatedRoute);
+  private readonly router            = inject(Router);
+  private readonly teamService       = inject(TeamService);
+  private readonly userService       = inject(UserService);
+  private readonly invitationService = inject(InvitationService);
+  private readonly oauth             = inject(OAuthService);
+  private readonly fb                = inject(FormBuilder);
+  private readonly confirmDialog     = inject(ConfirmDialogService);
+  private readonly translocoService  = inject(TranslocoService);
 
   // ── Core state ──────────────────────────────────────────────────────────
   readonly team           = signal<Team | null>(null);
@@ -62,6 +64,8 @@ export class TeamDetailComponent {
   readonly removingMember = signal<string | null>(null);
   readonly deleting       = signal(false);
   readonly memberError    = signal<string | null>(null);
+  /** Success message shown after a successful invitation (cleared on next add-member action) */
+  readonly inviteSuccess  = signal<string | null>(null);
 
   // ── Inline edit state ───────────────────────────────────────────────────
   readonly editingName     = signal(false);
@@ -297,50 +301,72 @@ export class TeamDetailComponent {
   onAddMember(): void {
     if (this.addMemberForm.invalid) { this.addMemberForm.markAllAsTouched(); return; }
 
-    const userId = this.resolveUserIdFromEmail();
-    if (!userId) {
-      this.memberError.set(this.translocoService.translate('teams.detail.userNotFound'));
-      return;
-    }
-
-    this.addingMember.set(true);
     this.memberError.set(null);
-    const { role } = this.addMemberForm.getRawValue();
+    this.inviteSuccess.set(null);
 
+    const userId   = this.resolveUserIdFromEmail();
     const emailVal = this.addMemberForm.controls.email.value?.trim() ?? '';
-    this.teamService.addMember(this.teamId, { userId, role }).subscribe({
-      next: () => {
-        this.addingMember.set(false);
-        this.addMemberForm.reset({ email: '', role: 'MEMBER' });
-        // Optimistic update: add the new member to the signal immediately
-        // so the list updates before the background GET completes.
-        const current = this.team();
-        if (current) {
-          const resolved = this.tenantUsers().find(u => u.id === userId);
-          const newMember: TeamMember = {
-            userId,
-            role,
-            joinedAt: new Date().toISOString(),
-            firstName: resolved?.firstName ?? null,
-            lastName:  resolved?.lastName  ?? null,
-            email:     resolved?.email     ?? emailVal,
-          };
-          this.team.set({ ...current, members: [...current.members, newMember] });
-        }
-        // Background refresh to get server-confirmed state
-        this.loadTeam(this.teamId, true);
-      },
-      error: (err: { status?: number }) => {
-        if (err?.status === 409) {
-          this.memberError.set(this.translocoService.translate('teams.detail.alreadyMember'));
-        } else if (err?.status === 403) {
-          this.memberError.set(this.translocoService.translate('teams.detail.noPermission'));
-        } else {
-          this.memberError.set(this.translocoService.translate('teams.detail.inviteError'));
-        }
-        this.addingMember.set(false);
-      },
-    });
+
+    if (userId) {
+      // ── Known tenant user → existing add-member flow ──────────────────
+      this.addingMember.set(true);
+      const { role } = this.addMemberForm.getRawValue();
+
+      this.teamService.addMember(this.teamId, { userId, role }).subscribe({
+        next: () => {
+          this.addingMember.set(false);
+          this.addMemberForm.reset({ email: '', role: 'MEMBER' });
+          // Optimistic update: add the new member to the signal immediately
+          // so the list updates before the background GET completes.
+          const current = this.team();
+          if (current) {
+            const resolved = this.tenantUsers().find(u => u.id === userId);
+            const newMember: TeamMember = {
+              userId,
+              role,
+              joinedAt: new Date().toISOString(),
+              firstName: resolved?.firstName ?? null,
+              lastName:  resolved?.lastName  ?? null,
+              email:     resolved?.email     ?? emailVal,
+            };
+            this.team.set({ ...current, members: [...current.members, newMember] });
+          }
+          // Background refresh to get server-confirmed state
+          this.loadTeam(this.teamId, true);
+        },
+        error: (err: { status?: number }) => {
+          if (err?.status === 409) {
+            this.memberError.set(this.translocoService.translate('teams.detail.alreadyMember'));
+          } else if (err?.status === 403) {
+            this.memberError.set(this.translocoService.translate('teams.detail.noPermission'));
+          } else {
+            this.memberError.set(this.translocoService.translate('teams.detail.inviteError'));
+          }
+          this.addingMember.set(false);
+        },
+      });
+    } else {
+      // ── Unknown email → invitation flow ──────────────────────────────
+      this.addingMember.set(true);
+
+      this.invitationService.inviteMember(this.teamId, emailVal).subscribe({
+        next: () => {
+          this.addingMember.set(false);
+          this.addMemberForm.reset({ email: '', role: 'MEMBER' });
+          this.inviteSuccess.set(`Invitation sent to ${emailVal}`);
+        },
+        error: (err: { status?: number }) => {
+          if (err?.status === 409) {
+            this.memberError.set('An invitation is already pending for this email');
+          } else if (err?.status === 403) {
+            this.memberError.set('Only admins can invite new members');
+          } else {
+            this.memberError.set(this.translocoService.translate('teams.detail.inviteError'));
+          }
+          this.addingMember.set(false);
+        },
+      });
+    }
   }
 
   onRemoveMember(userId: string): void {

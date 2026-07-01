@@ -2,32 +2,50 @@ import { APP_INITIALIZER, EnvironmentProviders, makeEnvironmentProviders } from 
 import { OAuthService } from 'angular-oauth2-oidc';
 import { authConfig } from './auth.config';
 
+/** Public route prefixes that must NOT trigger a Keycloak redirect. */
+const PUBLIC_PATH_PREFIXES = ['/register', '/accept-invitation'] as const;
+
+/**
+ * Returns true when the app should skip `initCodeFlow()` for the given pathname.
+ * Exported for unit-testing.
+ */
+export function shouldSkipCodeFlow(pathname: string): boolean {
+  return PUBLIC_PATH_PREFIXES.some(
+    (prefix) => pathname === prefix || pathname.startsWith(prefix + '/'),
+  );
+}
+
 function initializeOAuth(oauthService: OAuthService): () => Promise<void> {
   return async () => {
+    // Skip Keycloak redirect on public registration / invitation routes
+    if (shouldSkipCodeFlow(window.location.pathname)) {
+      return;
+    }
+
     oauthService.configure(authConfig);
     await oauthService.loadDiscoveryDocument();
 
-    // Solo intentar el code flow si hay un ?code= en la URL
-    // Si ya tenemos tokens válidos, setupAutomaticSilentRefresh los renueva solo
+    // Only attempt the code flow if there is a ?code= in the URL.
+    // When tokens are already valid, setupAutomaticSilentRefresh renews them automatically.
     const hasCodeInUrl = window.location.search.includes('code=');
 
     if (hasCodeInUrl) {
-      // Hay un authorization code pendiente de intercambiar — procesarlo
+      // An authorization code is pending exchange — process it
       try {
         await oauthService.tryLoginCodeFlow();
-        // Limpiar el ?code= de la URL sin recargar
+        // Remove ?code= from the URL without reloading
         const cleanUrl = window.location.pathname;
         window.history.replaceState({}, '', cleanUrl);
       } catch {
-        // El code ya fue usado o es inválido — iniciar login fresco
+        // Code was already used or is invalid — start a fresh login
         oauthService.initCodeFlow();
       }
     } else if (!oauthService.hasValidAccessToken()) {
-      // No hay code en URL y no hay token válido → ir a Keycloak
+      // No code in URL and no valid token → redirect to Keycloak
       oauthService.initCodeFlow();
     }
 
-    // Con token válido, activar renovación automática
+    // With a valid token, activate automatic silent refresh
     if (oauthService.hasValidAccessToken()) {
       oauthService.setupAutomaticSilentRefresh();
     }
