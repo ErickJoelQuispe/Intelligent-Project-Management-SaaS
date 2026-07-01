@@ -7,6 +7,7 @@ import {
 } from '@angular/core';
 import { DatePipe } from '@angular/common';
 import { RouterLink } from '@angular/router';
+import { TranslocoPipe } from '@jsverse/transloco';
 import { ProjectStatusBadgeComponent } from '../project-status-badge/project-status-badge.component';
 import { Project, ProjectStatus } from '../../../core/models/project.model';
 
@@ -25,7 +26,7 @@ function nameToHue(name: string): number {
   selector: 'app-project-card',
   standalone: true,
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [DatePipe, RouterLink, ProjectStatusBadgeComponent],
+  imports: [DatePipe, RouterLink, ProjectStatusBadgeComponent, TranslocoPipe],
   host: { style: 'display: flex; flex-direction: column; height: 100%;' },
   template: `
     <article
@@ -97,7 +98,7 @@ function nameToHue(name: string): number {
 
         <!-- Description -->
         <p class="project-card-desc">
-          {{ project().description || 'No description provided.' }}
+          {{ project().description || ('projects.list.noDescription' | transloco) }}
         </p>
 
         <!-- Created date -->

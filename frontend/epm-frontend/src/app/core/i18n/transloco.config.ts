@@ -28,6 +28,7 @@ export function provideAppTransloco(): EnvironmentProviders[] {
       config: {
         availableLangs: ['en', 'es', 'pt'],
         defaultLang: 'en',
+        fallbackLang: 'en',
         reRenderOnLangChange: true,
         prodMode: false,
       },

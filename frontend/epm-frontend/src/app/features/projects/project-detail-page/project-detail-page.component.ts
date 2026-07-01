@@ -163,7 +163,7 @@ interface SummaryData {
               } @else {
                 <span class="material-symbols-rounded" aria-hidden="true">{{ visibilityIcon() }}</span>
               }
-              {{ visibilityLabel() }}
+              {{ visibilityKey() | transloco }}
             </button>
           </div>
 
@@ -1593,11 +1593,11 @@ export class ProjectDetailPageComponent {
     }
   });
 
-  visibilityLabel = computed(() => {
+  visibilityKey = computed(() => {
     switch (this.optimisticVisibility() ?? this.project()?.visibility) {
-      case 'PUBLIC': return this.translocoService.translate('projects.detail.visibilityPublic');
-      case 'TEAM':   return this.translocoService.translate('projects.detail.visibilityTeam');
-      default:       return this.translocoService.translate('projects.detail.visibilityPrivate');
+      case 'PUBLIC': return 'projects.detail.visibilityPublic';
+      case 'TEAM':   return 'projects.detail.visibilityTeam';
+      default:       return 'projects.detail.visibilityPrivate';
     }
   });
 

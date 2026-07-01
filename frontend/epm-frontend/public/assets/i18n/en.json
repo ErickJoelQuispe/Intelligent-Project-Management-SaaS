@@ -205,7 +205,8 @@
       "statProject": "project",
       "statProjects": "projects",
       "statActive": "active",
-      "statArchived": "archived"
+      "statArchived": "archived",
+      "noDescription": "No description provided."
     },
     "detail": {
       "backToProjects": "Projects",
@@ -392,5 +393,15 @@
   "confirmDialog": {
     "cancel": "Cancel",
     "confirm": "Confirm"
+  },
+  "themes": {
+    "title": "Themes",
+    "subtitle": "Hover to preview · click to apply",
+    "openPicker": "Open theme picker",
+    "close": "Close theme picker",
+    "selector": "Theme selector",
+    "available": "Available themes",
+    "preview": "preview",
+    "savedHint": "Theme is saved automatically and persists across sessions."
   }
 }

@@ -7,6 +7,7 @@ import {
   HostListener,
   OnInit,
 } from '@angular/core';
+import { TranslocoPipe } from '@jsverse/transloco';
 import { ThemeService, Theme } from '../../../core/theme/theme.service';
 
 interface ThemeOption {
@@ -114,6 +115,7 @@ const THEMES: ThemeOption[] = [
   selector: 'app-theme-drawer',
   standalone: true,
   changeDetection: ChangeDetectionStrategy.OnPush,
+  imports: [TranslocoPipe],
   template: `
     <!-- Backdrop -->
     <div
@@ -129,24 +131,24 @@ const THEMES: ThemeOption[] = [
       [class.drawer--visible]="mounted()"
       role="dialog"
       aria-modal="true"
-      aria-label="Theme selector"
+      [attr.aria-label]="'themes.selector' | transloco"
     >
       <!-- Header -->
       <div class="drawer-header">
         <div class="drawer-header-left">
           <span class="material-symbols-rounded drawer-header-icon" aria-hidden="true">palette</span>
           <div>
-            <h2 class="drawer-title">Themes</h2>
-            <p class="drawer-subtitle">Hover to preview · click to apply</p>
+            <h2 class="drawer-title">{{ 'themes.title' | transloco }}</h2>
+            <p class="drawer-subtitle">{{ 'themes.subtitle' | transloco }}</p>
           </div>
         </div>
-        <button class="drawer-close" (click)="dismiss()" aria-label="Close theme picker">
+        <button class="drawer-close" (click)="dismiss()" [attr.aria-label]="'themes.close' | transloco">
           <span class="material-symbols-rounded" aria-hidden="true">close</span>
         </button>
       </div>
 
       <!-- Theme cards -->
-      <div class="theme-grid" role="listbox" aria-label="Available themes">
+      <div class="theme-grid" role="listbox" [attr.aria-label]="'themes.available' | transloco">
 
         @for (t of themes; track t.id) {
           <button
@@ -238,7 +240,7 @@ const THEMES: ThemeOption[] = [
 
             <!-- Hover preview indicator -->
             @if (previewing() === t.id && previewing() !== confirmed()) {
-              <div class="theme-preview-badge" aria-hidden="true">preview</div>
+              <div class="theme-preview-badge" aria-hidden="true">{{ 'themes.preview' | transloco }}</div>
             }
           </button>
         }
@@ -247,7 +249,7 @@ const THEMES: ThemeOption[] = [
       <!-- Footer hint -->
       <p class="drawer-hint">
         <span class="material-symbols-rounded" aria-hidden="true" style="font-size:0.875rem; vertical-align: middle;">info</span>
-        Theme is saved automatically and persists across sessions.
+        {{ 'themes.savedHint' | transloco }}
       </p>
     </div>
 

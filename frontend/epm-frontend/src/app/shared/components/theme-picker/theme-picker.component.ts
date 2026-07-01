@@ -13,6 +13,7 @@ import {
   ComponentRef,
   DOCUMENT,
 } from '@angular/core';
+import { TranslocoPipe } from '@jsverse/transloco';
 import { ThemeService, Theme } from '../../../core/theme/theme.service';
 import { ThemeDrawerComponent } from './theme-drawer.component';
 
@@ -20,19 +21,19 @@ import { ThemeDrawerComponent } from './theme-drawer.component';
   selector: 'app-theme-picker',
   standalone: true,
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [],
+  imports: [TranslocoPipe],
   template: `
     <!-- Trigger button — reuses sidebar ctrl-btn visual language -->
     <button
       (click)="openDrawer()"
       class="ctrl-btn"
       [class.ctrl-btn--icon-only]="collapsed"
-      title="Themes"
-      aria-label="Open theme picker"
+      [title]="'themes.title' | transloco"
+      [attr.aria-label]="'themes.openPicker' | transloco"
     >
       <span class="material-symbols-rounded ctrl-btn-icon" aria-hidden="true">palette</span>
       @if (!collapsed) {
-        <span class="ctrl-btn-label">Themes</span>
+        <span class="ctrl-btn-label">{{ 'themes.title' | transloco }}</span>
       }
     </button>
 

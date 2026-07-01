@@ -22,17 +22,19 @@ export class ConfirmDialogService {
 
     ref.setInput('config', config);
 
-    ref.instance.confirmed.subscribe((value: boolean) => {
-      result$.next(value);
-      result$.complete();
-      this.appRef.detachView(ref.hostView);
-      ref.destroy();
-      document.body.removeChild(hostEl);
-    });
-
     const hostEl = (ref.hostView as any).rootNodes[0] as HTMLElement;
     document.body.appendChild(hostEl);
     this.appRef.attachView(ref.hostView);
+
+    ref.instance.confirmed.subscribe((value: boolean) => {
+      result$.next(value);
+      result$.complete();
+      if (hostEl.parentNode === document.body) {
+        document.body.removeChild(hostEl);
+      }
+      this.appRef.detachView(ref.hostView);
+      ref.destroy();
+    });
     ref.changeDetectorRef.detectChanges();
 
     return result$.asObservable();

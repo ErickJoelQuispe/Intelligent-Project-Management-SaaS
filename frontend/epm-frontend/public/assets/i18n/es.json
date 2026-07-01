@@ -205,7 +205,8 @@
       "statProject": "proyecto",
       "statProjects": "proyectos",
       "statActive": "activo",
-      "statArchived": "archivado"
+      "statArchived": "archivado",
+      "noDescription": "Sin descripción."
     },
     "detail": {
       "backToProjects": "Proyectos",
@@ -224,7 +225,13 @@
       "editProjectName": "Nombre del proyecto \u2014 clic para editar",
       "editDescription": "Descripci\u00f3n del proyecto \u2014 clic para editar",
       "visibilityLabel": "Visibilidad: {{visibility}} \u2014 clic para cambiar",
-      "createdAt": "Creado"
+      "visibilityPrivate": "Privado",
+      "visibilityTeam": "Equipo",
+      "visibilityPublic": "P\u00fablico",
+      "createdAt": "Creado",
+      "notFound": "Proyecto no encontrado.",
+      "saveError": "No se pudo guardar. Intenta de nuevo.",
+      "assignTeamError": "No se pudo asignar el equipo. Intenta de nuevo."
     },
     "form": {
       "createTitle": "Crear proyecto",
@@ -386,5 +393,15 @@
   "confirmDialog": {
     "cancel": "Cancelar",
     "confirm": "Confirmar"
+  },
+  "themes": {
+    "title": "Temas",
+    "subtitle": "Pasa el cursor para previsualizar · clic para aplicar",
+    "openPicker": "Abrir selector de temas",
+    "close": "Cerrar selector de temas",
+    "selector": "Selector de temas",
+    "available": "Temas disponibles",
+    "preview": "vista previa",
+    "savedHint": "El tema se guarda automáticamente y persiste entre sesiones."
   }
 }
