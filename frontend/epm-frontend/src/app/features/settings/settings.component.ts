@@ -1,9 +1,11 @@
 import {
   Component,
   ChangeDetectionStrategy,
+  ChangeDetectorRef,
   OnInit,
   inject,
   signal,
+  computed,
   effect,
 } from '@angular/core';
 import { DatePipe } from '@angular/common';
@@ -13,7 +15,6 @@ import { AppPreferencesService } from '../../core/services/app-preferences.servi
 import { AuthApiService } from '../../core/services/auth-api.service';
 import { FormBuilder, ReactiveFormsModule } from '@angular/forms';
 import { MatDialog } from '@angular/material/dialog';
-import { MatSlideToggleModule, MatSlideToggleChange } from '@angular/material/slide-toggle';
 import { OAuthService } from 'angular-oauth2-oidc';
 import { AuthService } from '../../core/auth/auth.service';
 import { ThemeService, Theme } from '../../core/theme/theme.service';
@@ -25,7 +26,6 @@ import { ConfirmDeleteAccountDialogComponent } from './components/confirm-delete
 import { DEFAULT_PREFERENCES, UpdateProfileRequest, UserPreferences } from '../../core/models/user-profile.model';
 import { NotificationPreference, NotificationChannel, NotificationType } from '../notifications/models/notification.model';
 import { PageHeaderComponent } from '../../shared/components/page-header/page-header.component';
-import { CardComponent } from '../../shared/components/card/card.component';
 import { BadgeVariant } from '../../shared/components/badge/badge.component';
 import { SpinnerComponent } from '../../shared/components/spinner/spinner.component';
 import { EmptyStateComponent } from '../../shared/components/empty-state/empty-state.component';
@@ -54,10 +54,8 @@ interface AccentSwatch {
   imports: [
     ReactiveFormsModule,
     DatePipe,
-    MatSlideToggleModule,
     TranslocoPipe,
     PageHeaderComponent,
-    CardComponent,
     SpinnerComponent,
     EmptyStateComponent,
     AvatarComponent,
@@ -95,555 +93,552 @@ interface AccentSwatch {
 
         <!-- PROFILE -->
         @if (activeSection() === 'profile') {
-          <div class="flex flex-col gap-4 animate-fade-up">
+          <div class="flex flex-col gap-6 animate-fade-up">
             <h2 class="settings-section-title">{{ 'settings.profile.title' | transloco }}</h2>
 
-            <!-- Profile info card -->
-            <app-card>
-              @if (profileStore.loading()) {
-                <app-spinner size="md" [full]="true" />
-              } @else if (!isEditing()) {
-                <!-- VIEW MODE -->
-                <div class="flex flex-col gap-4">
-                  <div class="flex items-center gap-4">
-                    <app-avatar
-                      [src]="profileStore.profile()?.avatarUrl"
-                      [name]="displayName()"
-                      size="lg"
-                    />
-                    <div class="flex flex-col gap-0.5">
-                      <span class="text-text-primary font-semibold text-sm">
-                        {{ displayName() }}
-                      </span>
-                      <span class="text-text-muted text-xs">
-                        {{ profileStore.profile()?.email ?? userEmail() }}
-                      </span>
-                    </div>
-                  </div>
-
-                  @if (profileStore.profile()?.bio) {
-                    <p class="text-text-muted text-sm leading-relaxed">
-                      {{ profileStore.profile()!.bio }}
-                    </p>
-                  } @else {
-                    <p class="text-text-disabled text-xs italic">{{ 'settings.profile.noBio' | transloco }}</p>
-                  }
-
-                  @if (profileStore.profile()?.avatarUrl) {
-                    <a
-                      [href]="profileStore.profile()!.avatarUrl!"
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      class="text-xs truncate"
-                      style="color: var(--color-accent);"
-                    >
-                      {{ profileStore.profile()!.avatarUrl }}
-                    </a>
-                  }
-
-                  @if (profileStore.error()) {
-                    <app-error-banner [message]="profileStore.error()!" variant="inline" />
-                  }
-
-                  <div class="flex justify-end pt-1">
-                    <app-button variant="secondary" size="sm" (click)="startEdit()">
-                      <span class="material-symbols-rounded text-sm">edit</span>
-                      {{ 'settings.profile.editBtn' | transloco }}
-                    </app-button>
+            <!-- Profile info -->
+            @if (profileStore.loading()) {
+              <app-spinner size="md" [full]="true" />
+            } @else if (!isEditing()) {
+              <!-- VIEW MODE -->
+              <div class="flex flex-col gap-4">
+                <div class="flex items-center gap-4">
+                  <app-avatar
+                    [src]="profileStore.profile()?.avatarUrl"
+                    [name]="displayName()"
+                    size="lg"
+                  />
+                  <div class="flex flex-col gap-0.5">
+                    <span class="text-text-primary font-semibold text-sm">
+                      {{ displayName() }}
+                    </span>
+                    <span class="text-text-muted text-xs">
+                      {{ profileStore.profile()?.email ?? userEmail() }}
+                    </span>
                   </div>
                 </div>
-              } @else {
-                <!-- EDIT MODE -->
-                <form [formGroup]="editForm" (ngSubmit)="saveProfile()" novalidate
-                      class="flex flex-col gap-5">
 
-                  <div class="grid grid-cols-2 gap-4">
-                     <!-- First name -->
-                    <div class="flex flex-col gap-2">
-                      <label class="settings-field-label text-sm font-semibold" for="firstName">
-                        {{ 'settings.profile.firstName' | transloco }}
-                        <span class="settings-field-label--optional font-normal text-xs ml-1">{{ 'common.optional' | transloco }}</span>
-                      </label>
-                      <input
-                        id="firstName" type="text" formControlName="firstName"
-                        [placeholder]="'settings.profile.firstNamePlaceholder' | transloco"
-                        class="settings-field w-full px-4 py-3 rounded-xl text-sm transition-all duration-200 focus:outline-none"
-                      />
-                    </div>
+                @if (profileStore.profile()?.bio) {
+                  <p class="text-text-muted text-sm leading-relaxed">
+                    {{ profileStore.profile()!.bio }}
+                  </p>
+                } @else {
+                  <p class="text-text-disabled text-xs italic">{{ 'settings.profile.noBio' | transloco }}</p>
+                }
 
-                    <!-- Last name -->
-                    <div class="flex flex-col gap-2">
-                      <label class="settings-field-label text-sm font-semibold" for="lastName">
-                        {{ 'settings.profile.lastName' | transloco }}
-                        <span class="settings-field-label--optional font-normal text-xs ml-1">{{ 'common.optional' | transloco }}</span>
-                      </label>
-                      <input
-                        id="lastName" type="text" formControlName="lastName"
-                        [placeholder]="'settings.profile.lastNamePlaceholder' | transloco"
-                        class="settings-field w-full px-4 py-3 rounded-xl text-sm transition-all duration-200 focus:outline-none"
-                      />
-                    </div>
-                  </div>
+                @if (profileStore.profile()?.avatarUrl) {
+                  <a
+                    [href]="profileStore.profile()!.avatarUrl!"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    class="text-xs truncate"
+                    style="color: var(--color-accent);"
+                  >
+                    {{ profileStore.profile()!.avatarUrl }}
+                  </a>
+                }
 
-                  <!-- Bio -->
-                  <div class="flex flex-col gap-2">
-                      <label class="settings-field-label text-sm font-semibold" for="bio">
-                        {{ 'settings.profile.bio' | transloco }}
-                        <span class="settings-field-label--optional font-normal text-xs ml-1">{{ 'common.optional' | transloco }}</span>
-                      </label>
-                      <textarea
-                        id="bio" formControlName="bio" rows="3"
-                        [placeholder]="'settings.profile.bioPlaceholder' | transloco"
-                        maxlength="2000"
-                        class="settings-field w-full px-4 py-3 rounded-xl text-sm resize-none transition-all duration-200 focus:outline-none"
-                      ></textarea>
-                  </div>
+                @if (profileStore.error()) {
+                  <app-error-banner [message]="profileStore.error()!" variant="inline" />
+                }
 
-                  <!-- Avatar URL -->
-                  <div class="flex flex-col gap-2">
-                      <label class="settings-field-label text-sm font-semibold" for="avatarUrl">
-                        {{ 'settings.profile.avatarUrl' | transloco }}
-                        <span class="settings-field-label--optional font-normal text-xs ml-1">{{ 'common.optional' | transloco }}</span>
-                      </label>
-                      <input
-                        id="avatarUrl" type="url" formControlName="avatarUrl"
-                        [placeholder]="'settings.profile.avatarUrlPlaceholder' | transloco"
-                        class="settings-field w-full px-4 py-3 rounded-xl text-sm transition-all duration-200 focus:outline-none"
-                      />
-                  </div>
-
-                  @if (profileStore.error()) {
-                    <app-error-banner [message]="profileStore.error()!" variant="inline" />
-                  }
-
-                  <!-- Actions -->
-                  <div class="flex items-center justify-end gap-3 pt-1">
-                    <app-button
-                      type="button"
-                      variant="ghost"
-                      size="sm"
-                      (click)="cancelEdit()"
-                    >
-                      {{ 'settings.profile.cancelBtn' | transloco }}
-                    </app-button>
-                    <app-button
-                      type="submit"
-                      variant="primary"
-                      size="sm"
-                      [loading]="profileStore.saving()"
-                      [disabled]="profileStore.saving()"
-                    >
-                      {{ 'settings.profile.saveBtn' | transloco }}
-                    </app-button>
-                  </div>
-                </form>
-              }
-            </app-card>
-
-            <!-- Session card -->
-            <app-card>
-              <div class="flex flex-col gap-4">
-                <h3 class="text-text-primary text-sm font-semibold">{{ 'settings.profile.session' | transloco }}</h3>
-
-                 <div class="flex items-center justify-between py-2"
-                      style="border-bottom: 1px solid color-mix(in oklch, var(--color-border) 50%, transparent);">
-                   <div class="flex flex-col gap-0.5">
-                     <span class="text-text-primary text-sm">{{ 'settings.profile.activeSession' | transloco }}</span>
-                     <span class="text-text-muted text-xs">
-                       {{ 'settings.profile.tokenExpiry' | transloco }}{{ tokenExpiresIn() }}
-                     </span>
-                   </div>
-                   <span class="size-2 rounded-full animate-glow-pulse"
-                         style="background: var(--color-success);
-                                box-shadow: 0 0 6px color-mix(in oklch, var(--color-success) 60%, transparent);">
-                   </span>
-                 </div>
-
-                <div class="flex justify-end pt-2">
-                  <button (click)="logout()"
-                          class="settings-logout-btn flex items-center gap-2 px-4 py-2 rounded-lg text-sm
-                                 font-medium transition-all duration-150 cursor-pointer">
-                     <span class="material-symbols-rounded text-sm">logout</span>
-                     {{ 'common.signOut' | transloco }}
-                  </button>
+                <div class="flex justify-end pt-1">
+                  <app-button variant="secondary" size="sm" (click)="startEdit()">
+                    <span class="material-symbols-rounded text-sm">edit</span>
+                    {{ 'settings.profile.editBtn' | transloco }}
+                  </app-button>
                 </div>
               </div>
-            </app-card>
+            } @else {
+              <!-- EDIT MODE -->
+              <form [formGroup]="editForm" (ngSubmit)="saveProfile()" novalidate
+                    class="flex flex-col gap-5">
+
+                <div class="grid grid-cols-2 gap-4">
+                   <!-- First name -->
+                  <div class="flex flex-col gap-2">
+                    <label class="settings-field-label text-sm font-semibold" for="firstName">
+                      {{ 'settings.profile.firstName' | transloco }}
+                      <span class="settings-field-label--optional font-normal text-xs ml-1">{{ 'common.optional' | transloco }}</span>
+                    </label>
+                    <input
+                      id="firstName" type="text" formControlName="firstName"
+                      [placeholder]="'settings.profile.firstNamePlaceholder' | transloco"
+                      class="settings-field w-full px-4 py-3 rounded-xl text-sm transition-all duration-200 focus:outline-none"
+                    />
+                  </div>
+
+                  <!-- Last name -->
+                  <div class="flex flex-col gap-2">
+                    <label class="settings-field-label text-sm font-semibold" for="lastName">
+                      {{ 'settings.profile.lastName' | transloco }}
+                      <span class="settings-field-label--optional font-normal text-xs ml-1">{{ 'common.optional' | transloco }}</span>
+                    </label>
+                    <input
+                      id="lastName" type="text" formControlName="lastName"
+                      [placeholder]="'settings.profile.lastNamePlaceholder' | transloco"
+                      class="settings-field w-full px-4 py-3 rounded-xl text-sm transition-all duration-200 focus:outline-none"
+                    />
+                  </div>
+                </div>
+
+                <!-- Bio -->
+                <div class="flex flex-col gap-2">
+                    <label class="settings-field-label text-sm font-semibold" for="bio">
+                      {{ 'settings.profile.bio' | transloco }}
+                      <span class="settings-field-label--optional font-normal text-xs ml-1">{{ 'common.optional' | transloco }}</span>
+                    </label>
+                    <textarea
+                      id="bio" formControlName="bio" rows="3"
+                      [placeholder]="'settings.profile.bioPlaceholder' | transloco"
+                      maxlength="2000"
+                      class="settings-field w-full px-4 py-3 rounded-xl text-sm resize-none transition-all duration-200 focus:outline-none"
+                    ></textarea>
+                </div>
+
+                <!-- Avatar URL -->
+                <div class="flex flex-col gap-2">
+                    <label class="settings-field-label text-sm font-semibold" for="avatarUrl">
+                      {{ 'settings.profile.avatarUrl' | transloco }}
+                      <span class="settings-field-label--optional font-normal text-xs ml-1">{{ 'common.optional' | transloco }}</span>
+                    </label>
+                    <input
+                      id="avatarUrl" type="url" formControlName="avatarUrl"
+                      [placeholder]="'settings.profile.avatarUrlPlaceholder' | transloco"
+                      class="settings-field w-full px-4 py-3 rounded-xl text-sm transition-all duration-200 focus:outline-none"
+                    />
+                </div>
+
+                @if (profileStore.error()) {
+                  <app-error-banner [message]="profileStore.error()!" variant="inline" />
+                }
+
+                <!-- Actions -->
+                <div class="flex items-center justify-end gap-3 pt-1">
+                  <app-button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    (click)="cancelEdit()"
+                  >
+                    {{ 'settings.profile.cancelBtn' | transloco }}
+                  </app-button>
+                  <app-button
+                    type="submit"
+                    variant="primary"
+                    size="sm"
+                    [loading]="profileStore.saving()"
+                    [disabled]="profileStore.saving()"
+                  >
+                    {{ 'settings.profile.saveBtn' | transloco }}
+                  </app-button>
+                </div>
+              </form>
+            }
+
+            <div class="settings-divider"></div>
+
+            <!-- Session -->
+            <div class="flex flex-col gap-4">
+              <h3 class="text-text-secondary text-xs font-semibold uppercase tracking-wider">{{ 'settings.profile.session' | transloco }}</h3>
+
+              <div class="flex items-center justify-between py-3 settings-row-border">
+                <div class="flex flex-col gap-0.5">
+                  <span class="text-text-primary text-sm">{{ 'settings.profile.activeSession' | transloco }}</span>
+                  <span class="text-text-muted text-xs">
+                    {{ 'settings.profile.tokenExpiry' | transloco }}{{ tokenExpiresIn() }}
+                  </span>
+                </div>
+                <span class="size-2 rounded-full animate-glow-pulse"
+                      style="background: var(--color-success);
+                             box-shadow: 0 0 6px color-mix(in oklch, var(--color-success) 60%, transparent);">
+                </span>
+              </div>
+
+              <div class="flex justify-end">
+                <button (click)="logout()"
+                        class="settings-logout-btn flex items-center gap-2 px-4 py-2 rounded-lg text-sm
+                               font-medium transition-all duration-150 cursor-pointer">
+                   <span class="material-symbols-rounded text-sm">logout</span>
+                   {{ 'common.signOut' | transloco }}
+                </button>
+              </div>
+            </div>
           </div>
         }
 
         <!-- NOTIFICATIONS -->
         @if (activeSection() === 'notifications') {
-          <div class="flex flex-col gap-4 animate-fade-up">
-            <h2 class="settings-section-title">{{ 'settings.notifications.title' | transloco }}</h2>
-            <p class="text-text-muted text-sm -mt-2">
-              {{ 'settings.notifications.description' | transloco }}
-            </p>
+          <div class="flex flex-col gap-6 animate-fade-up">
+            <div>
+              <h2 class="settings-section-title">{{ 'settings.notifications.title' | transloco }}</h2>
+              <p class="text-text-muted text-sm mt-1">
+                {{ 'settings.notifications.description' | transloco }}
+              </p>
+            </div>
 
-            <app-card [noPadding]="true">
-              @if (prefStore.loading()) {
-                <app-spinner size="md" [full]="true" />
-              } @else if (prefStore.preferences().length === 0) {
-                <app-empty-state
-                  icon="notifications_off"
-                  title="No preferences configured"
-                  size="sm"
-                />
-              } @else {
-                <!-- Column header row -->
-                <div class="notif-table-header flex items-center px-6 py-3">
-                  <span class="flex-1 text-xs font-semibold uppercase tracking-wider" style="color: var(--color-text-muted);">{{ 'settings.notifications.eventCol' | transloco }}</span>
-                  <div class="notif-col-header flex items-center gap-1.5">
-                    <span class="material-symbols-rounded text-base">notifications</span>
-                    <span class="text-xs font-semibold">{{ 'settings.notifications.inAppCol' | transloco }}</span>
+            @if (prefStore.loading()) {
+              <app-spinner size="md" [full]="true" />
+            } @else if (prefStore.preferences().length === 0) {
+              <app-empty-state
+                icon="notifications_off"
+                title="No preferences configured"
+                size="sm"
+              />
+            } @else {
+              <!-- Column header row -->
+              <div class="notif-table-header flex items-center py-2">
+                <span class="flex-1 text-xs font-semibold uppercase tracking-wider" style="color: var(--color-text-muted);">{{ 'settings.notifications.eventCol' | transloco }}</span>
+                <div class="notif-col-header flex items-center gap-1.5">
+                  <span class="material-symbols-rounded text-base">notifications</span>
+                  <span class="text-xs font-semibold">{{ 'settings.notifications.inAppCol' | transloco }}</span>
+                </div>
+                <div class="notif-col-header flex items-center gap-1.5 ml-8">
+                  <span class="material-symbols-rounded text-base">mail</span>
+                  <span class="text-xs font-semibold">{{ 'settings.notifications.emailCol' | transloco }}</span>
+                </div>
+              </div>
+
+              <!-- Notification groups -->
+              @for (group of notifGroups; track group.prefix) {
+                <!-- Group header with master toggles -->
+                <div class="notif-group-header flex items-center py-2">
+                  <span class="flex-1 text-xs font-semibold uppercase tracking-wider">{{ group.label | transloco }}</span>
+                  <div class="notif-col-toggle">
+                    <button
+                      role="switch"
+                      [attr.aria-checked]="isGroupAllEnabled(group.prefix, 'IN_APP')"
+                      [attr.aria-label]="'settings.notifications.toggleAllInApp' | transloco : { label: group.label | transloco }"
+                      [class.notif-toggle--on]="isGroupAllEnabled(group.prefix, 'IN_APP')"
+                      class="notif-toggle"
+                      (click)="toggleGroup(group.prefix, 'IN_APP', !isGroupAllEnabled(group.prefix, 'IN_APP'))"
+                    >
+                      <span class="notif-toggle-thumb"></span>
+                    </button>
                   </div>
-                  <div class="notif-col-header flex items-center gap-1.5 ml-8">
-                    <span class="material-symbols-rounded text-base">mail</span>
-                    <span class="text-xs font-semibold">{{ 'settings.notifications.emailCol' | transloco }}</span>
+                  <div class="notif-col-toggle ml-8">
+                    <button
+                      role="switch"
+                      [attr.aria-checked]="isGroupAllEnabled(group.prefix, 'EMAIL')"
+                      [attr.aria-label]="'settings.notifications.toggleAllEmail' | transloco : { label: group.label | transloco }"
+                      [class.notif-toggle--on]="isGroupAllEnabled(group.prefix, 'EMAIL')"
+                      class="notif-toggle"
+                      (click)="toggleGroup(group.prefix, 'EMAIL', !isGroupAllEnabled(group.prefix, 'EMAIL'))"
+                    >
+                      <span class="notif-toggle-thumb"></span>
+                    </button>
                   </div>
                 </div>
 
-                <!-- Notification groups -->
-                @for (group of notifGroups; track group.prefix) {
-                  <!-- Group header with master toggles -->
-                  <div class="notif-group-header flex items-center px-6 py-2.5">
-                    <span class="flex-1 text-xs font-semibold uppercase tracking-wider">{{ group.label | transloco }}</span>
-                    <mat-slide-toggle
-                      [checked]="isGroupAllEnabled(group.prefix, 'IN_APP')"
-                      (change)="toggleGroup(group.prefix, 'IN_APP', $event.checked)"
-                      [aria-label]="'settings.notifications.toggleAllInApp' | transloco : { label: group.label | transloco }"
-                      class="notif-col-toggle"
-                    />
-                    <mat-slide-toggle
-                      [checked]="isGroupAllEnabled(group.prefix, 'EMAIL')"
-                      (change)="toggleGroup(group.prefix, 'EMAIL', $event.checked)"
-                      [aria-label]="'settings.notifications.toggleAllEmail' | transloco : { label: group.label | transloco }"
-                      class="notif-col-toggle ml-8"
-                    />
-                  </div>
-
-                  <!-- Event rows -->
-                  @for (eventType of group.events; track eventType) {
-                    <div class="notif-event-row flex items-center px-6 py-3">
-                      <span class="flex-1 text-sm" style="color: var(--color-text-secondary);">{{ eventLabel(eventType) }}</span>
-                      <mat-slide-toggle
-                        [checked]="getPref(eventType, 'IN_APP')"
-                        (change)="onToggleByType(eventType, 'IN_APP', $event)"
-                        [aria-label]="eventLabel(eventType) + ' in-app'"
-                        class="notif-col-toggle"
-                      />
-                      <mat-slide-toggle
-                        [checked]="getPref(eventType, 'EMAIL')"
-                        (change)="onToggleByType(eventType, 'EMAIL', $event)"
-                        [aria-label]="eventLabel(eventType) + ' email'"
-                        class="notif-col-toggle ml-8"
-                      />
+                <!-- Event rows -->
+                @for (eventType of group.events; track eventType) {
+                  <div class="notif-event-row flex items-center py-3">
+                    <span class="flex-1 text-sm" style="color: var(--color-text-secondary);">{{ eventLabel(eventType) }}</span>
+                    <div class="notif-col-toggle">
+                      <button
+                        role="switch"
+                        [attr.aria-checked]="getPref(eventType, 'IN_APP')"
+                        [attr.aria-label]="eventLabel(eventType) + ' in-app'"
+                        [class.notif-toggle--on]="getPref(eventType, 'IN_APP')"
+                        class="notif-toggle"
+                        (click)="onToggleByType(eventType, 'IN_APP', { checked: !getPref(eventType, 'IN_APP') })"
+                      >
+                        <span class="notif-toggle-thumb"></span>
+                      </button>
                     </div>
-                  }
+                    <div class="notif-col-toggle ml-8">
+                      <button
+                        role="switch"
+                        [attr.aria-checked]="getPref(eventType, 'EMAIL')"
+                        [attr.aria-label]="eventLabel(eventType) + ' email'"
+                        [class.notif-toggle--on]="getPref(eventType, 'EMAIL')"
+                        class="notif-toggle"
+                        (click)="onToggleByType(eventType, 'EMAIL', { checked: !getPref(eventType, 'EMAIL') })"
+                      >
+                        <span class="notif-toggle-thumb"></span>
+                      </button>
+                    </div>
+                  </div>
                 }
               }
-            </app-card>
+            }
           </div>
         }
 
         <!-- APPEARANCE -->
         @if (activeSection() === 'appearance') {
-          <div class="flex flex-col gap-4 animate-fade-up">
+          <div class="flex flex-col gap-6 animate-fade-up">
             <h2 class="settings-section-title">{{ 'settings.appearance.title' | transloco }}</h2>
 
-            <!-- Theme selector card -->
-            <app-card>
-              <div class="flex flex-col gap-5">
-                <div class="flex flex-col gap-3">
-                  <span class="text-text-primary text-sm font-semibold">{{ 'settings.appearance.theme' | transloco }}</span>
-                  <div class="grid grid-cols-3 gap-3 sm:grid-cols-5">
+            <!-- Theme selector -->
+            <div class="flex flex-col gap-3">
+              <span class="text-text-secondary text-xs font-semibold uppercase tracking-wider">{{ 'settings.appearance.theme' | transloco }}</span>
+              <div class="grid grid-cols-3 gap-3 sm:grid-cols-5">
 
-                    <!-- Midnight -->
-                    <button
-                      (click)="setTheme('midnight')"
-                      [class.theme-card--active]="themeService.theme() === 'midnight'"
-                      class="theme-card flex flex-col items-center gap-2 p-4 rounded-xl border cursor-pointer transition-all duration-200"
-                      [attr.aria-label]="'settings.appearance.themes.midnight' | transloco"
-                     >
-                       <div class="rounded-lg w-full h-12 flex items-end p-1.5 gap-1"
-                            style="background: #0d0d1a; border: 1px solid #1a1a2e;">
-                         <div class="h-1.5 rounded-full flex-1" style="background: #2a2a45;"></div>
-                         <div class="h-1.5 rounded-full w-1/3" style="background: #8b5cf6;"></div>
-                       </div>
-                       <div class="flex items-center gap-1.5 w-full justify-between">
-                         <span class="text-text-secondary text-xs font-medium">{{ 'settings.appearance.themes.midnight' | transloco }}</span>
-                        @if (themeService.theme() === 'midnight') {
-                          <span class="material-symbols-rounded text-sm theme-check-icon">check_circle</span>
-                        }
-                      </div>
-                    </button>
-
-                    <!-- Amber -->
-                    <button
-                      (click)="setTheme('amber')"
-                      [class.theme-card--active]="themeService.theme() === 'amber'"
-                      class="theme-card flex flex-col items-center gap-2 p-4 rounded-xl border cursor-pointer transition-all duration-200"
-                      [attr.aria-label]="'settings.appearance.themes.amber' | transloco"
-                     >
-                       <div class="rounded-lg w-full h-12 flex items-end p-1.5 gap-1"
-                            style="background: #fdf6e3; border: 1px solid #e8d5b0;">
-                         <div class="h-1.5 rounded-full flex-1" style="background: #e8d5b0;"></div>
-                         <div class="h-1.5 rounded-full w-1/3" style="background: #d97706;"></div>
-                       </div>
-                       <div class="flex items-center gap-1.5 w-full justify-between">
-                         <span class="text-text-secondary text-xs font-medium">{{ 'settings.appearance.themes.amber' | transloco }}</span>
-                        @if (themeService.theme() === 'amber') {
-                          <span class="material-symbols-rounded text-sm theme-check-icon">check_circle</span>
-                        }
-                      </div>
-                    </button>
-
-                    <!-- Catppuccin -->
-                    <button
-                      (click)="setTheme('catppuccin')"
-                      [class.theme-card--active]="themeService.theme() === 'catppuccin'"
-                      class="theme-card flex flex-col items-center gap-2 p-4 rounded-xl border cursor-pointer transition-all duration-200"
-                      [attr.aria-label]="'settings.appearance.themes.catppuccin' | transloco"
-                     >
-                       <div class="rounded-lg w-full h-12 flex items-end p-1.5 gap-1"
-                            style="background: #1e1e2e; border: 1px solid #313244;">
-                         <div class="h-1.5 rounded-full flex-1" style="background: #313244;"></div>
-                         <div class="h-1.5 rounded-full w-1/3" style="background: #f5c2e7;"></div>
-                       </div>
-                       <div class="flex items-center gap-1.5 w-full justify-between">
-                         <span class="text-text-secondary text-xs font-medium">{{ 'settings.appearance.themes.catppuccin' | transloco }}</span>
-                        @if (themeService.theme() === 'catppuccin') {
-                          <span class="material-symbols-rounded text-sm theme-check-icon">check_circle</span>
-                        }
-                      </div>
-                    </button>
-
-                    <!-- Nord -->
-                    <button
-                      (click)="setTheme('nord')"
-                      [class.theme-card--active]="themeService.theme() === 'nord'"
-                      class="theme-card flex flex-col items-center gap-2 p-4 rounded-xl border cursor-pointer transition-all duration-200"
-                      [attr.aria-label]="'settings.appearance.themes.nord' | transloco"
-                     >
-                       <div class="rounded-lg w-full h-12 flex items-end p-1.5 gap-1"
-                            style="background: #2e3440; border: 1px solid #3b4252;">
-                         <div class="h-1.5 rounded-full flex-1" style="background: #3b4252;"></div>
-                         <div class="h-1.5 rounded-full w-1/3" style="background: #88c0d0;"></div>
-                       </div>
-                       <div class="flex items-center gap-1.5 w-full justify-between">
-                         <span class="text-text-secondary text-xs font-medium">{{ 'settings.appearance.themes.nord' | transloco }}</span>
-                        @if (themeService.theme() === 'nord') {
-                          <span class="material-symbols-rounded text-sm theme-check-icon">check_circle</span>
-                        }
-                      </div>
-                    </button>
-
-                    <!-- Rose -->
-                    <button
-                      (click)="setTheme('rose')"
-                      [class.theme-card--active]="themeService.theme() === 'rose'"
-                      class="theme-card flex flex-col items-center gap-2 p-4 rounded-xl border cursor-pointer transition-all duration-200"
-                      [attr.aria-label]="'settings.appearance.themes.rose' | transloco"
-                     >
-                       <div class="rounded-lg w-full h-12 flex items-end p-1.5 gap-1"
-                            style="background: #fff0f3; border: 1px solid #fce7f0;">
-                         <div class="h-1.5 rounded-full flex-1" style="background: #fce7f0;"></div>
-                         <div class="h-1.5 rounded-full w-1/3" style="background: #e11d75;"></div>
-                       </div>
-                       <div class="flex items-center gap-1.5 w-full justify-between">
-                         <span class="text-text-secondary text-xs font-medium">{{ 'settings.appearance.themes.rose' | transloco }}</span>
-                        @if (themeService.theme() === 'rose') {
-                          <span class="material-symbols-rounded text-sm theme-check-icon">check_circle</span>
-                        }
-                      </div>
-                    </button>
-
-                  </div>
-                </div>
-
-                <div class="settings-divider"></div>
-
-                <!-- Accent color palette -->
-                <div class="flex flex-col gap-3">
-                  <span class="text-text-primary text-sm font-semibold">{{ 'settings.appearance.accentColor' | transloco }}</span>
-                  <div class="flex items-center gap-3">
-                    @for (swatch of accentSwatches; track swatch.id) {
-                      <button
-                        (click)="selectAccent(swatch.id)"
-                        [class.accent-swatch--selected]="selectedAccent() === swatch.id"
-                        class="accent-swatch size-8 rounded-full cursor-pointer transition-all duration-200 border-2"
-                        [attr.aria-label]="swatch.label | transloco"
-                        [style.background]="swatch.color"
-                      ></button>
+                <!-- Midnight -->
+                <button
+                  (click)="setTheme('midnight')"
+                  [class.theme-card--active]="themeService.theme() === 'midnight'"
+                  class="theme-card flex flex-col items-center gap-2 p-4 rounded-xl border cursor-pointer transition-all duration-200"
+                  [attr.aria-label]="'settings.appearance.themes.midnight' | transloco"
+                 >
+                   <div class="rounded-lg w-full h-12 flex items-end p-1.5 gap-1"
+                        style="background: #0d0d1a; border: 1px solid #1a1a2e;">
+                     <div class="h-1.5 rounded-full flex-1" style="background: #2a2a45;"></div>
+                     <div class="h-1.5 rounded-full w-1/3" style="background: #8b5cf6;"></div>
+                   </div>
+                   <div class="flex items-center gap-1.5 w-full justify-between">
+                     <span class="text-text-secondary text-xs font-medium">{{ 'settings.appearance.themes.midnight' | transloco }}</span>
+                    @if (themeService.theme() === 'midnight') {
+                      <span class="material-symbols-rounded text-sm theme-check-icon">check_circle</span>
                     }
                   </div>
-                  <span class="text-text-muted text-xs">
-                     {{ 'settings.appearance.accentSelected' | transloco : { label: selectedAccentLabel() } }}
-                   </span>
-                </div>
+                </button>
 
-                <div class="settings-divider"></div>
-
-                <!-- Compact mode -->
-                 <div class="flex items-center justify-between">
-                   <div class="flex flex-col gap-0.5">
-                     <span class="text-text-primary text-sm font-medium">{{ 'settings.appearance.compactMode' | transloco }}</span>
-                     <span class="text-text-muted text-xs">{{ 'settings.appearance.compactModeDesc' | transloco }}</span>
+                <!-- Amber -->
+                <button
+                  (click)="setTheme('amber')"
+                  [class.theme-card--active]="themeService.theme() === 'amber'"
+                  class="theme-card flex flex-col items-center gap-2 p-4 rounded-xl border cursor-pointer transition-all duration-200"
+                  [attr.aria-label]="'settings.appearance.themes.amber' | transloco"
+                 >
+                   <div class="rounded-lg w-full h-12 flex items-end p-1.5 gap-1"
+                        style="background: #fdf6e3; border: 1px solid #e8d5b0;">
+                     <div class="h-1.5 rounded-full flex-1" style="background: #e8d5b0;"></div>
+                     <div class="h-1.5 rounded-full w-1/3" style="background: #d97706;"></div>
                    </div>
-                   <mat-slide-toggle
-                     [aria-label]="'settings.appearance.toggleCompactMode' | transloco"
-                     [checked]="appPreferencesService.compactMode()"
-                     (change)="appPreferencesService.setCompactMode($event.checked)"
-                   />
-                 </div>
+                   <div class="flex items-center gap-1.5 w-full justify-between">
+                     <span class="text-text-secondary text-xs font-medium">{{ 'settings.appearance.themes.amber' | transloco }}</span>
+                    @if (themeService.theme() === 'amber') {
+                      <span class="material-symbols-rounded text-sm theme-check-icon">check_circle</span>
+                    }
+                  </div>
+                </button>
 
-                 <!-- Reduce animations -->
-                 <div class="flex items-center justify-between">
-                   <div class="flex flex-col gap-0.5">
-                     <span class="text-text-primary text-sm font-medium">{{ 'settings.appearance.reduceAnimations' | transloco }}</span>
-                     <span class="text-text-muted text-xs">{{ 'settings.appearance.reduceAnimationsDesc' | transloco }}</span>
+                <!-- Catppuccin -->
+                <button
+                  (click)="setTheme('catppuccin')"
+                  [class.theme-card--active]="themeService.theme() === 'catppuccin'"
+                  class="theme-card flex flex-col items-center gap-2 p-4 rounded-xl border cursor-pointer transition-all duration-200"
+                  [attr.aria-label]="'settings.appearance.themes.catppuccin' | transloco"
+                 >
+                   <div class="rounded-lg w-full h-12 flex items-end p-1.5 gap-1"
+                        style="background: #1e1e2e; border: 1px solid #313244;">
+                     <div class="h-1.5 rounded-full flex-1" style="background: #313244;"></div>
+                     <div class="h-1.5 rounded-full w-1/3" style="background: #f5c2e7;"></div>
                    </div>
-                   <mat-slide-toggle
-                     [aria-label]="'settings.appearance.toggleReduceAnimations' | transloco"
-                     [checked]="appPreferencesService.reduceAnimations()"
-                     (change)="appPreferencesService.setReduceAnimations($event.checked)"
-                   />
-                 </div>
+                   <div class="flex items-center gap-1.5 w-full justify-between">
+                     <span class="text-text-secondary text-xs font-medium">{{ 'settings.appearance.themes.catppuccin' | transloco }}</span>
+                    @if (themeService.theme() === 'catppuccin') {
+                      <span class="material-symbols-rounded text-sm theme-check-icon">check_circle</span>
+                    }
+                  </div>
+                </button>
+
+                <!-- Nord -->
+                <button
+                  (click)="setTheme('nord')"
+                  [class.theme-card--active]="themeService.theme() === 'nord'"
+                  class="theme-card flex flex-col items-center gap-2 p-4 rounded-xl border cursor-pointer transition-all duration-200"
+                  [attr.aria-label]="'settings.appearance.themes.nord' | transloco"
+                 >
+                   <div class="rounded-lg w-full h-12 flex items-end p-1.5 gap-1"
+                        style="background: #2e3440; border: 1px solid #3b4252;">
+                     <div class="h-1.5 rounded-full flex-1" style="background: #3b4252;"></div>
+                     <div class="h-1.5 rounded-full w-1/3" style="background: #88c0d0;"></div>
+                   </div>
+                   <div class="flex items-center gap-1.5 w-full justify-between">
+                     <span class="text-text-secondary text-xs font-medium">{{ 'settings.appearance.themes.nord' | transloco }}</span>
+                    @if (themeService.theme() === 'nord') {
+                      <span class="material-symbols-rounded text-sm theme-check-icon">check_circle</span>
+                    }
+                  </div>
+                </button>
+
+                <!-- Rose -->
+                <button
+                  (click)="setTheme('rose')"
+                  [class.theme-card--active]="themeService.theme() === 'rose'"
+                  class="theme-card flex flex-col items-center gap-2 p-4 rounded-xl border cursor-pointer transition-all duration-200"
+                  [attr.aria-label]="'settings.appearance.themes.rose' | transloco"
+                 >
+                   <div class="rounded-lg w-full h-12 flex items-end p-1.5 gap-1"
+                        style="background: #fff0f3; border: 1px solid #fce7f0;">
+                     <div class="h-1.5 rounded-full flex-1" style="background: #fce7f0;"></div>
+                     <div class="h-1.5 rounded-full w-1/3" style="background: #e11d75;"></div>
+                   </div>
+                   <div class="flex items-center gap-1.5 w-full justify-between">
+                     <span class="text-text-secondary text-xs font-medium">{{ 'settings.appearance.themes.rose' | transloco }}</span>
+                    @if (themeService.theme() === 'rose') {
+                      <span class="material-symbols-rounded text-sm theme-check-icon">check_circle</span>
+                    }
+                  </div>
+                </button>
 
               </div>
-            </app-card>
+            </div>
+
+            <div class="settings-divider"></div>
+
+            <!-- Compact mode -->
+            <div class="flex items-center justify-between py-1">
+              <div class="flex flex-col gap-0.5">
+                <span class="text-text-primary text-sm font-medium">{{ 'settings.appearance.compactMode' | transloco }}</span>
+                <span class="text-text-muted text-xs">{{ 'settings.appearance.compactModeDesc' | transloco }}</span>
+              </div>
+              <button
+                role="switch"
+                [attr.aria-checked]="compactMode()"
+                [attr.aria-label]="'settings.appearance.toggleCompactMode' | transloco"
+                [class.notif-toggle--on]="compactMode()"
+                class="notif-toggle"
+                (click)="toggleCompactMode()"
+              >
+                <span class="notif-toggle-thumb"></span>
+              </button>
+            </div>
+
+            <!-- Reduce animations -->
+            <div class="flex items-center justify-between py-1">
+              <div class="flex flex-col gap-0.5">
+                <span class="text-text-primary text-sm font-medium">{{ 'settings.appearance.reduceAnimations' | transloco }}</span>
+                <span class="text-text-muted text-xs">{{ 'settings.appearance.reduceAnimationsDesc' | transloco }}</span>
+              </div>
+              <button
+                role="switch"
+                [attr.aria-checked]="reduceAnimations()"
+                [attr.aria-label]="'settings.appearance.toggleReduceAnimations' | transloco"
+                [class.notif-toggle--on]="reduceAnimations()"
+                class="notif-toggle"
+                (click)="toggleReduceAnimations()"
+              >
+                <span class="notif-toggle-thumb"></span>
+              </button>
+            </div>
           </div>
         }
 
         <!-- WORKSPACE -->
         @if (activeSection() === 'workspace') {
-          <div class="flex flex-col gap-4 animate-fade-up">
+          <div class="flex flex-col gap-6 animate-fade-up">
             <h2 class="settings-section-title">{{ 'settings.workspace.title' | transloco }}</h2>
 
-            <!-- Language & Timezone -->
-            <app-card>
-              <div class="flex flex-col gap-5">
-
-                <!-- Language -->
-                <div class="flex flex-col gap-2">
-                  <label class="settings-field-label text-sm font-semibold" for="ws-language">
-                     {{ 'settings.workspace.language' | transloco }}
-                   </label>
-                  <div class="settings-select-wrapper">
-                    <select
-                      id="ws-language"
-                      class="settings-select"
-                      [value]="selectedLanguage()"
-                      (change)="selectedLanguage.set($any($event.target).value)"
-                    >
-                       <option value="en">{{ 'settings.workspace.languages.en' | transloco }}</option>
-                       <option value="es">{{ 'settings.workspace.languages.es' | transloco }}</option>
-                       <option value="pt">{{ 'settings.workspace.languages.pt' | transloco }}</option>
-                    </select>
-                    <span class="settings-select-chevron material-symbols-rounded">expand_more</span>
-                  </div>
-                </div>
-
-                <div class="settings-divider"></div>
-
-                <!-- Timezone -->
-                <div class="flex flex-col gap-2">
-                  <label class="settings-field-label text-sm font-semibold" for="ws-timezone">
-                     {{ 'settings.workspace.timezone' | transloco }}
-                   </label>
-                  <div class="settings-select-wrapper">
-                    <select
-                      id="ws-timezone"
-                      class="settings-select"
-                      [value]="selectedTimezone()"
-                      (change)="selectedTimezone.set($any($event.target).value)"
-                    >
-                      <option value="UTC">UTC+0 — Universal Time</option>
-                      <option value="America/Argentina/Buenos_Aires">UTC-3 — Buenos Aires</option>
-                      <option value="America/New_York">UTC-5 — New York</option>
-                      <option value="America/Los_Angeles">UTC-8 — Los Angeles</option>
-                      <option value="Europe/London">UTC+0 — London</option>
-                      <option value="Europe/Paris">UTC+1 — Paris</option>
-                      <option value="Europe/Berlin">UTC+1 — Berlin</option>
-                      <option value="Asia/Shanghai">UTC+8 — Shanghai</option>
-                      <option value="Asia/Tokyo">UTC+9 — Tokyo</option>
-                      <option value="Australia/Sydney">UTC+10 — Sydney</option>
-                    </select>
-                    <span class="settings-select-chevron material-symbols-rounded">expand_more</span>
-                  </div>
-                </div>
-
+            <!-- Language -->
+            <div class="flex flex-col gap-2">
+              <label class="settings-field-label text-sm font-semibold" for="ws-language">
+                 {{ 'settings.workspace.language' | transloco }}
+               </label>
+              <div class="settings-select-wrapper">
+                <select
+                  id="ws-language"
+                  class="settings-select"
+                  [value]="selectedLanguage()"
+                  (change)="selectedLanguage.set($any($event.target).value)"
+                >
+                   <option value="en">{{ 'settings.workspace.languages.en' | transloco }}</option>
+                   <option value="es">{{ 'settings.workspace.languages.es' | transloco }}</option>
+                   <option value="pt">{{ 'settings.workspace.languages.pt' | transloco }}</option>
+                </select>
+                <span class="settings-select-chevron material-symbols-rounded">expand_more</span>
               </div>
-            </app-card>
+            </div>
+
+            <div class="settings-divider"></div>
+
+            <!-- Timezone -->
+            <div class="flex flex-col gap-2">
+              <label class="settings-field-label text-sm font-semibold" for="ws-timezone">
+                 {{ 'settings.workspace.timezone' | transloco }}
+               </label>
+              <div class="settings-select-wrapper">
+                <select
+                  id="ws-timezone"
+                  class="settings-select"
+                  [value]="selectedTimezone()"
+                  (change)="selectedTimezone.set($any($event.target).value)"
+                >
+                  <option value="UTC">UTC+0 — Universal Time</option>
+                  <option value="America/Argentina/Buenos_Aires">UTC-3 — Buenos Aires</option>
+                  <option value="America/New_York">UTC-5 — New York</option>
+                  <option value="America/Los_Angeles">UTC-8 — Los Angeles</option>
+                  <option value="Europe/London">UTC+0 — London</option>
+                  <option value="Europe/Paris">UTC+1 — Paris</option>
+                  <option value="Europe/Berlin">UTC+1 — Berlin</option>
+                  <option value="Asia/Shanghai">UTC+8 — Shanghai</option>
+                  <option value="Asia/Tokyo">UTC+9 — Tokyo</option>
+                  <option value="Australia/Sydney">UTC+10 — Sydney</option>
+                </select>
+                <span class="settings-select-chevron material-symbols-rounded">expand_more</span>
+              </div>
+            </div>
+
+            <div class="settings-divider"></div>
 
             <!-- Date format -->
-            <app-card>
-              <div class="flex flex-col gap-3">
-                <span class="text-text-primary text-sm font-semibold">{{ 'settings.workspace.dateFormat' | transloco }}</span>
-                <div class="grid grid-cols-3 gap-3">
+            <div class="flex flex-col gap-3">
+              <span class="settings-field-label text-sm font-semibold">{{ 'settings.workspace.dateFormat' | transloco }}</span>
+              <div class="grid grid-cols-3 gap-3">
 
-                  <button
-                    (click)="selectedDateFormat.set('MM/DD/YYYY')"
-                    [class.date-format-card--active]="selectedDateFormat() === 'MM/DD/YYYY'"
-                    class="date-format-card flex flex-col gap-1.5 p-4 rounded-xl border cursor-pointer transition-all duration-200 text-left"
-                  >
-                    <span class="text-text-primary text-xs font-semibold font-mono">MM/DD/YYYY</span>
-                    <span class="text-text-muted text-xs">06/20/2026</span>
-                  </button>
+                <button
+                  (click)="selectedDateFormat.set('MM/DD/YYYY')"
+                  [class.date-format-card--active]="selectedDateFormat() === 'MM/DD/YYYY'"
+                  class="date-format-card flex flex-col gap-1.5 p-4 rounded-xl border cursor-pointer transition-all duration-200 text-left"
+                >
+                  <span class="text-text-primary text-xs font-semibold font-mono">MM/DD/YYYY</span>
+                  <span class="text-text-muted text-xs">06/20/2026</span>
+                </button>
 
-                  <button
-                    (click)="selectedDateFormat.set('DD/MM/YYYY')"
-                    [class.date-format-card--active]="selectedDateFormat() === 'DD/MM/YYYY'"
-                    class="date-format-card flex flex-col gap-1.5 p-4 rounded-xl border cursor-pointer transition-all duration-200 text-left"
-                  >
-                    <span class="text-text-primary text-xs font-semibold font-mono">DD/MM/YYYY</span>
-                    <span class="text-text-muted text-xs">20/06/2026</span>
-                  </button>
+                <button
+                  (click)="selectedDateFormat.set('DD/MM/YYYY')"
+                  [class.date-format-card--active]="selectedDateFormat() === 'DD/MM/YYYY'"
+                  class="date-format-card flex flex-col gap-1.5 p-4 rounded-xl border cursor-pointer transition-all duration-200 text-left"
+                >
+                  <span class="text-text-primary text-xs font-semibold font-mono">DD/MM/YYYY</span>
+                  <span class="text-text-muted text-xs">20/06/2026</span>
+                </button>
 
-                  <button
-                    (click)="selectedDateFormat.set('ISO')"
-                    [class.date-format-card--active]="selectedDateFormat() === 'ISO'"
-                    class="date-format-card flex flex-col gap-1.5 p-4 rounded-xl border cursor-pointer transition-all duration-200 text-left"
-                  >
-                    <span class="text-text-primary text-xs font-semibold font-mono">YYYY-MM-DD</span>
-                    <span class="text-text-muted text-xs">2026-06-20</span>
-                  </button>
+                <button
+                  (click)="selectedDateFormat.set('ISO')"
+                  [class.date-format-card--active]="selectedDateFormat() === 'ISO'"
+                  class="date-format-card flex flex-col gap-1.5 p-4 rounded-xl border cursor-pointer transition-all duration-200 text-left"
+                >
+                  <span class="text-text-primary text-xs font-semibold font-mono">YYYY-MM-DD</span>
+                  <span class="text-text-muted text-xs">2026-06-20</span>
+                </button>
 
-                </div>
               </div>
-            </app-card>
+            </div>
+
+            <div class="settings-divider"></div>
 
             <!-- Start of week -->
-            <app-card>
-              <div class="flex flex-col gap-3">
-                <span class="text-text-primary text-sm font-semibold">{{ 'settings.workspace.startOfWeek' | transloco }}</span>
-                <div class="flex gap-2">
-                   <button
-                     (click)="selectedStartOfWeek.set('SUNDAY')"
-                     [class.week-pill--active]="selectedStartOfWeek() === 'SUNDAY'"
-                     class="week-pill px-5 py-2 rounded-full text-sm font-medium cursor-pointer transition-all duration-200 border"
-                   >
-                     {{ 'settings.workspace.days.sunday' | transloco }}
-                   </button>
-                   <button
-                     (click)="selectedStartOfWeek.set('MONDAY')"
-                     [class.week-pill--active]="selectedStartOfWeek() === 'MONDAY'"
-                     class="week-pill px-5 py-2 rounded-full text-sm font-medium cursor-pointer transition-all duration-200 border"
-                   >
-                     {{ 'settings.workspace.days.monday' | transloco }}
-                   </button>
-                   <button
-                     (click)="selectedStartOfWeek.set('SATURDAY')"
-                     [class.week-pill--active]="selectedStartOfWeek() === 'SATURDAY'"
-                     class="week-pill px-5 py-2 rounded-full text-sm font-medium cursor-pointer transition-all duration-200 border"
-                   >
-                     {{ 'settings.workspace.days.saturday' | transloco }}
-                   </button>
-                </div>
+            <div class="flex flex-col gap-3">
+              <span class="settings-field-label text-sm font-semibold">{{ 'settings.workspace.startOfWeek' | transloco }}</span>
+              <div class="flex gap-2">
+                 <button
+                   (click)="selectedStartOfWeek.set('SUNDAY')"
+                   [class.week-pill--active]="selectedStartOfWeek() === 'SUNDAY'"
+                   class="week-pill px-5 py-2 rounded-full text-sm font-medium cursor-pointer transition-all duration-200 border"
+                 >
+                   {{ 'settings.workspace.days.sunday' | transloco }}
+                 </button>
+                 <button
+                   (click)="selectedStartOfWeek.set('MONDAY')"
+                   [class.week-pill--active]="selectedStartOfWeek() === 'MONDAY'"
+                   class="week-pill px-5 py-2 rounded-full text-sm font-medium cursor-pointer transition-all duration-200 border"
+                 >
+                   {{ 'settings.workspace.days.monday' | transloco }}
+                 </button>
+                 <button
+                   (click)="selectedStartOfWeek.set('SATURDAY')"
+                   [class.week-pill--active]="selectedStartOfWeek() === 'SATURDAY'"
+                   class="week-pill px-5 py-2 rounded-full text-sm font-medium cursor-pointer transition-all duration-200 border"
+                 >
+                   {{ 'settings.workspace.days.saturday' | transloco }}
+                 </button>
               </div>
-            </app-card>
+            </div>
 
-            <!-- Save button -->
             <div class="flex justify-end">
               <app-button
                 variant="primary"
@@ -661,7 +656,7 @@ interface AccentSwatch {
             }
 
             <!-- Info note -->
-            <div class="rounded-xl px-4 py-3 text-xs flex items-start gap-2 settings-workspace-note">
+            <div class="px-4 py-3 text-xs flex items-start gap-2 settings-workspace-note rounded-lg">
               <span class="material-symbols-rounded text-sm shrink-0 mt-0.5">info</span>
               {{ 'settings.workspace.syncNote' | transloco }}
             </div>
@@ -670,85 +665,82 @@ interface AccentSwatch {
 
         <!-- SECURITY -->
         @if (activeSection() === 'security') {
-          <div class="flex flex-col gap-4 animate-fade-up">
+          <div class="flex flex-col gap-6 animate-fade-up">
             <h2 class="settings-section-title">{{ 'settings.security.title' | transloco }}</h2>
 
             <!-- Active sessions -->
-            <app-card>
-              <div class="flex flex-col gap-4">
-                <h3 class="text-text-primary text-sm font-semibold">{{ 'settings.security.activeSessions' | transloco }}</h3>
+            <div class="flex flex-col gap-1">
+              <h3 class="text-text-secondary text-xs font-semibold uppercase tracking-wider mb-3">{{ 'settings.security.activeSessions' | transloco }}</h3>
 
-                @if (sessionsStore.isLoading()) {
-                  <app-spinner size="md" [full]="true" />
-                } @else if (sessionsStore.sessions().length === 0) {
-                   <p class="text-text-muted text-sm">{{ 'settings.security.noActiveSessions' | transloco }}</p>
-                } @else {
-                  @for (session of sessionsStore.sessions(); track session.sessionId) {
-                    <div class="flex items-center gap-4 py-3"
-                         style="border-bottom: 1px solid color-mix(in oklch, var(--color-border) 50%, transparent);">
-                      <div class="flex flex-col gap-0.5 flex-1 min-w-0">
-                        <span class="text-text-primary text-sm font-medium">{{ session.ipAddress }}</span>
-                         <span class="text-text-muted text-xs">
-                           {{ 'settings.security.started' | transloco }} {{ session.started | date:'medium' }}
-                         </span>
-                         <span class="text-text-muted text-xs">
-                           {{ 'settings.security.lastSeen' | transloco }} {{ session.lastAccess | date:'medium' }}
-                         </span>
-                      </div>
-                      <div class="flex items-center gap-2 shrink-0">
-                        @if (session.sessionId === sessionsStore.currentSessionId()) {
-                           <span class="settings-session-current-badge">{{ 'settings.security.currentSession' | transloco }}</span>
-                        }
-                        <button
-                          class="settings-revoke-btn px-3 py-1.5 rounded-lg text-xs font-medium cursor-pointer transition-all duration-150"
-                          [disabled]="sessionsStore.revokingSessionId() === session.sessionId"
-                           (click)="revokeSession(session.sessionId)"
-                         >
-                           {{ 'settings.security.revokeBtn' | transloco }}
-                        </button>
-                      </div>
+              @if (sessionsStore.isLoading()) {
+                <app-spinner size="md" [full]="true" />
+              } @else if (sessionsStore.sessions().length === 0) {
+                 <p class="text-text-muted text-sm">{{ 'settings.security.noActiveSessions' | transloco }}</p>
+              } @else {
+                @for (session of sessionsStore.sessions(); track session.sessionId) {
+                  <div class="flex items-center gap-4 py-3 settings-row-border">
+                    <div class="flex flex-col gap-0.5 flex-1 min-w-0">
+                      <span class="text-text-primary text-sm font-medium">{{ session.ipAddress }}</span>
+                       <span class="text-text-muted text-xs">
+                         {{ 'settings.security.started' | transloco }} {{ session.started | date:'medium' }}
+                       </span>
+                       <span class="text-text-muted text-xs">
+                         {{ 'settings.security.lastSeen' | transloco }} {{ session.lastAccess | date:'medium' }}
+                       </span>
                     </div>
-                  }
+                    <div class="flex items-center gap-2 shrink-0">
+                      @if (session.sessionId === sessionsStore.currentSessionId()) {
+                         <span class="settings-session-current-badge">{{ 'settings.security.currentSession' | transloco }}</span>
+                      }
+                      <button
+                        class="settings-revoke-btn px-3 py-1.5 rounded-lg text-xs font-medium cursor-pointer transition-all duration-150"
+                        [disabled]="sessionsStore.revokingSessionId() === session.sessionId"
+                         (click)="revokeSession(session.sessionId)"
+                       >
+                         {{ 'settings.security.revokeBtn' | transloco }}
+                      </button>
+                    </div>
+                  </div>
                 }
+              }
 
-                @if (sessionsStore.error()) {
-                  <p class="error text-xs" style="color: var(--color-danger);">
-                    {{ sessionsStore.error() }}
-                  </p>
-                }
-              </div>
-            </app-card>
+              @if (sessionsStore.error()) {
+                <p class="text-xs mt-2" style="color: var(--color-danger);">
+                  {{ sessionsStore.error() }}
+                </p>
+              }
+            </div>
+
+            <div class="settings-divider"></div>
 
             <!-- Danger zone -->
-            <app-card>
-              <div class="flex flex-col gap-4">
-                <h3 class="settings-danger-title text-sm font-semibold">{{ 'settings.security.dangerZone' | transloco }}</h3>
+            <div class="flex flex-col gap-4">
+              <h3 class="settings-danger-title text-xs font-semibold uppercase tracking-wider">{{ 'settings.security.dangerZone' | transloco }}</h3>
 
-                <div class="flex items-center justify-between gap-4">
-                  <div class="flex flex-col gap-0.5">
-                     <span class="text-text-primary text-sm font-medium">{{ 'settings.security.deleteAccount' | transloco }}</span>
-                     <span class="text-text-muted text-xs">
-                       {{ 'settings.security.deleteAccountDesc' | transloco }}
-                     </span>
-                  </div>
-                  <button
-                    (click)="confirmDeleteAccount()"
-                    [disabled]="isDeletingAccount()"
-                    class="settings-danger-btn px-4 py-2 rounded-lg text-sm font-medium cursor-pointer transition-all duration-150 shrink-0"
-                  >
-                     @if (isDeletingAccount()) {
-                       {{ 'settings.security.deletingAccount' | transloco }}
-                     } @else {
-                       {{ 'settings.security.deleteAccount' | transloco }}
-                     }
-                  </button>
+              <div class="flex items-center justify-between gap-4">
+                <div class="flex flex-col gap-0.5">
+                   <span class="text-text-primary text-sm font-medium">{{ 'settings.security.deleteAccount' | transloco }}</span>
+                   <span class="text-text-muted text-xs">
+                     {{ 'settings.security.deleteAccountDesc' | transloco }}
+                   </span>
                 </div>
-
-                @if (deleteError()) {
-                  <app-error-banner [message]="deleteError()!" variant="inline" />
-                }
+                <button
+                  (click)="confirmDeleteAccount()"
+                  [disabled]="isDeletingAccount()"
+                  class="settings-danger-btn px-4 py-2 rounded-lg text-sm font-medium cursor-pointer transition-all duration-150 shrink-0"
+                >
+                   @if (isDeletingAccount()) {
+                     {{ 'settings.security.deletingAccount' | transloco }}
+                   } @else {
+                     {{ 'settings.security.deleteAccount' | transloco }}
+                   }
+                </button>
               </div>
-            </app-card>
+
+              @if (deleteError()) {
+                <app-error-banner [message]="deleteError()!" variant="inline" />
+              }
+            </div>
 
           </div>
         }
@@ -857,22 +849,47 @@ interface AccentSwatch {
         color: var(--color-accent);
       }
 
-      /* ─── Appearance: Accent swatches ────────────────────────────────────── */
-      .accent-swatch {
-        border-color: transparent;
-        outline: 2px solid transparent;
+      /* ─── Toggle pill (notif + appearance) ───────────────────────────────── */
+      .notif-toggle {
+        position: relative;
+        display: inline-flex;
+        align-items: center;
+        width: 2.25rem;
+        height: 1.25rem;
+        border-radius: 9999px;
+        border: 1.5px solid var(--color-border-strong);
+        cursor: pointer;
+        padding: 0;
+        flex-shrink: 0;
+        background: transparent;
+        transition: background 200ms ease, border-color 200ms ease;
+      }
+
+      .notif-toggle:focus-visible {
+        outline: 2px solid var(--color-accent);
         outline-offset: 2px;
       }
 
-      .accent-swatch:hover {
-        outline-color: color-mix(in oklch, var(--color-accent) 60%, transparent);
-        transform: scale(1.1);
+      .notif-toggle--on {
+        background: var(--color-accent) !important;
+        border-color: var(--color-accent) !important;
       }
 
-      .accent-swatch--selected {
-        outline-color: var(--color-accent) !important;
-        transform: scale(1.1);
-        border-color: transparent !important;
+      .notif-toggle-thumb {
+        position: absolute;
+        left: 0.175rem;
+        width: 0.8rem;
+        height: 0.8rem;
+        border-radius: 9999px;
+        background: var(--color-text-muted);
+        box-shadow: 0 1px 2px oklch(0 0 0 / 0.15);
+        transition: transform 200ms ease, background 200ms ease;
+        pointer-events: none;
+      }
+
+      .notif-toggle--on .notif-toggle-thumb {
+        transform: translateX(1rem);
+        background: oklch(1 0 0 / 0.95);
       }
 
       /* ─── Workspace: Custom select ────────────────────────────────────────── */
@@ -999,6 +1016,11 @@ interface AccentSwatch {
         border-color: var(--color-danger);
       }
 
+      /* ─── Row separator (sessions, session active row) ───────────────────── */
+      .settings-row-border {
+        border-bottom: 1px solid color-mix(in oklch, var(--color-border) 50%, transparent);
+      }
+
       /* ─── Notification table ──────────────────────────────────────────────── */
       .notif-table-header {
         border-bottom: 1px solid color-mix(in oklch, var(--color-border) 60%, transparent);
@@ -1012,7 +1034,6 @@ interface AccentSwatch {
       }
 
       .notif-group-header {
-        background: color-mix(in oklch, var(--color-accent) 5%, transparent);
         border-top: 1px solid color-mix(in oklch, var(--color-border) 50%, transparent);
         border-bottom: 1px solid color-mix(in oklch, var(--color-border) 40%, transparent);
         color: var(--color-text-secondary);
@@ -1048,6 +1069,7 @@ export class SettingsComponent implements OnInit {
   readonly profileStore                 = inject(ProfileStore);
   readonly sessionsStore                = inject(SessionsStore);
   readonly appPreferencesService        = inject(AppPreferencesService);
+  private readonly cdr                  = inject(ChangeDetectorRef);
 
   activeSection = signal<SettingsSection>('profile');
   isEditing     = signal(false);
@@ -1057,7 +1079,9 @@ export class SettingsComponent implements OnInit {
   deleteError       = signal<string | null>(null);
 
   // Appearance signals
-  selectedAccent = signal<string>('violet');
+  selectedAccent  = signal<string>('violet');
+  compactMode     = computed(() => this.appPreferencesService.compactMode());
+  reduceAnimations = computed(() => this.appPreferencesService.reduceAnimations());
 
   // Workspace signals — initialised from profile preferences on load
   selectedLanguage    = signal<string>(DEFAULT_PREFERENCES.language);
@@ -1222,6 +1246,16 @@ export class SettingsComponent implements OnInit {
     this.themeService.setTheme(theme);
   }
 
+  toggleCompactMode(): void {
+    this.appPreferencesService.setCompactMode(!this.appPreferencesService.compactMode());
+    this.cdr.markForCheck();
+  }
+
+  toggleReduceAnimations(): void {
+    this.appPreferencesService.setReduceAnimations(!this.appPreferencesService.reduceAnimations());
+    this.cdr.markForCheck();
+  }
+
   selectAccent(id: string): void {
     this.selectedAccent.set(id);
   }
@@ -1290,7 +1324,7 @@ export class SettingsComponent implements OnInit {
     return CHANNEL_VARIANT[channel] ?? 'neutral';
   }
 
-  onToggle(pref: NotificationPreference, event: MatSlideToggleChange): void {
+  onToggle(pref: NotificationPreference, event: { checked: boolean }): void {
     this.prefStore.updatePreference(
       pref.eventType as NotificationType,
       pref.channel   as NotificationChannel,
@@ -1327,7 +1361,7 @@ export class SettingsComponent implements OnInit {
   }
 
   /** Used in event rows — delegates to existing onToggle but by type */
-  onToggleByType(eventType: NotificationType, channel: NotificationChannel, event: MatSlideToggleChange): void {
+  onToggleByType(eventType: NotificationType, channel: NotificationChannel, event: { checked: boolean }): void {
     const pref = this.prefStore.preferences().find(
       p => p.eventType === eventType && p.channel === channel
     );

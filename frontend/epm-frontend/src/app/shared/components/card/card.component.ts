@@ -5,7 +5,7 @@ import {
   computed,
 } from '@angular/core';
 
-export type CardVariant = 'default' | 'elevated' | 'flat';
+export type CardVariant = 'default' | 'elevated' | 'flat' | 'surface';
 export type CardPadding = 'none' | 'sm' | 'md' | 'lg';
 
 @Component({
@@ -45,6 +45,7 @@ export class CardComponent {
     default:  'glass shadow-md',
     elevated: 'bg-bg-elevated border border-border-strong shadow-lg',
     flat:     'bg-bg-surface border border-transparent',
+    surface:  'bg-bg-surface border border-border',
   };
 
   private readonly paddingMap: Record<CardPadding, string> = {
