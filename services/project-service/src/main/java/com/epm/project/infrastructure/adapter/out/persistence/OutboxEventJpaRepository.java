@@ -5,6 +5,7 @@ import java.util.List;
 import java.util.UUID;
 
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
@@ -46,4 +47,20 @@ public interface OutboxEventJpaRepository extends JpaRepository<OutboxEventJpaEn
             FOR UPDATE SKIP LOCKED
             """, nativeQuery = true)
     List<OutboxEventJpaEntity> lockRetryBatch(@Param("threshold") Instant threshold);
+
+    /**
+     * Marks an outbox event as successfully published by setting published_at.
+     * Uses a direct UPDATE to avoid JPA detached-entity issues from native queries.
+     */
+    @Modifying
+    @Query(value = "UPDATE outbox_events SET published_at = :now WHERE id = :id", nativeQuery = true)
+    void markPublished(@Param("id") UUID id, @Param("now") Instant now);
+
+    /**
+     * Marks an outbox event as failed by setting failed_at and error message.
+     * Uses a direct UPDATE to avoid JPA detached-entity issues from native queries.
+     */
+    @Modifying
+    @Query(value = "UPDATE outbox_events SET failed_at = :now, error = :error WHERE id = :id", nativeQuery = true)
+    void markFailed(@Param("id") UUID id, @Param("now") Instant now, @Param("error") String error);
 }

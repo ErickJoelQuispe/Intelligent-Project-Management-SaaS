@@ -10,6 +10,7 @@ import com.epm.project.infrastructure.adapter.out.persistence.OutboxEventJpaRepo
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
+import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
 /**
@@ -49,7 +50,7 @@ public class OutboxRelayExecutor {
      * ({@code failed_at IS NOT NULL}) are disjoint by predicate, so no row can appear
      * in both — concatenation is correct and no distinct() is needed.
      */
-    @Transactional
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
     public void relayBatch() {
         Instant cooldownThreshold = Instant.now().minus(RETRY_COOLDOWN_MINUTES, ChronoUnit.MINUTES);
 
@@ -65,14 +66,11 @@ public class OutboxRelayExecutor {
     private void publish(OutboxEventJpaEntity event) {
         try {
             publisher.publish(event.getTopic(), event.getAggregateId().toString(), event.getPayload());
-            event.setPublishedAt(Instant.now());
-            outboxRepo.save(event);
+            outboxRepo.markPublished(event.getId(), Instant.now());
             log.debug("Relayed outbox event {} to topic {}", event.getId(), event.getTopic());
         } catch (Exception ex) {
             log.warn("Failed to relay outbox event {}: {}", event.getId(), ex.getMessage());
-            event.setFailedAt(Instant.now());
-            event.setError(ex.getMessage());
-            outboxRepo.save(event);
+            outboxRepo.markFailed(event.getId(), Instant.now(), ex.getMessage());
         }
     }
 }

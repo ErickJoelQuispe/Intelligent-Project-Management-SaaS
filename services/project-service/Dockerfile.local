@@ -1,0 +1,11 @@
+FROM eclipse-temurin:21-jre-alpine
+WORKDIR /app
+
+RUN addgroup -S epm && adduser -S epm -G epm
+USER epm
+
+COPY target/project-service-*.jar app.jar
+
+EXPOSE 8083
+
+ENTRYPOINT ["java", "-jar", "app.jar"]
